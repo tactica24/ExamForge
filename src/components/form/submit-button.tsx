@@ -6,7 +6,7 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 
 export function SubmitButton({
   children,
-  pendingText = "Working…",
+  pendingText = "Working...",
   ...props
 }: ButtonProps & { pendingText?: string }) {
   const { pending } = useFormStatus();
@@ -16,4 +16,3 @@ export function SubmitButton({
     </Button>
   );
 }
-

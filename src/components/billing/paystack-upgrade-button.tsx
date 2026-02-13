@@ -24,8 +24,7 @@ export function PaystackUpgradeButton() {
       }}
       disabled={loading}
     >
-      {loading ? "Redirecting…" : "Upgrade with Paystack"}
+      {loading ? "Redirecting..." : "Upgrade with Paystack"}
     </Button>
   );
 }
-

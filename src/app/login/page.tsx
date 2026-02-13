@@ -39,7 +39,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
           <Label htmlFor="password">Password</Label>
           <Input id="password" name="password" type="password" placeholder="••••••••" required />
         </div>
-        <SubmitButton type="submit" className="w-full" pendingText="Logging in…">
+        <SubmitButton type="submit" className="w-full" pendingText="Logging in...">
           Log in
         </SubmitButton>
       </AuthFormState>

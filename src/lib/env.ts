@@ -17,7 +17,8 @@ const ServerEnvSchema = z.object({
   TWILIO_FROM_NUMBER: z.string().min(1).optional(),
   AFRICASTALKING_USERNAME: z.string().min(1).optional(),
   AFRICASTALKING_API_KEY: z.string().min(1).optional(),
-  RESEND_API_KEY: z.string().min(1).optional()
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional()
 });
 
 export function getServerEnv() {
@@ -30,4 +31,3 @@ export function getServerEnv() {
   }
   return parsed.data;
 }
-

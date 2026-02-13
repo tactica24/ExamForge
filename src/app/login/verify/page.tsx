@@ -29,11 +29,10 @@ export default async function VerifyOtpPage(props: { searchParams: Promise<{ pho
           <Label htmlFor="token">Code</Label>
           <Input id="token" name="token" placeholder="123456" required />
         </div>
-        <SubmitButton type="submit" className="w-full" pendingText="Verifying…">
+        <SubmitButton type="submit" className="w-full" pendingText="Verifying...">
           Verify
         </SubmitButton>
       </AuthFormState>
     </AuthCard>
   );
 }
-

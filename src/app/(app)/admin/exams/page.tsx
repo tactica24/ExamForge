@@ -79,7 +79,7 @@ export default async function AdminExamsPage() {
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" placeholder="Short description…" />
+                  <Textarea id="description" name="description" placeholder="Short description..." />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="subjects">Subjects (comma-separated)</Label>
@@ -87,7 +87,7 @@ export default async function AdminExamsPage() {
                 </div>
               </div>
               <div className="mt-4">
-                <SubmitButton type="submit" pendingText="Creating…" className="w-full sm:w-auto">
+                <SubmitButton type="submit" pendingText="Creating..." className="w-full sm:w-auto">
                   Create exam
                 </SubmitButton>
               </div>
@@ -98,4 +98,3 @@ export default async function AdminExamsPage() {
     </div>
   );
 }
-

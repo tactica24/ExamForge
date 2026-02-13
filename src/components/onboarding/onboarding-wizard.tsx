@@ -185,11 +185,10 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
           </div>
         </Card>
 
-        <SubmitButton type="submit" className="w-full" pendingText="Building your plan…">
+        <SubmitButton type="submit" className="w-full" pendingText="Building your plan...">
           Finish and go to dashboard
         </SubmitButton>
       </AuthFormState>
     </div>
   );
 }
-

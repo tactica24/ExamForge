@@ -23,13 +23,12 @@ export default function LoginOtpPage() {
       <AuthFormState action={sendOtpAction}>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" placeholder="+234…" required />
+          <Input id="phone" name="phone" placeholder="+234..." required />
         </div>
-        <SubmitButton type="submit" className="w-full" pendingText="Sending…">
+        <SubmitButton type="submit" className="w-full" pendingText="Sending...">
           Send code
         </SubmitButton>
       </AuthFormState>
     </AuthCard>
   );
 }
-

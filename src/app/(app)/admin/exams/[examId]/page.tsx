@@ -90,7 +90,7 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
                 />
               </div>
               <div className="mt-4">
-                <SubmitButton type="submit" pendingText="Saving…" className="w-full sm:w-auto">
+                <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">
                   Save syllabus
                 </SubmitButton>
               </div>
@@ -101,4 +101,3 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
     </div>
   );
 }
-

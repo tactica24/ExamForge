@@ -44,7 +44,7 @@ export default function SignupPage() {
           <Label htmlFor="password">Password</Label>
           <Input id="password" name="password" type="password" placeholder="••••••••" required />
         </div>
-        <SubmitButton type="submit" className="w-full" pendingText="Creating…">
+        <SubmitButton type="submit" className="w-full" pendingText="Creating...">
           Continue
         </SubmitButton>
       </AuthFormState>

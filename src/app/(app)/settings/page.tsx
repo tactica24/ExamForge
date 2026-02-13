@@ -66,7 +66,7 @@ export default async function SettingsPage() {
               </div>
             </div>
             <div className="mt-4">
-              <SubmitButton type="submit" pendingText="Saving…" className="w-full sm:w-auto">
+              <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">
                 Save profile
               </SubmitButton>
             </div>
@@ -99,7 +99,7 @@ export default async function SettingsPage() {
               </div>
             </div>
             <div className="mt-4">
-              <SubmitButton type="submit" pendingText="Saving…" className="w-full sm:w-auto">
+              <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">
                 Save reminders
               </SubmitButton>
             </div>

@@ -86,16 +86,15 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question…"
+          placeholder="Ask a question..."
           onKeyDown={(e) => {
             if (e.key === "Enter") send();
           }}
         />
         <Button onClick={send} disabled={loading}>
-          {loading ? "Thinking…" : "Send"}
+          {loading ? "Thinking..." : "Send"}
         </Button>
       </div>
     </div>
   );
 }
-

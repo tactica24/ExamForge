@@ -119,7 +119,7 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
       >
         <input type="hidden" name="quiz_id" value={props.quizId} />
         <input type="hidden" name="answers" value={JSON.stringify(answers)} />
-        <SubmitButton type="submit" className="w-full" disabled={!answeredAll} pendingText="Saving…">
+        <SubmitButton type="submit" className="w-full" disabled={!answeredAll} pendingText="Saving...">
           Finish quiz
         </SubmitButton>
       </AuthFormState>

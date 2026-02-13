@@ -28,14 +28,21 @@ export async function GET(req: Request) {
 
   const { data: prefs, error: prefsErr } = await admin
     .from("notification_prefs")
-    .select("user_id,channels,reminder_time,profiles(email,phone,timezone)")
+    .select("user_id,channels,reminder_time")
     .limit(5000);
   if (prefsErr) return NextResponse.json({ ok: false, message: prefsErr.message }, { status: 500 });
+
+  const userIds = (prefs ?? []).map((p) => p.user_id);
+  const { data: profiles } = userIds.length
+    ? await admin.from("profiles").select("user_id,email,phone,timezone").in("user_id", userIds)
+    : { data: [] as any[] };
+  const profileByUserId = new Map((profiles ?? []).map((p) => [p.user_id, p]));
 
   let sent = 0;
 
   for (const p of prefs ?? []) {
-    const tz = (p as any).profiles?.timezone ?? "Africa/Lagos";
+    const profile = profileByUserId.get(p.user_id);
+    const tz = profile?.timezone ?? "Africa/Lagos";
     const local = getLocalTimeHHmm(tz, now);
     if (local !== p.reminder_time) continue;
 
@@ -63,7 +70,7 @@ export async function GET(req: Request) {
 
     const provider = await sendViaProvider({
       channel,
-      to: { email: (p as any).profiles?.email, phone: (p as any).profiles?.phone },
+      to: { email: profile?.email, phone: profile?.phone },
       message: msg
     });
 
@@ -83,4 +90,3 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, sent });
 }
-

@@ -80,8 +80,8 @@ export function GroupChat(props: {
       >
         <input type="hidden" name="group_id" value={props.groupId} />
         <div className="flex gap-2">
-          <Input name="content" placeholder="Message your group…" required />
-          <SubmitButton type="submit" pendingText="Sending…">
+          <Input name="content" placeholder="Message your group..." required />
+          <SubmitButton type="submit" pendingText="Sending...">
             Send
           </SubmitButton>
         </div>
@@ -89,4 +89,3 @@ export function GroupChat(props: {
     </div>
   );
 }
-

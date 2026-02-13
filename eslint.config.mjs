@@ -1,7 +1,11 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname
+  baseDirectory: __dirname
 });
 
 export default [
@@ -12,4 +16,3 @@ export default [
     }
   }
 ];
-
