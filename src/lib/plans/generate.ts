@@ -1,0 +1,51 @@
+import { addDays, formatISO, parseISO } from "date-fns";
+import type { Topic } from "@/lib/syllabi/fallback";
+
+export type Pace = "steady" | "intensive";
+
+export type GeneratedPlanItem = {
+  scheduled_for: string; // YYYY-MM-DD
+  day_index: number;
+  topic_path: string;
+  title: string;
+  resource_links: Array<{ title: string; url: string }>;
+};
+
+function defaultResourcesFor(subject: string) {
+  const q = encodeURIComponent(`${subject} basics`);
+  return [
+    { title: "Khan Academy (search)", url: `https://www.khanacademy.org/search?page_search_query=${q}` },
+    { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${q}` }
+  ];
+}
+
+export function generatePlanItemsFromTopics(args: {
+  topics: Topic[];
+  pace: Pace;
+  startDate: string; // YYYY-MM-DD
+}): GeneratedPlanItem[] {
+  const { topics, pace, startDate } = args;
+  const perDay = pace === "intensive" ? 2 : 1;
+  const start = parseISO(startDate);
+  const items: GeneratedPlanItem[] = [];
+
+  let dayIndex = 0;
+  for (let i = 0; i < topics.length; i += perDay) {
+    const dayTopics = topics.slice(i, i + perDay);
+    const date = addDays(start, dayIndex);
+    const scheduled_for = formatISO(date, { representation: "date" });
+    for (const t of dayTopics) {
+      items.push({
+        scheduled_for,
+        day_index: dayIndex,
+        topic_path: t.path,
+        title: t.title,
+        resource_links: t.resources?.length ? t.resources : defaultResourcesFor(t.title)
+      });
+    }
+    dayIndex += 1;
+  }
+
+  return items;
+}
+
