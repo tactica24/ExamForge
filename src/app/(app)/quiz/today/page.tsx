@@ -5,7 +5,7 @@ import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { getOrCreateDailyQuiz } from "@/lib/quizzes/generate";
 
 export default async function QuizTodayPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -13,6 +13,12 @@ export default async function QuizTodayPage() {
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("preferred_explanation_language")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: item } = await supabase
@@ -30,12 +36,13 @@ export default async function QuizTodayPage() {
   const examName = exam?.name ?? "Exam";
 
   const quizId = await getOrCreateDailyQuiz({
+    userId: user.id,
     examId: plan.exam_id,
     examName,
     subject: plan.subject,
-    topicPath: item.topic_path
+    topicPath: item.topic_path,
+    preferredLanguage: profile?.preferred_explanation_language ?? "en"
   });
 
   redirect(`/quiz/${quizId}`);
 }
-

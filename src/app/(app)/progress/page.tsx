@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressCharts } from "@/components/progress/progress-charts";
 
 export default async function ProgressPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -51,4 +51,3 @@ export default async function ProgressPage() {
     </div>
   );
 }
-

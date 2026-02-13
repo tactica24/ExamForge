@@ -15,7 +15,7 @@ export async function updatePlanItemStatusAction(_: unknown, formData: FormData)
   });
   if (!parsed.success) return { ok: false, message: "Invalid update." };
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -26,4 +26,3 @@ export async function updatePlanItemStatusAction(_: unknown, formData: FormData)
 
   return { ok: true };
 }
-

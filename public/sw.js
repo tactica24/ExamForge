@@ -24,7 +24,7 @@ function isCacheableRequest(request) {
   if (request.method !== "GET") return false;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
-  if (url.pathname.startsWith("/api/")) return false;
+  if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/offline/")) return false;
   return true;
 }
 
@@ -46,4 +46,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-

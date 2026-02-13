@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -10,6 +10,9 @@ const PROTECTED_PREFIXES = [
   "/progress",
   "/tutor",
   "/settings",
+  "/profile",
+  "/leaderboard",
+  "/mock-exam",
   "/admin",
   "/billing"
 ];
@@ -29,7 +32,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
@@ -61,6 +64,9 @@ export const config = {
     "/progress/:path*",
     "/tutor/:path*",
     "/settings/:path*",
+    "/profile/:path*",
+    "/leaderboard/:path*",
+    "/mock-exam/:path*",
     "/admin/:path*",
     "/billing/:path*"
   ]

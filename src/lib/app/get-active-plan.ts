@@ -3,7 +3,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function getActivePlanForUser(userId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: plan } = await supabase
     .from("user_plans")
     .select("*")
@@ -13,4 +13,3 @@ export async function getActivePlanForUser(userId: string) {
     .maybeSingle();
   return plan;
 }
-

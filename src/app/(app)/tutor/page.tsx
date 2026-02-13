@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TutorChat } from "@/components/tutor/tutor-chat";
 
 export default async function TutorPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -28,4 +28,3 @@ export default async function TutorPage() {
     </div>
   );
 }
-

@@ -1,0 +1,80 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { QuizReview } from "@/components/quiz/quiz-review";
+
+export default async function QuizReviewPage(props: { params: Promise<{ quizId: string }> }) {
+  const { quizId } = await props.params;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: quiz } = await supabase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
+  if (!quiz) redirect("/dashboard");
+
+  const { data: exam } = await supabase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
+  const examName = exam?.name ?? "Exam";
+
+  const { data: result } = await supabase
+    .from("user_quiz_results")
+    .select("answers,score,total,created_at")
+    .eq("user_id", user.id)
+    .eq("quiz_id", quizId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!result) redirect(`/quiz/${quizId}`);
+
+  const answers = Array.isArray(result.answers) ? (result.answers as any[]).map((n) => Number(n)) : [];
+
+  const { data: questions } = await supabase
+    .from("quiz_questions")
+    .select("id,question,options,correct_index,explanation")
+    .eq("quiz_id", quizId)
+    .order("id", { ascending: true });
+
+  const qs =
+    questions?.map((q, idx) => ({
+      id: q.id,
+      question: q.question,
+      options: Array.isArray(q.options) ? (q.options as any[]).map(String) : [],
+      correct_index: q.correct_index,
+      explanation: q.explanation,
+      user_index: Number(answers[idx] ?? -1)
+    })) ?? [];
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Quiz review</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {quiz.subject} · {quiz.topic_path} · {result.score}/{result.total}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="secondary">
+            <Link href="/dashboard">Dashboard</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/quiz/extra">Practice more</Link>
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Questions</CardTitle>
+          <CardDescription>Review mistakes, then ask the AI coach why.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <QuizReview examName={examName} subject={quiz.subject} questions={qs as any} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

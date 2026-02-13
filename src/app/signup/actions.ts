@@ -22,7 +22,7 @@ export async function signupAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Check your details. Password must be 8+ characters." };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -37,4 +37,3 @@ export async function signupAction(_: unknown, formData: FormData) {
 
   redirect("/onboarding");
 }
-

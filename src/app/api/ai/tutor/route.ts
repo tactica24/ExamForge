@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getOpenAIClient } from "@/lib/ai/openai";
+import { getUserAiPreferences } from "@/lib/ai/user-preferences";
+import { languageInstruction } from "@/lib/ai/language";
 
 export async function POST(req: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -25,6 +27,9 @@ export async function POST(req: Request) {
     });
   }
 
+  const prefs = await getUserAiPreferences(user.id);
+  const lang = languageInstruction(prefs.preferredLanguage);
+
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.5,
@@ -32,7 +37,14 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          "You are ExamForge Tutor. Explain clearly, step-by-step, and include 1 short practice question with solution. Be safe and avoid hallucinating official exam rules. If unsure, say so."
+          [
+            "You are ExamForge Tutor.",
+            "Explain clearly, step-by-step, and include 1 short practice question with solution.",
+            "Be safe and avoid hallucinating official exam rules. If unsure, say so.",
+            lang
+          ]
+            .filter(Boolean)
+            .join("\n")
       },
       {
         role: "user",
@@ -44,4 +56,3 @@ export async function POST(req: Request) {
   const answer = completion.choices[0]?.message?.content ?? "Sorry—could not generate a reply.";
   return NextResponse.json({ ok: true, answer });
 }
-

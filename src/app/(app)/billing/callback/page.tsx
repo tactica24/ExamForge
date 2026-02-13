@@ -9,7 +9,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   const sp = await props.searchParams;
   const reference = sp.reference;
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();

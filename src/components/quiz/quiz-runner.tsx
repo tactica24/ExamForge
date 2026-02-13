@@ -3,11 +3,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AuthFormState } from "@/components/auth/auth-form-state";
-import { SubmitButton } from "@/components/form/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { submitQuizAction } from "@/app/(app)/quiz/[quizId]/actions";
+import { enqueueQuizSubmission } from "@/lib/offline/quiz-queue";
 
 export type QuizQuestion = {
   id: string;
@@ -21,6 +19,7 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
   const [answers, setAnswers] = React.useState<number[]>(() => props.questions.map(() => -1));
   const [current, setCurrent] = React.useState(0);
   const [showExplanation, setShowExplanation] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
 
   const q = props.questions[current]!;
   const answeredAll = answers.every((a) => a >= 0);
@@ -29,6 +28,40 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
   React.useEffect(() => {
     setShowExplanation(false);
   }, [current]);
+
+  async function finish() {
+    if (!answeredAll || submitting) return;
+
+    if (!navigator.onLine) {
+      enqueueQuizSubmission({ quizId: props.quizId, answers });
+      toast.message("Saved offline. We'll sync when you're back online.");
+      router.push("/dashboard");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch("/api/quizzes/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId: props.quizId, answers })
+      });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.message ?? "Could not save result.");
+      toast.success(`Saved: ${json.score}/${json.total}`);
+      const unlocked = json?.gamification?.unlockedBadges;
+      if (Array.isArray(unlocked) && unlocked.length) {
+        toast.success(`Unlocked badge${unlocked.length === 1 ? "" : "s"}: ${unlocked.join(", ")}`);
+      }
+      router.push(`/quiz/${props.quizId}/review`);
+    } catch (e: any) {
+      enqueueQuizSubmission({ quizId: props.quizId, answers });
+      toast.message("Saved offline. We'll sync when you're back online.");
+      router.push("/dashboard");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -105,24 +138,9 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
         </CardContent>
       </Card>
 
-      <AuthFormState
-        action={async (prev, formData) => {
-          const res: any = await submitQuizAction(prev, formData);
-          if (res?.ok) {
-            toast.success(`Saved: ${res.score}/${res.total}`);
-            router.push("/dashboard");
-          } else {
-            toast.error(res?.message ?? "Could not save result.");
-          }
-          return res;
-        }}
-      >
-        <input type="hidden" name="quiz_id" value={props.quizId} />
-        <input type="hidden" name="answers" value={JSON.stringify(answers)} />
-        <SubmitButton type="submit" className="w-full" disabled={!answeredAll} pendingText="Saving...">
-          Finish quiz
-        </SubmitButton>
-      </AuthFormState>
+      <Button type="button" className="w-full" onClick={finish} disabled={!answeredAll || submitting}>
+        {submitting ? "Saving..." : "Finish quiz"}
+      </Button>
       {!answeredAll ? (
         <p className="text-center text-xs text-muted-foreground">Answer all questions to finish.</p>
       ) : null}

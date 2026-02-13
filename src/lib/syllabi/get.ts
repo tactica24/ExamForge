@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFallbackTopics } from "@/lib/syllabi/fallback";
 
 export async function getTopicsForExamSubject(args: { examId: string; examSlug: string; subject: string }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase
     .from("syllabi")
@@ -22,4 +22,3 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
 
   return [];
 }
-

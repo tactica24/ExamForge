@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
+import { generatePlanItemsFromTopics } from "./generate";
 
 describe("generatePlanItemsFromTopics", () => {
   it("creates 1 topic per day for steady pace", () => {
@@ -33,4 +33,3 @@ describe("generatePlanItemsFromTopics", () => {
     expect(items[2]?.scheduled_for).toBe("2026-01-02");
   });
 });
-

@@ -13,6 +13,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 export function TutorChat(props: { defaultExam?: string; defaultSubject?: string }) {
   const [exam, setExam] = React.useState(props.defaultExam ?? "JAMB");
   const [subject, setSubject] = React.useState(props.defaultSubject ?? "Mathematics");
+  const [language, setLanguage] = React.useState<"en" | "pidgin" | "hausa" | "yoruba" | "igbo">("en");
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [turns, setTurns] = React.useState<Turn[]>([
@@ -46,7 +47,7 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
 
   return (
     <div className="grid gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Exam</div>
           <NativeSelect value={exam} onChange={(e) => setExam(e.target.value)}>
@@ -60,6 +61,16 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Subject</div>
           <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject/paper" />
+        </div>
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Language</div>
+          <NativeSelect value={language} onChange={(e) => setLanguage(e.target.value as any)}>
+            <option value="en">English</option>
+            <option value="pidgin">Pidgin</option>
+            <option value="hausa">Hausa</option>
+            <option value="yoruba">Yoruba</option>
+            <option value="igbo">Igbo</option>
+          </NativeSelect>
         </div>
       </div>
 
@@ -77,6 +88,31 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
                 {t.role === "assistant" ? "Tutor" : "You"}
               </div>
               <div className="whitespace-pre-wrap">{t.content}</div>
+              {t.role === "assistant" && language !== "en" ? (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/translate", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ text: t.content, language })
+                        });
+                        const json = await res.json();
+                        if (!json?.ok) throw new Error(json?.message ?? "Translate failed.");
+                        setTurns((prev) => prev.map((x, i) => (i === idx ? { ...x, content: String(json.text ?? x.content) } : x)));
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Translate error.");
+                      }
+                    }}
+                  >
+                    Translate to {language}
+                  </Button>
+                </div>
+              ) : null}
             </Card>
           ))}
         </div>

@@ -16,7 +16,7 @@ export default async function AdminExamsPage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: exams } = await supabase.from("exams").select("*").order("name", { ascending: true });
 
   return (

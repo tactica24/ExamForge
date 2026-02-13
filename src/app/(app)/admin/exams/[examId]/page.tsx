@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { upsertSyllabusAction } from "@/app/(app)/admin/exams/[examId]/actions";
+import type { ExamsRow, SyllabiRow } from "@/lib/supabase/database.types";
 
 export default async function AdminExamDetailPage(props: { params: Promise<{ examId: string }> }) {
   const { examId } = await props.params;
@@ -17,11 +18,21 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const supabase = createSupabaseServerClient();
-  const { data: exam } = await supabase.from("exams").select("*").eq("id", examId).maybeSingle();
+  const supabase = await createSupabaseServerClient();
+  const { data: exam } = await supabase
+    .from("exams")
+    .select("*")
+    .eq("id", examId)
+    .returns<ExamsRow[]>()
+    .maybeSingle();
   if (!exam) redirect("/admin/exams");
 
-  const { data: syllabi } = await supabase.from("syllabi").select("*").eq("exam_id", examId).order("subject", { ascending: true });
+  const { data: syllabi } = await supabase
+    .from("syllabi")
+    .select("*")
+    .eq("exam_id", examId)
+    .order("subject", { ascending: true })
+    .returns<SyllabiRow[]>();
 
   const subjects = Array.isArray(exam.subjects) ? (exam.subjects as any[]).map(String) : [];
   const firstSubject = subjects[0] ?? "Subject";
@@ -69,7 +80,7 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
           <CardHeader>
             <CardTitle className="text-base">Edit syllabus</CardTitle>
             <CardDescription>
-              Paste a JSON array of topics: `[{ "title": "...", "path": "...", "subtopics": [...] }]`.
+              Paste a JSON array of topics (objects with title/path/subtopics).
             </CardDescription>
           </CardHeader>
           <CardContent>

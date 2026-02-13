@@ -16,7 +16,7 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Enter the code." };
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.verifyOtp({
     phone: parsed.data.phone,
     token: parsed.data.token,
@@ -26,4 +26,3 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
 
   redirect("/onboarding");
 }
-

@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFallbackExams } from "@/lib/exams/fallback";
 
 export async function listActiveExams() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("exams")
     .select("*")
@@ -15,4 +15,3 @@ export async function listActiveExams() {
   if (!data?.length) return getFallbackExams();
   return data;
 }
-

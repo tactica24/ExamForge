@@ -4,7 +4,7 @@ import { listActiveExams } from "@/lib/exams/list";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export default async function OnboardingPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -14,4 +14,3 @@ export default async function OnboardingPage() {
 
   return <OnboardingWizard exams={exams} />;
 }
-

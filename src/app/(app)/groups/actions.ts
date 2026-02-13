@@ -16,7 +16,7 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Message is required." };
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -34,4 +34,3 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
-

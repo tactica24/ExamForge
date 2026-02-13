@@ -11,9 +11,10 @@ import { sendGroupMessageAction } from "@/app/(app)/groups/actions";
 
 type Message = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   content: string;
   flagged: boolean;
+  is_system?: boolean;
   created_at: string;
   author_name?: string | null;
 };
@@ -50,16 +51,17 @@ export function GroupChat(props: {
         <div className="flex flex-col-reverse gap-3">
           {messages.map((m) => {
             const mine = m.user_id === props.currentUserId;
+            const system = Boolean((m as any).is_system) || m.user_id === null;
             return (
               <div
                 key={m.id}
                 className={[
                   "max-w-[85%] rounded-xl border px-3 py-2 text-sm",
-                  mine ? "ml-auto bg-primary/10" : "bg-background"
+                  system ? "mx-auto bg-muted/40" : mine ? "ml-auto bg-primary/10" : "bg-background"
                 ].join(" ")}
               >
                 <div className="mb-1 text-xs text-muted-foreground">
-                  {mine ? "You" : m.author_name ?? "Member"} ·{" "}
+                  {system ? "ExamForge" : mine ? "You" : m.author_name ?? "Member"} ·{" "}
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   {m.flagged ? " · flagged" : ""}
                 </div>

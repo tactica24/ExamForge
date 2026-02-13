@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 async function assertAdmin() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -55,4 +55,3 @@ export async function upsertSyllabusAction(_: unknown, formData: FormData) {
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
-

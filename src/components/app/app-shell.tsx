@@ -22,6 +22,8 @@ export function AppShell(props: {
               <NavLink href="/groups" label="Groups" />
               <NavLink href="/tutor" label="Tutor" />
               <NavLink href="/progress" label="Progress" />
+              <NavLink href="/leaderboard" label="Leaderboard" />
+              <NavLink href="/mock-exam" label="Mock" />
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -36,6 +38,8 @@ export function AppShell(props: {
             <NavLink href="/groups" label="Groups" />
             <NavLink href="/tutor" label="Tutor" />
             <NavLink href="/progress" label="Progress" />
+            <NavLink href="/leaderboard" label="Leaderboard" />
+            <NavLink href="/mock-exam" label="Mock" />
           </nav>
         </div>
       </header>

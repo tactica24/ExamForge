@@ -9,7 +9,7 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
 
 export default async function PlanPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -83,4 +83,3 @@ export default async function PlanPage() {
     </div>
   );
 }
-

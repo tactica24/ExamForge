@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
@@ -41,7 +42,8 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Please complete all onboarding fields." };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
+  const cookieStore = await cookies();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -65,6 +67,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     email: user.email ?? null,
     phone: user.phone ?? null,
     name: parsed.data.name,
+    display_name: parsed.data.name,
     location: parsed.data.location ?? null,
     timezone: parsed.data.timezone,
     learning_style: parsed.data.learning_style,
@@ -72,6 +75,36 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     subscription_tier: "free"
   });
   if (profileErr) return { ok: false, message: profileErr.message };
+
+  // Referral attribution: if user came via /r/{CODE}, award both users a 7-day Pro trial.
+  const refCode = cookieStore.get("ref_code")?.value;
+  if (refCode) {
+    const { data: inviter } = await supabase
+      .from("referral_codes")
+      .select("user_id,code")
+      .eq("code", refCode)
+      .maybeSingle();
+
+    if (inviter?.user_id && inviter.user_id !== user.id) {
+      await supabase.from("referrals").insert({ inviter_user_id: inviter.user_id, invitee_user_id: user.id, code: inviter.code });
+
+      const now = new Date();
+      const plus7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      for (const uid of [inviter.user_id, user.id]) {
+        const { data: p } = await supabase.from("profiles").select("pro_until").eq("user_id", uid).maybeSingle();
+        const current = p?.pro_until ? new Date(p.pro_until) : null;
+        const next = !current || current < plus7 ? plus7 : current;
+        await supabase.from("profiles").update({ pro_until: next.toISOString(), subscription_tier: "pro" }).eq("user_id", uid);
+      }
+    }
+
+    try {
+      cookieStore.set("ref_code", "", { path: "/", maxAge: 0 });
+    } catch {
+      // ignore
+    }
+  }
 
   await supabase.from("user_exam_subjects").upsert(
     {
@@ -137,4 +170,3 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
 
   redirect("/dashboard");
 }
-

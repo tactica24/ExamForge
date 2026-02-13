@@ -12,10 +12,9 @@ export async function sendOtpAction(_: unknown, formData: FormData) {
   const parsed = PhoneSchema.safeParse({ phone: formData.get("phone") });
   if (!parsed.success) return { ok: false, message: "Enter a valid phone number." };
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({ phone: parsed.data.phone });
   if (error) return { ok: false, message: error.message };
 
   redirect(`/login/verify?phone=${encodeURIComponent(parsed.data.phone)}`);
 }
-

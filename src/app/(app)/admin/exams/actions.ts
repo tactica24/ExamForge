@@ -13,7 +13,7 @@ const ExamSchema = z.object({
 });
 
 async function assertAdmin() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -55,4 +55,3 @@ export async function createExamAction(_: unknown, formData: FormData) {
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
-

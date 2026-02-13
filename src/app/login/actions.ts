@@ -18,11 +18,10 @@ export async function loginAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Enter a valid email and password (8+ chars)." };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { ok: false, message: error.message };
 
   const next = (formData.get("next") as string | null) ?? "/dashboard";
   redirect(next.startsWith("/") ? next : "/dashboard");
 }
-

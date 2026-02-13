@@ -10,7 +10,7 @@ export async function matchOrCreateGroup(args: {
   level: string;
   timezone: string;
 }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data: groups } = await supabase
     .from("groups")
@@ -60,4 +60,3 @@ export async function matchOrCreateGroup(args: {
 
   return pickedGroupId;
 }
-

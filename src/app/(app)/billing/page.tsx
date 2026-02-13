@@ -7,14 +7,21 @@ import { PaystackUpgradeButton } from "@/components/billing/paystack-upgrade-but
 import { Button } from "@/components/ui/button";
 
 export default async function BillingPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("subscription_tier").eq("user_id", user.id).maybeSingle();
-  const tier = (profile?.subscription_tier as any) ?? "free";
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const proUntil = profile?.pro_until ? new Date(profile.pro_until) : null;
+  const effectivePro = profile?.subscription_tier === "pro" || (proUntil ? proUntil > new Date() : false);
+  const tier = effectivePro ? "pro" : "free";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -51,4 +58,3 @@ export default async function BillingPage() {
     </div>
   );
 }
-

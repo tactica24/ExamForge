@@ -4,7 +4,7 @@ import { paystackInitialize } from "@/lib/billing/paystack";
 import { getServerEnv } from "@/lib/env";
 
 export async function POST() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -28,4 +28,3 @@ export async function POST() {
 
   return NextResponse.json({ ok: true, url: init.authorization_url, reference: init.reference });
 }
-

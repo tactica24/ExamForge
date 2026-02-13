@@ -5,7 +5,7 @@ import { GroupChat } from "@/components/groups/group-chat";
 
 export default async function GroupPage(props: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await props.params;
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -24,7 +24,7 @@ export default async function GroupPage(props: { params: Promise<{ groupId: stri
 
   const { data: messages } = await supabase
     .from("group_messages")
-    .select("id,user_id,content,flagged,created_at")
+    .select("id,user_id,content,flagged,is_system,created_at")
     .eq("group_id", groupId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -48,4 +48,3 @@ export default async function GroupPage(props: { params: Promise<{ groupId: stri
     </div>
   );
 }
-

@@ -3,7 +3,14 @@
     {
       "path": "/api/cron/reminders",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/leaderboards",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/group-nudges",
+      "schedule": "0 * * * *"
     }
   ]
 }
-
