@@ -10,3 +10,7 @@ node_modules
 coverage
 cypress/videos
 cypress/screenshots
+android/local.properties
+android/.gradle
+*.jks
+*.keystore

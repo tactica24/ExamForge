@@ -1,0 +1,10 @@
+{
+  "appId": "com.examforge.app",
+  "appName": "ExamForge",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://examforge.vercel.app",
+    "cleartext": false
+  }
+}

@@ -63,3 +63,23 @@ curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/group-n
 
 ## Notes / disclaimers
 ExamForge is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.
+## Android APK (GitHub Actions)
+This repo includes a workflow that builds a debug APK using Capacitor.
+
+### One-time setup
+- In GitHub repo settings, set variable `APP_WEB_URL` to your deployed web URL (for example, your Vercel production URL).
+
+### Trigger APK build
+- Go to **Actions** -> **Android APK**.
+- Click **Run workflow**.
+
+### Download APK
+- Open the completed workflow run.
+- Download artifact `examforge-apk-debug`.
+- Install `app-debug.apk` on Android (enable install from unknown sources if required).
+
+### Mobile helper scripts
+- `npm run mobile:android:prepare`
+- `npm run mobile:android:add`
+- `npm run mobile:android:sync`
+- `npm run mobile:android:open`

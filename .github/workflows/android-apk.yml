@@ -1,0 +1,67 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "capacitor.config.json"
+      - "www/**"
+      - "package.json"
+      - ".github/workflows/android-apk.yml"
+
+jobs:
+  build_apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install project deps
+        run: npm ci
+
+
+
+      - name: Set mobile app URL
+        env:
+          APP_WEB_URL: ${{ vars.APP_WEB_URL }}
+        run: |
+          node -e "const fs=require('fs'); const p='capacitor.config.json'; const c=JSON.parse(fs.readFileSync(p,'utf8')); c.server={ url: process.env.APP_WEB_URL || c.server?.url || 'https://examforge.vercel.app', cleartext:false }; fs.writeFileSync(p, JSON.stringify(c,null,2));"
+
+      - name: Add Android platform
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+      - name: Sync Android
+        run: npm run mobile:android:sync
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: examforge-apk-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
