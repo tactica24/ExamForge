@@ -10,11 +10,26 @@ export type ProfilesRow = {
   learning_style: string | null;
   level: string | null;
   subscription_tier: "free" | "pro" | string;
+  display_name: string | null;
+  preferred_explanation_language: string;
+  low_data_mode: boolean;
+  leaderboard_anonymous: boolean;
+  pro_until: string | null;
   created_at: string;
   updated_at: string;
 };
 export type ProfilesInsert = Partial<ProfilesRow> & { user_id: string };
 export type ProfilesUpdate = Partial<ProfilesRow>;
+
+export type ProfilePublicRow = {
+  user_id: string;
+  display_name: string | null;
+  anonymous: boolean;
+  created_at: string;
+  updated_at: string;
+};
+export type ProfilePublicInsert = Partial<ProfilePublicRow> & { user_id: string };
+export type ProfilePublicUpdate = Partial<ProfilePublicRow>;
 
 export type ExamsRow = {
   id: string;
@@ -66,6 +81,7 @@ export type UserPlansRow = {
   pace: "steady" | "intensive" | string;
   start_date: string;
   target_date: string | null;
+  weak_areas: Json;
   created_at: string;
 };
 export type UserPlansInsert = Partial<UserPlansRow> & {
@@ -129,12 +145,17 @@ export type GroupMembersUpdate = Partial<GroupMembersRow>;
 export type GroupMessagesRow = {
   id: string;
   group_id: string;
-  user_id: string;
+  user_id: string | null;
   content: string;
   flagged: boolean;
+  is_system: boolean;
   created_at: string;
 };
-export type GroupMessagesInsert = Partial<GroupMessagesRow> & { group_id: string; user_id: string; content: string };
+export type GroupMessagesInsert = Partial<GroupMessagesRow> & {
+  group_id: string;
+  user_id?: string | null;
+  content: string;
+};
 export type GroupMessagesUpdate = Partial<GroupMessagesRow>;
 
 export type QuizzesRow = {
@@ -142,16 +163,17 @@ export type QuizzesRow = {
   exam_id: string;
   subject: string;
   topic_path: string;
-  quiz_type: "daily" | "extra" | "group" | string;
+  quiz_type: "daily" | "extra" | "group" | "mock" | string;
   difficulty: "easy" | "medium" | "hard" | string;
   created_by: string | null;
+  meta: Json;
   created_at: string;
 };
 export type QuizzesInsert = Partial<QuizzesRow> & {
   exam_id: string;
   subject: string;
   topic_path: string;
-  quiz_type: "daily" | "extra" | "group";
+  quiz_type: "daily" | "extra" | "group" | "mock";
   difficulty: "easy" | "medium" | "hard";
 };
 export type QuizzesUpdate = Partial<QuizzesRow>;
@@ -221,6 +243,97 @@ export type NotificationPrefsRow = {
 export type NotificationPrefsInsert = Partial<NotificationPrefsRow> & { user_id: string };
 export type NotificationPrefsUpdate = Partial<NotificationPrefsRow>;
 
+export type BadgesRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon_url: string | null;
+  xp_required: number;
+  criteria: Json;
+  created_at: string;
+};
+export type BadgesInsert = Partial<BadgesRow> & { slug: string; name: string; description: string };
+export type BadgesUpdate = Partial<BadgesRow>;
+
+export type UserGamificationRow = {
+  user_id: string;
+  streak_count: number;
+  current_streak_date: string | null;
+  total_xp: number;
+  level: number;
+  badges: Json;
+  created_at: string;
+  updated_at: string;
+};
+export type UserGamificationInsert = Partial<UserGamificationRow> & { user_id: string };
+export type UserGamificationUpdate = Partial<UserGamificationRow>;
+
+export type UserXpEventsRow = {
+  id: string;
+  user_id: string;
+  xp: number;
+  reason: string;
+  meta: Json;
+  created_at: string;
+};
+export type UserXpEventsInsert = Partial<UserXpEventsRow> & { user_id: string; xp: number; reason: string };
+export type UserXpEventsUpdate = Partial<UserXpEventsRow>;
+
+export type LeaderboardEntriesRow = {
+  id: string;
+  user_id: string;
+  period: "weekly" | "monthly" | "all_time" | string;
+  score: number;
+  rank: number;
+  computed_at: string;
+};
+export type LeaderboardEntriesInsert = Partial<LeaderboardEntriesRow> & {
+  user_id: string;
+  period: "weekly" | "monthly" | "all_time";
+};
+export type LeaderboardEntriesUpdate = Partial<LeaderboardEntriesRow>;
+
+export type SuccessStoriesRow = {
+  id: string;
+  content: string;
+  created_by: string | null;
+  is_anonymous: boolean;
+  is_approved: boolean;
+  created_at: string;
+};
+export type SuccessStoriesInsert = Partial<SuccessStoriesRow> & { content: string };
+export type SuccessStoriesUpdate = Partial<SuccessStoriesRow>;
+
+export type ReferralCodesRow = { user_id: string; code: string; created_at: string };
+export type ReferralCodesInsert = Partial<ReferralCodesRow> & { user_id: string; code: string };
+export type ReferralCodesUpdate = Partial<ReferralCodesRow>;
+
+export type ReferralsRow = {
+  id: string;
+  inviter_user_id: string;
+  invitee_user_id: string;
+  code: string;
+  created_at: string;
+};
+export type ReferralsInsert = Partial<ReferralsRow> & {
+  inviter_user_id: string;
+  invitee_user_id: string;
+  code: string;
+};
+export type ReferralsUpdate = Partial<ReferralsRow>;
+
+export type ParentLinksRow = {
+  token: string;
+  user_id: string;
+  label: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  last_viewed_at: string | null;
+};
+export type ParentLinksInsert = Partial<ParentLinksRow> & { user_id: string };
+export type ParentLinksUpdate = Partial<ParentLinksRow>;
+
 export type SubscriptionsRow = {
   id: string;
   user_id: string;
@@ -239,41 +352,67 @@ export type SubscriptionsInsert = Partial<SubscriptionsRow> & {
 };
 export type SubscriptionsUpdate = Partial<SubscriptionsRow>;
 
-type TableDef<Row, Insert, Update> = {
-  Row: Row;
-  Insert: Insert;
-  Update: Update;
-  Relationships: [];
-};
-
 export type Database = {
   public: {
     Tables: {
-      profiles: TableDef<ProfilesRow, ProfilesInsert, ProfilesUpdate>;
-      exams: TableDef<ExamsRow, ExamsInsert, ExamsUpdate>;
-      syllabi: TableDef<SyllabiRow, SyllabiInsert, SyllabiUpdate>;
+      profiles: { Row: ProfilesRow; Insert: ProfilesInsert; Update: ProfilesUpdate; Relationships: [] };
+      profile_public: {
+        Row: ProfilePublicRow;
+        Insert: ProfilePublicInsert;
+        Update: ProfilePublicUpdate;
+        Relationships: [];
+      };
+      exams: { Row: ExamsRow; Insert: ExamsInsert; Update: ExamsUpdate; Relationships: [] };
+      syllabi: { Row: SyllabiRow; Insert: SyllabiInsert; Update: SyllabiUpdate; Relationships: [] };
       user_exam_subjects: {
         Row: UserExamSubjectsRow;
         Insert: UserExamSubjectsInsert;
         Update: UserExamSubjectsUpdate;
         Relationships: [];
       };
-      user_plans: TableDef<UserPlansRow, UserPlansInsert, UserPlansUpdate>;
-      plan_items: TableDef<PlanItemsRow, PlanItemsInsert, PlanItemsUpdate>;
-      groups: TableDef<GroupsRow, GroupsInsert, GroupsUpdate>;
-      group_members: TableDef<GroupMembersRow, GroupMembersInsert, GroupMembersUpdate>;
-      group_messages: TableDef<GroupMessagesRow, GroupMessagesInsert, GroupMessagesUpdate>;
-      quizzes: TableDef<QuizzesRow, QuizzesInsert, QuizzesUpdate>;
-      quiz_questions: TableDef<QuizQuestionsRow, QuizQuestionsInsert, QuizQuestionsUpdate>;
-      user_quiz_results: TableDef<UserQuizResultsRow, UserQuizResultsInsert, UserQuizResultsUpdate>;
-      notifications: TableDef<NotificationsRow, NotificationsInsert, NotificationsUpdate>;
-      notification_prefs: TableDef<NotificationPrefsRow, NotificationPrefsInsert, NotificationPrefsUpdate>;
-      subscriptions: TableDef<SubscriptionsRow, SubscriptionsInsert, SubscriptionsUpdate>;
+      user_plans: { Row: UserPlansRow; Insert: UserPlansInsert; Update: UserPlansUpdate; Relationships: [] };
+      plan_items: { Row: PlanItemsRow; Insert: PlanItemsInsert; Update: PlanItemsUpdate; Relationships: [] };
+      groups: { Row: GroupsRow; Insert: GroupsInsert; Update: GroupsUpdate; Relationships: [] };
+      group_members: { Row: GroupMembersRow; Insert: GroupMembersInsert; Update: GroupMembersUpdate; Relationships: [] };
+      group_messages: { Row: GroupMessagesRow; Insert: GroupMessagesInsert; Update: GroupMessagesUpdate; Relationships: [] };
+      quizzes: { Row: QuizzesRow; Insert: QuizzesInsert; Update: QuizzesUpdate; Relationships: [] };
+      quiz_questions: { Row: QuizQuestionsRow; Insert: QuizQuestionsInsert; Update: QuizQuestionsUpdate; Relationships: [] };
+      user_quiz_results: {
+        Row: UserQuizResultsRow;
+        Insert: UserQuizResultsInsert;
+        Update: UserQuizResultsUpdate;
+        Relationships: [];
+      };
+      notifications: { Row: NotificationsRow; Insert: NotificationsInsert; Update: NotificationsUpdate; Relationships: [] };
+      notification_prefs: {
+        Row: NotificationPrefsRow;
+        Insert: NotificationPrefsInsert;
+        Update: NotificationPrefsUpdate;
+        Relationships: [];
+      };
+      subscriptions: { Row: SubscriptionsRow; Insert: SubscriptionsInsert; Update: SubscriptionsUpdate; Relationships: [] };
+      badges: { Row: BadgesRow; Insert: BadgesInsert; Update: BadgesUpdate; Relationships: [] };
+      user_gamification: {
+        Row: UserGamificationRow;
+        Insert: UserGamificationInsert;
+        Update: UserGamificationUpdate;
+        Relationships: [];
+      };
+      user_xp_events: { Row: UserXpEventsRow; Insert: UserXpEventsInsert; Update: UserXpEventsUpdate; Relationships: [] };
+      leaderboard_entries: {
+        Row: LeaderboardEntriesRow;
+        Insert: LeaderboardEntriesInsert;
+        Update: LeaderboardEntriesUpdate;
+        Relationships: [];
+      };
+      success_stories: { Row: SuccessStoriesRow; Insert: SuccessStoriesInsert; Update: SuccessStoriesUpdate; Relationships: [] };
+      referral_codes: { Row: ReferralCodesRow; Insert: ReferralCodesInsert; Update: ReferralCodesUpdate; Relationships: [] };
+      referrals: { Row: ReferralsRow; Insert: ReferralsInsert; Update: ReferralsUpdate; Relationships: [] };
+      parent_links: { Row: ParentLinksRow; Insert: ParentLinksInsert; Update: ParentLinksUpdate; Relationships: [] };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
   };
 };
-
