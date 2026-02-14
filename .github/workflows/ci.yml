@@ -8,6 +8,9 @@ on:
 jobs:
   test_build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-placeholder
     timeout-minutes: 20
     steps:
       - name: Checkout
