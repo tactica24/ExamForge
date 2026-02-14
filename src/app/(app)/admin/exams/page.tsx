@@ -11,6 +11,8 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { createExamAction } from "@/app/(app)/admin/exams/actions";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminExamsPage() {
   const { user, isAdmin } = await requireAdmin();
   if (!user) redirect("/login");
@@ -46,7 +48,7 @@ export default async function AdminExamsPage() {
                   className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent"
                 >
                   <span className="font-medium">
-                    {e.name} <span className="text-muted-foreground">· {e.country_code}</span>
+                    {e.name} <span className="text-muted-foreground">Â· {e.country_code}</span>
                   </span>
                   <span className="text-xs text-muted-foreground">{e.slug}</span>
                 </Link>
@@ -98,3 +100,4 @@ export default async function AdminExamsPage() {
     </div>
   );
 }
+

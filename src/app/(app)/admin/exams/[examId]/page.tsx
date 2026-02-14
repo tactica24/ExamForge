@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { upsertSyllabusAction } from "@/app/(app)/admin/exams/[examId]/actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminExamDetailPage(props: { params: Promise<{ examId: string }> }) {
   const { examId } = await props.params;
   const { user, isAdmin } = await requireAdmin();
