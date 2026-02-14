@@ -34,3 +34,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Package standalone app
+        run: |
+          mkdir -p release
+          cp -r .next/standalone/* release/
+          mkdir -p release/.next
+          cp -r .next/static release/.next/static
+          cp -r public release/public
+          tar -czf examforge-standalone.tar.gz -C release .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: examforge-standalone
+          path: examforge-standalone.tar.gz
+          retention-days: 7
