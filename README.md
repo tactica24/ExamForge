@@ -57,6 +57,20 @@ curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/leaderb
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/group-nudges
 ```
 
+## Deploy on Vercel (no paid cron required)
+- Deploy directly from GitHub on Vercel (Hobby is fine).
+- Keep scheduled tasks outside Vercel using the `Cron Jobs` GitHub workflow.
+
+## Cron via GitHub Actions
+1) In GitHub repo settings, add:
+   - Variable: `APP_WEB_URL` = your live app URL (for example, `https://your-app.vercel.app`)
+   - Secret: `APP_CRON_SECRET` = same value as your app environment `APP_CRON_SECRET`
+2) GitHub workflow `Cron Jobs` runs:
+   - Reminders: every 5 minutes
+   - Leaderboards: every 15 minutes
+   - Group nudges: hourly
+3) You can also run it manually from **Actions -> Cron Jobs -> Run workflow**.
+
 ## Offline support
 - Quizzes can be saved offline and synced later via `/api/quizzes/sync`.
 - Plan snapshot is cached via `/api/offline/snapshot` and the service worker.
@@ -94,4 +108,3 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 ## Temporary app logo
 - Save your attached logo into `assets/logo.png` (or `.jpg/.jpeg/.svg`).
 - Re-run **Android APK** workflow; it now auto-generates Android icons from `assets/`.
-

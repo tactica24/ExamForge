@@ -1,0 +1,64 @@
+name: Cron Jobs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
+
+jobs:
+  run_crons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate cron configuration
+        env:
+          APP_WEB_URL: ${{ vars.APP_WEB_URL }}
+          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
+        run: |
+          APP_URL="$(echo "${APP_WEB_URL}" | xargs)"
+
+          if [ -z "$APP_URL" ]; then
+            echo "Missing repository variable APP_WEB_URL"
+            exit 1
+          fi
+
+          if [[ "$APP_URL" != https://* ]]; then
+            echo "APP_WEB_URL must start with https://"
+            exit 1
+          fi
+
+          if [ -z "$APP_CRON_SECRET" ]; then
+            echo "Missing repository secret APP_CRON_SECRET"
+            exit 1
+          fi
+
+          echo "APP_URL=$APP_URL" >> "$GITHUB_ENV"
+
+      - name: Run reminders cron
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *'
+        env:
+          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
+        run: |
+          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            -H "x-cron-secret: $APP_CRON_SECRET" \
+            "$APP_URL/api/cron/reminders"
+
+      - name: Run leaderboards cron
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
+        env:
+          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
+        run: |
+          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            -H "x-cron-secret: $APP_CRON_SECRET" \
+            "$APP_URL/api/cron/leaderboards"
+
+      - name: Run group nudges cron
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *'
+        env:
+          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
+        run: |
+          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            -H "x-cron-secret: $APP_CRON_SECRET" \
+            "$APP_URL/api/cron/group-nudges"
