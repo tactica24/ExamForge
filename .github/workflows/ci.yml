@@ -2,19 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
 
 jobs:
-  build-test:
+  test_build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 20
+          cache: npm
 
       - name: Install
         run: npm ci
@@ -27,5 +30,4 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
+

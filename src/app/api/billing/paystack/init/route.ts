@@ -18,7 +18,7 @@ export async function POST() {
 
   const init = await paystackInitialize({
     email,
-    amountKobo: 300000, // ₦3,000 (adjust per tier/plan)
+    amountKobo: 500000, // ₦5,000 (adjust per tier/plan)
     callbackUrl,
     metadata: {
       user_id: user.id,

@@ -1,20 +1,19 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/supabase/database.types";
 import { getServerEnv } from "@/lib/env";
 
-export async function createSupabaseServerClient(): Promise<SupabaseClient<Database>> {
+export async function createSupabaseServerClient() {
   const env = getServerEnv();
   const cookieStore = await cookies();
-  return createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  return createServerClient<Database, "public">(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+      setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
         } catch {
@@ -22,5 +21,6 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient<Datab
         }
       }
     }
-  }) as unknown as SupabaseClient<Database>;
+  });
 }
+

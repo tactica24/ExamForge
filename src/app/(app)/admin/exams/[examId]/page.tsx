@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { upsertSyllabusAction } from "@/app/(app)/admin/exams/[examId]/actions";
-import type { ExamsRow, SyllabiRow } from "@/lib/supabase/database.types";
 
 export default async function AdminExamDetailPage(props: { params: Promise<{ examId: string }> }) {
   const { examId } = await props.params;
@@ -19,20 +18,10 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
   if (!isAdmin) redirect("/admin");
 
   const supabase = await createSupabaseServerClient();
-  const { data: exam } = await supabase
-    .from("exams")
-    .select("*")
-    .eq("id", examId)
-    .returns<ExamsRow[]>()
-    .maybeSingle();
+  const { data: exam } = await supabase.from("exams").select("*").eq("id", examId).maybeSingle();
   if (!exam) redirect("/admin/exams");
 
-  const { data: syllabi } = await supabase
-    .from("syllabi")
-    .select("*")
-    .eq("exam_id", examId)
-    .order("subject", { ascending: true })
-    .returns<SyllabiRow[]>();
+  const { data: syllabi } = await supabase.from("syllabi").select("*").eq("exam_id", examId).order("subject", { ascending: true });
 
   const subjects = Array.isArray(exam.subjects) ? (exam.subjects as any[]).map(String) : [];
   const firstSubject = subjects[0] ?? "Subject";
@@ -80,7 +69,8 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
           <CardHeader>
             <CardTitle className="text-base">Edit syllabus</CardTitle>
             <CardDescription>
-              Paste a JSON array of topics (objects with title/path/subtopics).
+              Paste a JSON array of topics:{" "}
+              <code className="font-mono">[{'{ "title": "...", "path": "...", "subtopics": [...] }'}]</code>.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -101,7 +91,7 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
                 />
               </div>
               <div className="mt-4">
-                <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">
+                <SubmitButton type="submit" pendingText="Saving…" className="w-full sm:w-auto">
                   Save syllabus
                 </SubmitButton>
               </div>
@@ -112,3 +102,4 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
     </div>
   );
 }
+
