@@ -82,4 +82,16 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 - `npm run mobile:android:prepare`
 - `npm run mobile:android:add`
 - `npm run mobile:android:sync`
+- `npm run mobile:android:assets`
 - `npm run mobile:android:open`
+
+## Mobile wrapper troubleshooting
+- If the app shows **deployment temporarily paused**, the mobile wrapper is pointing to a paused or protected URL.
+- In GitHub repo settings, set `APP_WEB_URL` to your active **production** Vercel URL (must start with `https://`).
+- You can override URL per run from **Actions -> Android APK -> Run workflow -> app_web_url**.
+- If Vercel paused the project, unpause it in Vercel dashboard before rebuilding the APK.
+
+## Temporary app logo
+- Save your attached logo into `assets/logo.png` (or `.jpg/.jpeg/.svg`).
+- Re-run **Android APK** workflow; it now auto-generates Android icons from `assets/`.
+
