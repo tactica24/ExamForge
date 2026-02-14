@@ -1,4 +1,4 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type ProfilesRow = {
   user_id: string;
@@ -352,63 +352,40 @@ export type SubscriptionsInsert = Partial<SubscriptionsRow> & {
 };
 export type SubscriptionsUpdate = Partial<SubscriptionsRow>;
 
+type TableDef<Row, Insert, Update> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: [];
+};
+
 export type Database = {
   public: {
     Tables: {
-      profiles: { Row: ProfilesRow; Insert: ProfilesInsert; Update: ProfilesUpdate; Relationships: [] };
-      profile_public: {
-        Row: ProfilePublicRow;
-        Insert: ProfilePublicInsert;
-        Update: ProfilePublicUpdate;
-        Relationships: [];
-      };
-      exams: { Row: ExamsRow; Insert: ExamsInsert; Update: ExamsUpdate; Relationships: [] };
-      syllabi: { Row: SyllabiRow; Insert: SyllabiInsert; Update: SyllabiUpdate; Relationships: [] };
-      user_exam_subjects: {
-        Row: UserExamSubjectsRow;
-        Insert: UserExamSubjectsInsert;
-        Update: UserExamSubjectsUpdate;
-        Relationships: [];
-      };
-      user_plans: { Row: UserPlansRow; Insert: UserPlansInsert; Update: UserPlansUpdate; Relationships: [] };
-      plan_items: { Row: PlanItemsRow; Insert: PlanItemsInsert; Update: PlanItemsUpdate; Relationships: [] };
-      groups: { Row: GroupsRow; Insert: GroupsInsert; Update: GroupsUpdate; Relationships: [] };
-      group_members: { Row: GroupMembersRow; Insert: GroupMembersInsert; Update: GroupMembersUpdate; Relationships: [] };
-      group_messages: { Row: GroupMessagesRow; Insert: GroupMessagesInsert; Update: GroupMessagesUpdate; Relationships: [] };
-      quizzes: { Row: QuizzesRow; Insert: QuizzesInsert; Update: QuizzesUpdate; Relationships: [] };
-      quiz_questions: { Row: QuizQuestionsRow; Insert: QuizQuestionsInsert; Update: QuizQuestionsUpdate; Relationships: [] };
-      user_quiz_results: {
-        Row: UserQuizResultsRow;
-        Insert: UserQuizResultsInsert;
-        Update: UserQuizResultsUpdate;
-        Relationships: [];
-      };
-      notifications: { Row: NotificationsRow; Insert: NotificationsInsert; Update: NotificationsUpdate; Relationships: [] };
-      notification_prefs: {
-        Row: NotificationPrefsRow;
-        Insert: NotificationPrefsInsert;
-        Update: NotificationPrefsUpdate;
-        Relationships: [];
-      };
-      subscriptions: { Row: SubscriptionsRow; Insert: SubscriptionsInsert; Update: SubscriptionsUpdate; Relationships: [] };
-      badges: { Row: BadgesRow; Insert: BadgesInsert; Update: BadgesUpdate; Relationships: [] };
-      user_gamification: {
-        Row: UserGamificationRow;
-        Insert: UserGamificationInsert;
-        Update: UserGamificationUpdate;
-        Relationships: [];
-      };
-      user_xp_events: { Row: UserXpEventsRow; Insert: UserXpEventsInsert; Update: UserXpEventsUpdate; Relationships: [] };
-      leaderboard_entries: {
-        Row: LeaderboardEntriesRow;
-        Insert: LeaderboardEntriesInsert;
-        Update: LeaderboardEntriesUpdate;
-        Relationships: [];
-      };
-      success_stories: { Row: SuccessStoriesRow; Insert: SuccessStoriesInsert; Update: SuccessStoriesUpdate; Relationships: [] };
-      referral_codes: { Row: ReferralCodesRow; Insert: ReferralCodesInsert; Update: ReferralCodesUpdate; Relationships: [] };
-      referrals: { Row: ReferralsRow; Insert: ReferralsInsert; Update: ReferralsUpdate; Relationships: [] };
-      parent_links: { Row: ParentLinksRow; Insert: ParentLinksInsert; Update: ParentLinksUpdate; Relationships: [] };
+      profiles: TableDef<ProfilesRow, ProfilesInsert, ProfilesUpdate>;
+      profile_public: TableDef<ProfilePublicRow, ProfilePublicInsert, ProfilePublicUpdate>;
+      exams: TableDef<ExamsRow, ExamsInsert, ExamsUpdate>;
+      syllabi: TableDef<SyllabiRow, SyllabiInsert, SyllabiUpdate>;
+      user_exam_subjects: TableDef<UserExamSubjectsRow, UserExamSubjectsInsert, UserExamSubjectsUpdate>;
+      user_plans: TableDef<UserPlansRow, UserPlansInsert, UserPlansUpdate>;
+      plan_items: TableDef<PlanItemsRow, PlanItemsInsert, PlanItemsUpdate>;
+      groups: TableDef<GroupsRow, GroupsInsert, GroupsUpdate>;
+      group_members: TableDef<GroupMembersRow, GroupMembersInsert, GroupMembersUpdate>;
+      group_messages: TableDef<GroupMessagesRow, GroupMessagesInsert, GroupMessagesUpdate>;
+      quizzes: TableDef<QuizzesRow, QuizzesInsert, QuizzesUpdate>;
+      quiz_questions: TableDef<QuizQuestionsRow, QuizQuestionsInsert, QuizQuestionsUpdate>;
+      user_quiz_results: TableDef<UserQuizResultsRow, UserQuizResultsInsert, UserQuizResultsUpdate>;
+      notifications: TableDef<NotificationsRow, NotificationsInsert, NotificationsUpdate>;
+      notification_prefs: TableDef<NotificationPrefsRow, NotificationPrefsInsert, NotificationPrefsUpdate>;
+      subscriptions: TableDef<SubscriptionsRow, SubscriptionsInsert, SubscriptionsUpdate>;
+      badges: TableDef<BadgesRow, BadgesInsert, BadgesUpdate>;
+      user_gamification: TableDef<UserGamificationRow, UserGamificationInsert, UserGamificationUpdate>;
+      user_xp_events: TableDef<UserXpEventsRow, UserXpEventsInsert, UserXpEventsUpdate>;
+      leaderboard_entries: TableDef<LeaderboardEntriesRow, LeaderboardEntriesInsert, LeaderboardEntriesUpdate>;
+      success_stories: TableDef<SuccessStoriesRow, SuccessStoriesInsert, SuccessStoriesUpdate>;
+      referral_codes: TableDef<ReferralCodesRow, ReferralCodesInsert, ReferralCodesUpdate>;
+      referrals: TableDef<ReferralsRow, ReferralsInsert, ReferralsUpdate>;
+      parent_links: TableDef<ParentLinksRow, ParentLinksInsert, ParentLinksUpdate>;
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
