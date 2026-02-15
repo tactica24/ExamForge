@@ -6,10 +6,9 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export function OAuthButtons() {
-  const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
-
   async function start(provider: "google") {
     try {
+      const supabase = createSupabaseBrowserClient();
       const redirectTo = `${window.location.origin}/onboarding`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
