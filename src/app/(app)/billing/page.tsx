@@ -53,8 +53,9 @@ export default async function BillingPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Paystack integration is Nigeria-first. For global rollout, add Stripe in `src/lib/billing/`.
+        Paystack is currently enabled as the default payment processor. Additional providers can be integrated in `src/lib/billing/` as needed.
       </p>
     </div>
   );
 }
+

@@ -12,7 +12,7 @@ export const seedExamsNG: SeedExam[] = [
     slug: "waec",
     name: "WAEC",
     country_code: "NG",
-    description: "West African Senior School Certificate Examination (Nigeria-first).",
+    description: "West African Senior School Certificate Examination preparation.",
     subjects: ["Mathematics", "English Language", "Biology", "Chemistry", "Physics", "Economics"],
     syllabus_sources: ["https://www.waecnigeria.org/"]
   },
@@ -90,4 +90,5 @@ export const seedSyllabiNG: SeedSyllabus[] = [
     ]
   }
 ];
+
 
