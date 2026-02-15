@@ -5,7 +5,7 @@ export function SiteFooter() {
     <footer className="border-t">
       <div className="container flex flex-col gap-4 py-10 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} ExamForge. Not affiliated with any exam body.
+          (c) {new Date().getFullYear()} ExamForge. Not affiliated with any exam body.
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
           <Link className="hover:text-foreground" href="/privacy">

@@ -111,7 +111,7 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="exam_interests">Exams interested (select 2–3)</Label>
+        <Label htmlFor="exam_interests">Exams interested (select 2-3)</Label>
         <NativeSelect
           id="exam_interests"
           name="exam_interests"

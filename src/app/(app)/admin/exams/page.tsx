@@ -48,7 +48,7 @@ export default async function AdminExamsPage() {
                   className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent"
                 >
                   <span className="font-medium">
-                    {e.name} <span className="text-muted-foreground">Â· {e.country_code}</span>
+                    {e.name} <span className="text-muted-foreground">- {e.country_code}</span>
                   </span>
                   <span className="text-xs text-muted-foreground">{e.slug}</span>
                 </Link>

@@ -151,7 +151,7 @@ export function OnboardingWizard(props: {
                 <SelectContent>
                   {props.exams.map((exam) => (
                     <SelectItem key={exam.id} value={exam.id}>
-                      {exam.name} · {exam.country_code}
+                      {exam.name} - {exam.country_code}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -56,7 +56,7 @@ export default async function SettingsPage() {
   const allExamSubjectOptions = exams.flatMap((exam) =>
     toSubjects(exam.subjects).map((subject) => ({
       value: `${exam.id}::${subject}`,
-      label: `${exam.name} · ${subject}`
+      label: `${exam.name} - ${subject}`
     }))
   );
 
