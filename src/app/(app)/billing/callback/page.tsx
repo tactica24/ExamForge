@@ -5,6 +5,8 @@ import { paystackVerify } from "@/lib/billing/paystack";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export default async function BillingCallbackPage(props: { searchParams: Promise<{ reference?: string }> }) {
   const sp = await props.searchParams;
   const reference = sp.reference;

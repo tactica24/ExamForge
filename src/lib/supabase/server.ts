@@ -6,8 +6,8 @@ import type { Database } from "@/lib/supabase/database.types";
 import { getServerEnv } from "@/lib/env";
 
 export async function createSupabaseServerClient() {
-  const env = getServerEnv();
   const cookieStore = await cookies();
+  const env = getServerEnv();
   return createServerClient<Database, "public">(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
@@ -23,4 +23,3 @@ export async function createSupabaseServerClient() {
     }
   });
 }
-
