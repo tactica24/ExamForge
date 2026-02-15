@@ -11,7 +11,7 @@ export default function SignupPage() {
   return (
     <AuthCard
       title="Create your account"
-      description="Start with WAEC, JAMB, IELTS, ACCA, or ICAN. Add more later."
+      description="Build your personalized study plan, practice daily, and track real progress."
       footer={
         <div className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -38,11 +38,11 @@ export default function SignupPage() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="location">Location (optional)</Label>
-          <Input id="location" name="location" placeholder="Abuja, NG" />
+          <Input id="location" name="location" placeholder="City, Country" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" placeholder="••••••••" required />
+          <Input id="password" name="password" type="password" placeholder="********" required />
         </div>
         <SubmitButton type="submit" className="w-full" pendingText="Creating...">
           Continue
@@ -51,3 +51,5 @@ export default function SignupPage() {
     </AuthCard>
   );
 }
+
+
