@@ -43,6 +43,47 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
   return { ok: true };
 }
 
+const AddExamSubjectSchema = z.object({
+  exam_id: z.string().min(3),
+  subject: z.string().trim().min(2).max(120)
+});
+
+export async function addExamSubjectAction(_: unknown, formData: FormData) {
+  const raw = String(formData.get("exam_subject") ?? "").trim();
+  const separator = "::";
+  const splitIndex = raw.indexOf(separator);
+
+  if (splitIndex <= 0) {
+    return { ok: false, message: "Select an exam and subject." };
+  }
+
+  const parsed = AddExamSubjectSchema.safeParse({
+    exam_id: raw.slice(0, splitIndex),
+    subject: raw.slice(splitIndex + separator.length)
+  });
+
+  if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Not authenticated." };
+
+  const { error } = await supabase.from("user_exam_subjects").upsert(
+    {
+      user_id: user.id,
+      exam_id: parsed.data.exam_id,
+      subject: parsed.data.subject,
+      is_active: true
+    },
+    { onConflict: "user_id,exam_id,subject" }
+  );
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Subject added successfully." };
+}
+
 const PrefsSchema = z.object({
   reminder_time: z.string().regex(/^\d{2}:\d{2}$/),
   channels: z.enum(["in_app", "sms", "whatsapp", "email"])

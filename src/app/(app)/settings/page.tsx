@@ -1,14 +1,25 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listActiveExams } from "@/lib/exams/list";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
-import { createParentLinkAction, updateNotificationPrefsAction, updateProfileAction } from "@/app/(app)/settings/actions";
+import {
+  addExamSubjectAction,
+  createParentLinkAction,
+  updateNotificationPrefsAction,
+  updateProfileAction
+} from "@/app/(app)/settings/actions";
 import { ReferralCard } from "@/components/referrals/referral-card";
 import { ParentLinksCard } from "@/components/parent/parent-links-card";
+
+function toSubjects(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
 
 export default async function SettingsPage() {
   const supabase = await createSupabaseServerClient();
@@ -17,22 +28,46 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  const { data: prefs } = await supabase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle();
-  const { data: parentLinks } = await supabase
-    .from("parent_links")
-    .select("token,label,created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams] = await Promise.all([
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("parent_links")
+      .select("token,label,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("user_exam_subjects")
+      .select("exam_id,subject,is_active,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    listActiveExams()
+  ]);
+
+  const profile = profileRes.data;
+  const prefs = prefsRes.data;
+  const parentLinks = parentLinksRes.data ?? [];
+  const userExamSubjects = userSubjectsRes.data ?? [];
 
   const channel = Array.isArray(prefs?.channels) ? String((prefs?.channels as any[])[0] ?? "in_app") : "in_app";
+
+  const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
+  const allExamSubjectOptions = exams.flatMap((exam) =>
+    toSubjects(exam.subjects).map((subject) => ({
+      value: `${exam.id}::${subject}`,
+      label: `${exam.name} · ${subject}`
+    }))
+  );
+
+  const existingSelections = new Set(userExamSubjects.map((item) => `${item.exam_id}::${item.subject}`));
+  const availableExamSubjectOptions = allExamSubjectOptions.filter((item) => !existingSelections.has(item.value));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Profile and reminders.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Profile, subjects, and reminders.</p>
       </div>
 
       <Card>
@@ -130,6 +165,58 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Subjects</CardTitle>
+          <CardDescription>Add exam subjects to personalize plans and quiz recommendations.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {userExamSubjects.length ? (
+              userExamSubjects.map((item) => (
+                <Badge key={`${item.exam_id}-${item.subject}`} variant={item.is_active ? "secondary" : "outline"}>
+                  {examNameById.get(item.exam_id) ?? "Exam"}: {item.subject}
+                </Badge>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">No subjects selected yet. Add one below.</div>
+            )}
+          </div>
+
+          <AuthFormState action={addExamSubjectAction}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="exam_subject">Add exam subject</Label>
+                <NativeSelect
+                  id="exam_subject"
+                  name="exam_subject"
+                  defaultValue={availableExamSubjectOptions[0]?.value ?? ""}
+                  disabled={!availableExamSubjectOptions.length}
+                  required
+                >
+                  {availableExamSubjectOptions.length ? null : <option value="">All available subjects already selected</option>}
+                  {availableExamSubjectOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            </div>
+            <div className="mt-4">
+              <SubmitButton
+                type="submit"
+                pendingText="Adding..."
+                className="w-full sm:w-auto"
+                disabled={!availableExamSubjectOptions.length}
+              >
+                Add subject
+              </SubmitButton>
+            </div>
+          </AuthFormState>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Reminders</CardTitle>
           <CardDescription>
             Choose when to get nudges. WhatsApp/SMS/email require provider keys configured in env.
@@ -183,7 +270,7 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <ParentLinksCard links={(parentLinks ?? []) as any} />
+      <ParentLinksCard links={parentLinks as any} />
     </div>
   );
 }

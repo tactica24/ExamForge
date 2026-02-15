@@ -20,12 +20,36 @@ const learningStyles = [
   { value: "kinesthetic", label: "Kinesthetic (practice + drills)" }
 ];
 
-export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
-  const [examId, setExamId] = React.useState<string>(exams[0]?.id ?? "");
-  const [examSlug, setExamSlug] = React.useState<string>(exams[0]?.slug ?? "");
+function toSubjectList(value: ExamRow["subjects"]): string[] {
+  return Array.isArray(value) ? (value as unknown as string[]) : [];
+}
+
+function getInitialExam(exams: ExamRow[], preferredExamSlugs: string[]): ExamRow | null {
+  if (!exams.length) return null;
+
+  for (const slug of preferredExamSlugs) {
+    const matched = exams.find((exam) => exam.slug === slug);
+    if (matched) return matched;
+  }
+
+  return exams[0] ?? null;
+}
+
+export function OnboardingWizard(props: {
+  exams: ExamRow[];
+  preferredExamSlugs?: string[];
+  initialName?: string;
+  initialLocation?: string;
+}) {
+  const initialExam = React.useMemo(() => {
+    return getInitialExam(props.exams, props.preferredExamSlugs ?? []);
+  }, [props.exams, props.preferredExamSlugs]);
+
+  const [examId, setExamId] = React.useState<string>(initialExam?.id ?? "");
+  const [examSlug, setExamSlug] = React.useState<string>(initialExam?.slug ?? "");
   const [subject, setSubject] = React.useState<string>(() => {
-    const s = exams[0]?.subjects;
-    return Array.isArray(s) ? (s[0] as string) : "";
+    const subjects = initialExam ? toSubjectList(initialExam.subjects) : [];
+    return subjects[0] ?? "";
   });
   const [learningStyle, setLearningStyle] = React.useState<string>("visual");
   const [level, setLevel] = React.useState<string>("beginner");
@@ -33,14 +57,13 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
   const [pace, setPace] = React.useState<string>("steady");
 
   const subjects = React.useMemo(() => {
-    const e = exams.find((x) => x.id === examId);
-    const s = e?.subjects;
-    return Array.isArray(s) ? (s as unknown as string[]) : [];
-  }, [exams, examId]);
+    const exam = props.exams.find((item) => item.id === examId);
+    return exam ? toSubjectList(exam.subjects) : [];
+  }, [props.exams, examId]);
 
   React.useEffect(() => {
     if (!subjects.length) return;
-    if (!subjects.includes(subject)) setSubject(subjects[0]!);
+    if (!subjects.includes(subject)) setSubject(subjects[0] ?? "");
   }, [subjects, subject]);
 
   const defaultStart = formatISO(new Date(), { representation: "date" });
@@ -50,7 +73,7 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Onboarding</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Set up your first plan. You can add more exams and subjects later.
+          Set up your first plan. You can add more exams and subjects later in settings.
         </p>
       </div>
 
@@ -60,11 +83,11 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" placeholder="Your name" required />
+              <Input id="name" name="name" placeholder="Your name" defaultValue={props.initialName ?? ""} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Input id="location" name="location" placeholder="Abuja, NG" />
+              <Input id="location" name="location" placeholder="City, Country" defaultValue={props.initialLocation ?? ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
@@ -78,14 +101,14 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Learning style</Label>
-              <Select value={learningStyle} onValueChange={(v) => setLearningStyle(v)}>
+              <Select value={learningStyle} onValueChange={(value) => setLearningStyle(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a style" />
                 </SelectTrigger>
                 <SelectContent>
-                  {learningStyles.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
+                  {learningStyles.map((style) => (
+                    <SelectItem key={style.value} value={style.value}>
+                      {style.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -94,7 +117,7 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
             </div>
             <div className="space-y-2">
               <Label>Current level</Label>
-              <Select value={level} onValueChange={(v) => setLevel(v)}>
+              <Select value={level} onValueChange={(value) => setLevel(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose level" />
                 </SelectTrigger>
@@ -118,17 +141,17 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
                 value={examId}
                 onValueChange={(id) => {
                   setExamId(id);
-                  const e = exams.find((x) => x.id === id);
-                  setExamSlug(e?.slug ?? "");
+                  const exam = props.exams.find((item) => item.id === id);
+                  setExamSlug(exam?.slug ?? "");
                 }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select exam" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exams.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name} Â· {e.country_code}
+                  {props.exams.map((exam) => (
+                    <SelectItem key={exam.id} value={exam.id}>
+                      {exam.name} · {exam.country_code}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -138,14 +161,14 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
             </div>
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Select value={subject} onValueChange={(v) => setSubject(v)}>
+              <Select value={subject} onValueChange={(value) => setSubject(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
+                  {subjects.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -154,7 +177,7 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
             </div>
             <div className="space-y-2">
               <Label>Mode</Label>
-              <Select value={mode} onValueChange={(v) => setMode(v)}>
+              <Select value={mode} onValueChange={(value) => setMode(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Solo or group" />
                 </SelectTrigger>
@@ -167,7 +190,7 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
             </div>
             <div className="space-y-2">
               <Label>Pace</Label>
-              <Select value={pace} onValueChange={(v) => setPace(v)}>
+              <Select value={pace} onValueChange={(value) => setPace(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select pace" />
                 </SelectTrigger>
@@ -192,3 +215,4 @@ export function OnboardingWizard({ exams }: { exams: ExamRow[] }) {
     </div>
   );
 }
+

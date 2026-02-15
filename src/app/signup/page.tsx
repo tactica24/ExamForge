@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { signupAction } from "@/app/signup/actions";
+import { seedExamsNG } from "@/data/seed/exams";
 import { AuthCard } from "@/components/auth/auth-card";
 import { AuthFormState } from "@/components/auth/auth-form-state";
-import { SubmitButton } from "@/components/form/submit-button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { SignupFields } from "@/components/auth/signup-fields";
 
 export default function SignupPage() {
+  const examOptions = seedExamsNG.map((exam) => ({ slug: exam.slug, name: exam.name }));
+
   return (
     <AuthCard
       title="Create your account"
-      description="Build your personalized study plan, practice daily, and track real progress."
+      description="Set up your profile, pick exam interests, and start learning with a personalized plan."
       footer={
         <div className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -28,28 +29,8 @@ export default function SignupPage() {
         <div className="h-px flex-1 bg-border" />
       </div>
       <AuthFormState action={signupAction}>
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" name="name" placeholder="Your name" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="location">Location (optional)</Label>
-          <Input id="location" name="location" placeholder="City, Country" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" placeholder="********" required />
-        </div>
-        <SubmitButton type="submit" className="w-full" pendingText="Creating...">
-          Continue
-        </SubmitButton>
+        <SignupFields examOptions={examOptions} />
       </AuthFormState>
     </AuthCard>
   );
 }
-
-

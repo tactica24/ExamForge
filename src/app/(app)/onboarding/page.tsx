@@ -11,6 +11,26 @@ export default async function OnboardingPage() {
   if (!user) redirect("/login");
 
   const exams = await listActiveExams();
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 
-  return <OnboardingWizard exams={exams} />;
+  const preferredExamSlugs = Array.isArray(metadata.exam_interests)
+    ? metadata.exam_interests.map((item) => String(item)).filter(Boolean)
+    : [];
+
+  const initialName = typeof metadata.first_name === "string" && metadata.first_name.trim().length > 0
+    ? metadata.first_name
+    : typeof metadata.name === "string"
+      ? metadata.name
+      : "";
+
+  const initialLocation = typeof metadata.location === "string" ? metadata.location : "";
+
+  return (
+    <OnboardingWizard
+      exams={exams}
+      preferredExamSlugs={preferredExamSlugs}
+      initialName={initialName}
+      initialLocation={initialLocation}
+    />
+  );
 }
