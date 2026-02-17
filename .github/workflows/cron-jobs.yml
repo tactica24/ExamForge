@@ -7,10 +7,6 @@ on:
         description: "Public HTTPS URL for cron endpoints (overrides APP_WEB_URL)"
         required: false
         type: string
-  schedule:
-    - cron: "*/5 * * * *"
-    - cron: "*/15 * * * *"
-    - cron: "0 * * * *"
 
 jobs:
   run_crons:
