@@ -34,13 +34,13 @@ class FirebaseRealtimeChannel {
     const q = query(collection(db, "group_messages"), where("group_id", "==", groupId));
 
     let initialSnapshot = true;
-    this.unsubscribeFn = onSnapshot(q, (snapshot) => {
+    this.unsubscribeFn = onSnapshot(q, (snapshot: any) => {
       if (initialSnapshot) {
         initialSnapshot = false;
         return;
       }
 
-      snapshot.docChanges().forEach((change) => {
+      snapshot.docChanges().forEach((change: any) => {
         if (change.type !== "added") return;
         this.handler?.({ new: { id: change.doc.id, ...change.doc.data() } });
       });

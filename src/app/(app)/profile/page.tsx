@@ -12,7 +12,7 @@ function initialsFromName(name: string) {
       .split(" ")
       .filter(Boolean)
       .slice(0, 2)
-      .map((piece) => piece[0]?.toUpperCase())
+      .map((piece: string) => piece[0]?.toUpperCase())
       .join("") || "U"
   );
 }
@@ -43,7 +43,7 @@ export default async function ProfilePage() {
     : { data: [] as any[] };
   const badgeBySlug = new Map((allBadges ?? []).map((badge) => [badge.slug, badge]));
 
-  const displayName = profile?.display_name ?? profile?.name ?? user.email ?? "Account";
+  const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Account");
   const subscriptionTier = (profile?.subscription_tier ?? "free").toUpperCase();
   const isAnonymous = Boolean(profile?.leaderboard_anonymous);
 
@@ -70,7 +70,7 @@ export default async function ProfilePage() {
               <p className="text-lg font-semibold">{displayName}</p>
               <p className="text-sm text-muted-foreground">{user.email ?? "No email available"}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {profile?.location ?? "Location not set"} • {profile?.timezone ?? "Timezone not set"}
+                {profile?.location ?? "Location not set"} | {profile?.timezone ?? "Timezone not set"}
               </p>
             </div>
           </div>

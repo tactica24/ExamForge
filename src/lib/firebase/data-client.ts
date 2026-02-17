@@ -172,7 +172,7 @@ async function loadRows(db: Firestore | null, table: string): Promise<InternalRo
   if (!db) throw new Error("Firebase Firestore is not configured.");
 
   const snapshot = await db.collection(table).get();
-  return snapshot.docs.map((doc) => {
+  return snapshot.docs.map((doc: any) => {
     const data = doc.data() as Record<string, any>;
     return {
       __docId: doc.id,
@@ -192,7 +192,7 @@ async function attachGroupJoin(db: Firestore | null, rows: InternalRow[]): Promi
   const snapshots = await Promise.all(ids.map((id) => db.collection("groups").doc(String(id)).get()));
   const groupsById = new Map<string, Record<string, any>>();
 
-  snapshots.forEach((snap) => {
+  snapshots.forEach((snap: any) => {
     if (!snap.exists) return;
     const data = snap.data() as Record<string, any>;
     groupsById.set(snap.id, { id: data.id ?? snap.id, ...data });

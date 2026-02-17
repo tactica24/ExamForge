@@ -86,13 +86,13 @@ export default async function DashboardPage() {
           .slice(0, 3)
       : [];
 
-  const displayName = profile?.display_name ?? profile?.name ?? user.email ?? "Learner";
+  const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Learner");
   const avatarFallback =
     displayName
       .split(" ")
       .filter(Boolean)
       .slice(0, 2)
-      .map((piece) => piece[0]?.toUpperCase())
+      .map((piece: string) => piece[0]?.toUpperCase())
       .join("") || "U";
 
   return (
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.mode === "group" ? "Group mode" : "Solo mode"} • {plan.pace} pace •{" "}
+            {plan.mode === "group" ? "Group mode" : "Solo mode"} | {plan.pace} pace |{" "}
             <span className="font-medium text-foreground">{todayStr}</span>
           </p>
         </div>

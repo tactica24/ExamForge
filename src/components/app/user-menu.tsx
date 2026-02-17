@@ -19,7 +19,7 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
       ?.split(" ")
       .filter(Boolean)
       .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase())
+      .map((s: string) => s[0]?.toUpperCase())
       .join("") ?? "U";
 
   return (

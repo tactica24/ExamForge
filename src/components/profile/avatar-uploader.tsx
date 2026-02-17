@@ -12,7 +12,7 @@ function getInitials(name: string) {
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((piece) => piece[0]?.toUpperCase())
+    .map((piece: string) => piece[0]?.toUpperCase())
     .join("");
   return initials || "U";
 }
