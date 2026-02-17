@@ -2,6 +2,11 @@ name: Cron Jobs
 
 on:
   workflow_dispatch:
+    inputs:
+      app_web_url:
+        description: "Public HTTPS URL for cron endpoints (overrides APP_WEB_URL)"
+        required: false
+        type: string
   schedule:
     - cron: "*/5 * * * *"
     - cron: "*/15 * * * *"
@@ -14,13 +19,18 @@ jobs:
     steps:
       - name: Validate cron configuration
         env:
+          INPUT_APP_WEB_URL: ${{ github.event.inputs.app_web_url }}
           APP_WEB_URL: ${{ vars.APP_WEB_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
         run: |
-          APP_URL="$(echo "${APP_WEB_URL}" | xargs)"
+          APP_URL="${INPUT_APP_WEB_URL:-$APP_WEB_URL}"
+          APP_URL="${APP_URL:-$NEXT_PUBLIC_APP_URL}"
+          APP_URL="$(echo "${APP_URL}" | xargs)"
 
           if [ -z "$APP_URL" ]; then
-            echo "Missing repository variable APP_WEB_URL"
+            echo "Missing app URL."
+            echo "Set repository variable APP_WEB_URL (or NEXT_PUBLIC_APP_URL), or pass workflow input app_web_url."
             exit 1
           fi
 
@@ -35,6 +45,12 @@ jobs:
           fi
 
           echo "APP_URL=$APP_URL" >> "$GITHUB_ENV"
+          echo "Using APP_URL=$APP_URL"
+
+      - name: Verify app reachable
+        run: |
+          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            "$APP_URL/api/health"
 
       - name: Run reminders cron
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *'
