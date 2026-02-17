@@ -1,8 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 const PasswordSchema = z
   .string()
@@ -42,6 +45,20 @@ const SignupSchema = z
   });
 
 export async function signupAction(_: unknown, formData: FormData) {
+  const headerStore = await headers();
+  if (!hasTrustedOrigin(headerStore)) {
+    return { ok: false, message: "Blocked by origin policy." };
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromHeaders("action:signup", headerStore),
+    windowMs: 60 * 60 * 1000,
+    max: 8
+  });
+  if (!rate.ok) {
+    return { ok: false, message: "Too many signup attempts. Please retry later." };
+  }
+
   const examInterests = Array.from(
     new Set(formData.getAll("exam_interests").map((value) => String(value).trim()).filter(Boolean))
   );

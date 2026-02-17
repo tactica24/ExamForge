@@ -73,7 +73,11 @@ npm run firebase:env:print -- path/to/serviceAccountKey.json
 2) Redeploy after changing env vars.
 3) If Google login fails, add your deployed domain under Firebase Authentication authorized domains.
 4) If avatar upload fails, set `FIREBASE_STORAGE_BUCKET` (usually `<project-id>.appspot.com`).
-5) Check `https://<your-domain>/api/health` and confirm `firebase.webConfigReady=true` and `firebase.adminReady=true`.
+5) In production, diagnostics are protected. Run:
+```bash
+curl -H "x-health-secret: $APP_CRON_SECRET" https://<your-domain>/api/health
+```
+and confirm `firebase.webConfigReady=true` and `firebase.adminReady=true`.
 
 ## Reminders / cron endpoints
 ```bash
@@ -103,3 +107,12 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 
 ## Notes / disclaimers
 ACE NAIJA is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.
+
+## Security hardening implemented
+- Strict security headers (CSP, HSTS in production, frame blocking, permissions policy, nosniff, COOP/CORP).
+- Same-origin enforcement for state-changing requests in middleware and sensitive routes.
+- Rate limiting on login, signup, OTP, session creation, avatar upload, billing init, and logout.
+- Firebase session cookies are `httpOnly`, `secure` (production), `sameSite=lax`, high priority, and 24-hour expiry.
+- Avatar upload validates file type, max size, and binary signature before storing.
+
+Important: no internet app is 100% hack-proof. Keep dependencies updated, rotate secrets, enforce strong Firebase rules, and monitor logs/alerts continuously.

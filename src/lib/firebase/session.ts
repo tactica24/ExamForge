@@ -3,18 +3,20 @@ import "server-only";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
 import { FIREBASE_SESSION_COOKIE } from "@/lib/firebase/constants";
 
-const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24;
 
 type CookieSetter = { set: (name: string, value: string, options: Record<string, any>) => unknown };
 type CookieDeleter = { delete: (name: string) => unknown };
 
 function cookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isProduction,
     sameSite: "lax" as const,
     path: "/",
-    maxAge: Math.floor(SESSION_MAX_AGE_MS / 1000)
+    maxAge: Math.floor(SESSION_MAX_AGE_MS / 1000),
+    priority: "high" as const
   };
 }
 

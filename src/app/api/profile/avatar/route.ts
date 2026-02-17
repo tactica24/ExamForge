@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
+import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -15,7 +17,53 @@ function extensionFromMimeType(mimeType: string) {
   return "jpg";
 }
 
+function hasValidSignature(bytes: Buffer, mimeType: string) {
+  if (mimeType === "image/png") {
+    if (bytes.length < 8) return false;
+    return (
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    );
+  }
+
+  if (mimeType === "image/jpeg") {
+    if (bytes.length < 3) return false;
+    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+
+  if (mimeType === "image/webp") {
+    if (bytes.length < 12) return false;
+    const riff = bytes.toString("ascii", 0, 4);
+    const webp = bytes.toString("ascii", 8, 12);
+    return riff === "RIFF" && webp === "WEBP";
+  }
+
+  return false;
+}
+
 export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request.headers)) {
+    return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromRequest("api:profile:avatar", request),
+    windowMs: 15 * 60 * 1000,
+    max: 20
+  });
+  if (!rate.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Too many upload attempts. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    );
+  }
+
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }
@@ -56,9 +104,14 @@ export async function POST(request: Request) {
   }
 
   const ext = extensionFromMimeType(file.type);
-  const storagePath = `avatars/${user.id}/${Date.now()}-${randomUUID()}.${ext}`;
+  const safeUserId = String(user.id).replace(/[^a-zA-Z0-9_-]/g, "");
+  const storagePath = `avatars/${safeUserId}/${Date.now()}-${randomUUID()}.${ext}`;
   const token = randomUUID();
   const bytes = Buffer.from(await file.arrayBuffer());
+
+  if (!hasValidSignature(bytes, file.type)) {
+    return NextResponse.json({ ok: false, message: "Invalid image file signature." }, { status: 400 });
+  }
 
   await bucket.file(storagePath).save(bytes, {
     resumable: false,

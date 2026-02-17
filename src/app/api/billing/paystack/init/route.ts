@@ -2,8 +2,26 @@ import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { paystackInitialize } from "@/lib/billing/paystack";
 import { getServerEnv } from "@/lib/env";
+import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request.headers)) {
+    return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromRequest("api:billing:init", request),
+    windowMs: 10 * 60 * 1000,
+    max: 20
+  });
+  if (!rate.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Too many billing attempts. Please wait and retry." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    );
+  }
+
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }

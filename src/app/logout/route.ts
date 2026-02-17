@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request.headers)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromRequest("route:logout", request),
+    windowMs: 5 * 60 * 1000,
+    max: 30
+  });
+  if (!rate.ok) {
+    return new NextResponse("Too many requests", {
+      status: 429,
+      headers: { "Retry-After": String(rate.retryAfterSec) }
+    });
+  }
+
   const firebase = await createFirebaseServerClient();
   await firebase.auth.signOut();
   return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"), {

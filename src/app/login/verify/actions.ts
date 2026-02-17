@@ -1,8 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 const VerifySchema = z.object({
   phone: z.string().min(8).max(30),
@@ -10,6 +13,18 @@ const VerifySchema = z.object({
 });
 
 export async function verifyOtpAction(_: unknown, formData: FormData) {
+  const headerStore = await headers();
+  if (!hasTrustedOrigin(headerStore)) {
+    return { ok: false, message: "Blocked by origin policy." };
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromHeaders("action:otp:verify", headerStore),
+    windowMs: 15 * 60 * 1000,
+    max: 10
+  });
+  if (!rate.ok) return { ok: false, message: "Too many code attempts. Try again later." };
+
   const parsed = VerifySchema.safeParse({
     phone: formData.get("phone"),
     token: formData.get("token")

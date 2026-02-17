@@ -1,8 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -10,6 +13,20 @@ const LoginSchema = z.object({
 });
 
 export async function loginAction(_: unknown, formData: FormData) {
+  const headerStore = await headers();
+  if (!hasTrustedOrigin(headerStore)) {
+    return { ok: false, message: "Blocked by origin policy." };
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromHeaders("action:login", headerStore),
+    windowMs: 15 * 60 * 1000,
+    max: 12
+  });
+  if (!rate.ok) {
+    return { ok: false, message: "Too many login attempts. Try again in a few minutes." };
+  }
+
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password")

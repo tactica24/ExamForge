@@ -3,8 +3,26 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
+import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
+  if (!hasTrustedOrigin(req.headers)) {
+    return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
+  }
+
+  const rate = takeRateLimit({
+    key: buildRateLimitKeyFromRequest("api:ai:tutor", req),
+    windowMs: 10 * 60 * 1000,
+    max: 40
+  });
+  if (!rate.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Too many AI requests. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    );
+  }
+
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }
@@ -17,6 +35,12 @@ export async function POST(req: Request) {
   const exam = String(body?.exam ?? "").trim();
 
   if (!message) return NextResponse.json({ ok: false, message: "Message required." }, { status: 400 });
+  if (message.length > 2000) {
+    return NextResponse.json({ ok: false, message: "Message is too long." }, { status: 400 });
+  }
+  if (subject.length > 120 || exam.length > 120) {
+    return NextResponse.json({ ok: false, message: "Invalid exam or subject value." }, { status: 400 });
+  }
 
   const client = getOpenAIClient();
   if (!client) {
