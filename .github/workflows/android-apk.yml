@@ -41,7 +41,7 @@ jobs:
       - name: Install project deps
         run: npm install
 
-      - name: Resolve mobile app mode
+      - name: Resolve mobile app URL
         id: app_url
         env:
           INPUT_APP_WEB_URL: ${{ github.event.inputs.app_web_url }}
@@ -52,32 +52,24 @@ jobs:
           APP_URL="${APP_URL:-$VAR_NEXT_PUBLIC_APP_URL}"
           APP_URL="$(echo "$APP_URL" | xargs)"
 
-          if [ -n "$APP_URL" ] && [[ "$APP_URL" != https://* ]]; then
+          if [ -z "$APP_URL" ]; then
+            echo "Missing mobile URL."
+            echo "Set repository variable APP_WEB_URL (or NEXT_PUBLIC_APP_URL), or pass workflow input app_web_url."
+            exit 1
+          fi
+
+          if [[ "$APP_URL" != https://* ]]; then
             echo "APP_WEB_URL must start with https://"
             exit 1
           fi
 
-          if [ -z "$APP_URL" ]; then
-            echo "No APP_WEB_URL provided. Falling back to bundled web assets (www/)."
-            echo "mode=bundled" >> "$GITHUB_OUTPUT"
-            echo "value=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "mode=remote" >> "$GITHUB_OUTPUT"
           echo "value=$APP_URL" >> "$GITHUB_OUTPUT"
 
       - name: Set mobile app URL
-        if: steps.app_url.outputs.mode == 'remote'
         env:
           APP_WEB_URL: ${{ steps.app_url.outputs.value }}
         run: |
           node -e "const fs=require('fs'); const p='capacitor.config.json'; const c=JSON.parse(fs.readFileSync(p,'utf8')); c.server={ url: process.env.APP_WEB_URL, cleartext:false }; fs.writeFileSync(p, JSON.stringify(c,null,2));"
-
-      - name: Use bundled app assets
-        if: steps.app_url.outputs.mode == 'bundled'
-        run: |
-          node -e "const fs=require('fs'); const p='capacitor.config.json'; const c=JSON.parse(fs.readFileSync(p,'utf8')); delete c.server; fs.writeFileSync(p, JSON.stringify(c,null,2));"
 
       - name: Add Android platform
         run: |

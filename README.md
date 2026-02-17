@@ -6,6 +6,7 @@ Production-ready MVP for **ACE NAIJA** - an AI-powered, subscription-based exam 
 - **Next.js** (App Router) + TypeScript + Tailwind
 - **Firebase** (Auth + Firestore)
 - Optional: **OpenAI** (quiz generation + tutor), **Paystack** (billing), Twilio/Resend (notifications)
+- **Node.js 22.x** runtime for CI/deploy compatibility
 
 ## Quick start
 1) Install deps
