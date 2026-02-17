@@ -9,7 +9,7 @@ export function SiteHeader() {
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Logo className="h-6 w-6" />
-          <span className="text-sm font-semibold tracking-tight">ExamForge</span>
+          <span className="text-sm font-semibold tracking-tight">ACE NAIJA</span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
           <Link href="/pricing" className="hover:text-foreground">

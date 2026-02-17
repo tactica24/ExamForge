@@ -6,7 +6,7 @@ export type QueuedQuizSubmission = {
   queuedAt: string;
 };
 
-const KEY = "examforge.quizQueue.v1";
+const KEY = "ace-naija.quizQueue.v1";
 
 export function loadQuizQueue(): QueuedQuizSubmission[] {
   try {

@@ -89,7 +89,7 @@ export async function sendViaProvider(args: { channel: Channel; to: { phone?: st
         body: JSON.stringify({
           from: env.RESEND_FROM_EMAIL,
           to: [email],
-          subject: "ExamForge notification",
+          subject: "ACE NAIJA notification",
           text: args.message
         })
       });

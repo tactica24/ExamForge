@@ -53,14 +53,14 @@ export default function HomePage() {
         <section className="mx-auto max-w-5xl">
           <Badge variant="secondary" className="mb-5 inline-flex gap-2 rounded-full px-3 py-1 text-sm">
             <Sparkles className="h-4 w-4 text-primary" />
-            Smarter prep. Stronger scores.
+            Guaranteed structure. Higher score potential.
           </Badge>
           <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Turn every study session into measurable exam progress.
+            Ace JAMB, WAEC, NECO, IELTS, ICAN, and ACCA with a tailored learning pace.
           </h1>
           <p className="mt-5 max-w-3xl text-pretty text-lg text-muted-foreground">
-            ExamForge creates a personalized plan from your exam syllabus, delivers focused quizzes daily,
-            and shows exactly where to improve so you can walk into exam day prepared and confident.
+            ACE NAIJA turns each exam syllabus into a personalized daily plan, delivers focused quizzes,
+            and tracks weak areas in real time so you keep improving every week until exam day.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg" className="gap-2">
@@ -133,9 +133,11 @@ export default function HomePage() {
             <div className="relative">
               <Badge className="mb-3 rounded-full">Most popular</Badge>
               <h3 className="text-lg font-semibold">Pro membership</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Everything you need to prepare faster and score higher.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Everything serious candidates need for disciplined, high-impact preparation.
+              </p>
               <div className="mt-4 text-4xl font-semibold tracking-tight">
-                N7,500
+                N3,000
                 <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">

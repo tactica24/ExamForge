@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { formatISO } from "date-fns";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/firebase/database.types";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Card } from "@/components/ui/card";

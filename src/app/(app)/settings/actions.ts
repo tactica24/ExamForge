@@ -1,13 +1,19 @@
 "use server";
 
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { redirect } from "next/navigation";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
   display_name: z.string().max(40).optional(),
+  avatar_url: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .refine((value) => !value || /^https?:\/\//i.test(value), "Avatar URL must start with http:// or https://"),
   location: z.string().max(80).optional(),
   timezone: z.string().min(2).max(60),
   learning_style: z.string().min(2).max(30),
@@ -21,6 +27,7 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
   const parsed = ProfileSchema.safeParse({
     name: formData.get("name"),
     display_name: (formData.get("display_name") as string | null) || undefined,
+    avatar_url: (formData.get("avatar_url") as string | null)?.trim() || undefined,
     location: (formData.get("location") as string | null) || undefined,
     timezone: formData.get("timezone"),
     learning_style: formData.get("learning_style"),
@@ -31,13 +38,13 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid profile fields." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { error } = await supabase.from("profiles").update(parsed.data).eq("user_id", user.id);
+  const { error } = await firebase.from("profiles").update(parsed.data).eq("user_id", user.id);
   if (error) return { ok: false, message: error.message };
   await syncProfilePublic({ userId: user.id }).catch(() => {});
   return { ok: true };
@@ -64,13 +71,13 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
 
   if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { error } = await supabase.from("user_exam_subjects").upsert(
+  const { error } = await firebase.from("user_exam_subjects").upsert(
     {
       user_id: user.id,
       exam_id: parsed.data.exam_id,
@@ -96,13 +103,13 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
   });
   if (!parsed.success) return { ok: false, message: "Invalid notification preferences." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { error } = await supabase.from("notification_prefs").upsert({
+  const { error } = await firebase.from("notification_prefs").upsert({
     user_id: user.id,
     reminder_time: parsed.data.reminder_time,
     channels: [parsed.data.channels]
@@ -115,13 +122,13 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
 export async function createParentLinkAction(_: unknown, formData: FormData) {
   const label = String(formData.get("label") ?? "").trim().slice(0, 40) || null;
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("parent_links")
     .insert({ user_id: user.id, label })
     .select("token")

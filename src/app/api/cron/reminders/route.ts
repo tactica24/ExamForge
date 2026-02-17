@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getServerEnv } from "@/lib/env";
 import { sendViaProvider, type Channel } from "@/lib/notifications/providers";
 
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
 
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
     if (count === 0) continue;
 
     const channel = (Array.isArray(p.channels) ? (p.channels[0] as Channel) : "in_app") ?? "in_app";
-    const msg = `ExamForge reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your quiz and keep your streak.`;
+    const msg = `ACE NAIJA reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your quiz and keep your streak.`;
 
     const provider = await sendViaProvider({
       channel,

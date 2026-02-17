@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { matchOrCreateGroup } from "@/lib/groups/match";
@@ -41,10 +41,10 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Please complete all onboarding fields." };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "You must be logged in." };
 
   let examId = parsed.data.exam_id;
@@ -55,12 +55,12 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       return {
         ok: false,
         message:
-          "Seed data requires SUPABASE_SERVICE_ROLE_KEY. Add it to env (or run the Supabase migrations + seed) and try again."
+          "Seed data requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY then try again."
       };
     }
   }
 
-  const { error: profileErr } = await supabase.from("profiles").upsert({
+  const { error: profileErr } = await firebase.from("profiles").upsert({
     user_id: user.id,
     email: user.email ?? null,
     phone: user.phone ?? null,
@@ -73,7 +73,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
   if (profileErr) return { ok: false, message: profileErr.message };
 
-  await supabase.from("user_exam_subjects").upsert(
+  await firebase.from("user_exam_subjects").upsert(
     {
       user_id: user.id,
       exam_id: examId,
@@ -83,7 +83,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     { onConflict: "user_id,exam_id,subject" }
   );
 
-  const { data: plan, error: planErr } = await supabase
+  const { data: plan, error: planErr } = await firebase
     .from("user_plans")
     .insert({
       user_id: user.id,
@@ -110,7 +110,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
 
   if (items.length) {
-    const { error: itemsErr } = await supabase.from("plan_items").insert(
+    const { error: itemsErr } = await firebase.from("plan_items").insert(
       items.map((i) => ({
         plan_id: plan.id,
         scheduled_for: i.scheduled_for,

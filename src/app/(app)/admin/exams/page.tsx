@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,8 @@ export default async function AdminExamsPage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const supabase = await createSupabaseServerClient();
-  const { data: exams } = await supabase.from("exams").select("*").order("name", { ascending: true });
+  const firebase = await createFirebaseServerClient();
+  const { data: exams } = await firebase.from("exams").select("*").order("name", { ascending: true });
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

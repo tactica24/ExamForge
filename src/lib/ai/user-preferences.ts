@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export async function getUserAiPreferences(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const firebase = await createFirebaseServerClient();
+  const { data } = await firebase
     .from("profiles")
     .select("preferred_explanation_language,low_data_mode")
     .eq("user_id", userId)

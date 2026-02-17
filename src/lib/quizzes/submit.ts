@@ -2,7 +2,7 @@ import "server-only";
 
 import { startOfDay } from "date-fns";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { updateGamificationAfterQuiz } from "@/lib/gamification/update-after-quiz";
 import { updateWeakAreasAfterQuiz } from "@/lib/personalization/weak-areas";
 import { syncProfilePublic } from "@/lib/profile/public";
@@ -16,10 +16,10 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   const parsed = SubmitSchema.safeParse({ quiz_id: args.quizId, answers: args.answers });
   if (!parsed.success) return { ok: false as const, message: "Invalid submission." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
 
   const dayStart = startOfDay(new Date()).toISOString();
-  const { data: existing } = await supabase
+  const { data: existing } = await firebase
     .from("user_quiz_results")
     .select("id,score,total,created_at")
     .eq("user_id", args.userId)
@@ -33,14 +33,14 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
     return { ok: true as const, score: existing.score, total: existing.total, duplicate: true as const };
   }
 
-  const { data: quiz, error: quizErr } = await supabase
+  const { data: quiz, error: quizErr } = await firebase
     .from("quizzes")
     .select("id,exam_id,subject,topic_path,quiz_type,meta")
     .eq("id", args.quizId)
     .maybeSingle();
   if (quizErr || !quiz) return { ok: false as const, message: quizErr?.message ?? "Quiz not found." };
 
-  const { data: qs, error: qErr } = await supabase
+  const { data: qs, error: qErr } = await firebase
     .from("quiz_questions")
     .select("id,correct_index")
     .eq("quiz_id", args.quizId)
@@ -51,7 +51,7 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   const total = correct.length;
   const score = correct.reduce((acc, ci, idx) => acc + (args.answers[idx] === ci ? 1 : 0), 0);
 
-  const { error } = await supabase.from("user_quiz_results").insert({
+  const { error } = await firebase.from("user_quiz_results").insert({
     user_id: args.userId,
     quiz_id: args.quizId,
     score,
@@ -72,7 +72,7 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   }).catch(() => null);
 
   const gamification = await updateGamificationAfterQuiz({
-    supabase,
+    firebase,
     userId: args.userId,
     score,
     total,
@@ -82,7 +82,7 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
 
   // Peer help suggestion: if weak and user is in a group for this exam/subject, post a prompt.
   if ((weak as any)?.isWeak) {
-    const { data: membership } = await supabase
+    const { data: membership } = await firebase
       .from("group_members")
       .select("group_id,groups!inner(exam_id,subject)")
       .eq("user_id", args.userId)
@@ -92,7 +92,7 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
       .maybeSingle();
 
     if (membership?.group_id) {
-      await supabase.from("group_messages").insert({
+      await firebase.from("group_messages").insert({
         group_id: membership.group_id,
         user_id: args.userId,
         content: `I scored low on "${quiz.topic_path}". Who can explain it in simple terms?`,

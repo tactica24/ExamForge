@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 const PasswordSchema = z
   .string()
@@ -65,8 +65,8 @@ export async function signupAction(_: unknown, formData: FormData) {
   const fullName = `${parsed.data.name} ${parsed.data.surname}`.trim();
   const location = parsed.data.country === "Nigeria" ? `${parsed.data.state}, Nigeria` : parsed.data.country;
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const firebase = await createFirebaseServerClient();
+  const { data, error } = await firebase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -83,6 +83,29 @@ export async function signupAction(_: unknown, formData: FormData) {
   });
 
   if (error) return { ok: false, message: error.message };
+
+  if (data.user?.id) {
+    await firebase.from("profiles").upsert(
+      {
+        user_id: data.user.id,
+        email: parsed.data.email,
+        name: fullName,
+        location,
+        timezone: "Africa/Lagos",
+        learning_style: "visual",
+        level: "beginner",
+        subscription_tier: "free",
+        exam_interest_slugs: parsed.data.exam_interests,
+        country: parsed.data.country,
+        state: parsed.data.country === "Nigeria" ? parsed.data.state ?? null : null
+      },
+      { onConflict: "user_id" }
+    );
+  }
+
+  if (!data.session) {
+    redirect("/login?verify=1");
+  }
 
   redirect("/onboarding");
 }

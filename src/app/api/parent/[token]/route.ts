@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getServerEnv } from "@/lib/env";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
 
 export async function GET(_: Request, props: { params: Promise<{ token: string }> }) {
   const { token } = await props.params;
-  const env = getServerEnv();
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json({ ok: false, message: "Parent view requires SUPABASE_SERVICE_ROLE_KEY." }, { status: 501 });
+
+  if (!isFirebaseAdminConfigured()) {
+    return NextResponse.json({ ok: false, message: "Parent view requires Firebase admin credentials." }, { status: 501 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
 
   const { data: link, error: linkErr } = await admin
     .from("parent_links")
@@ -55,4 +55,3 @@ export async function GET(_: Request, props: { params: Promise<{ token: string }
     avg30: avg
   });
 }
-

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export async function matchOrCreateGroup(args: {
   userId: string;
@@ -10,9 +10,9 @@ export async function matchOrCreateGroup(args: {
   level: string;
   timezone: string;
 }) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
 
-  const { data: groups } = await supabase
+  const { data: groups } = await firebase
     .from("groups")
     .select("id")
     .eq("exam_id", args.examId)
@@ -26,7 +26,7 @@ export async function matchOrCreateGroup(args: {
   let pickedGroupId: string | null = groups?.[0]?.id ?? null;
 
   if (pickedGroupId) {
-    const { count } = await supabase
+    const { count } = await firebase
       .from("group_members")
       .select("*", { count: "exact", head: true })
       .eq("group_id", pickedGroupId);
@@ -34,7 +34,7 @@ export async function matchOrCreateGroup(args: {
   }
 
   if (!pickedGroupId) {
-    const { data: created, error: createErr } = await supabase
+    const { data: created, error: createErr } = await firebase
       .from("groups")
       .insert({
         exam_id: args.examId,
@@ -49,7 +49,7 @@ export async function matchOrCreateGroup(args: {
     pickedGroupId = created.id;
   }
 
-  await supabase.from("group_members").upsert(
+  await firebase.from("group_members").upsert(
     {
       group_id: pickedGroupId,
       user_id: args.userId,

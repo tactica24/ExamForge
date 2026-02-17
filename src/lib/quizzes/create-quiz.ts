@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { generateQuestions } from "@/lib/quizzes/questions";
 
 export async function createQuizWithQuestions(args: {
@@ -15,9 +15,9 @@ export async function createQuizWithQuestions(args: {
   preferredLanguage?: string | null;
   meta?: Record<string, any>;
 }) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
 
-  const { data: quiz, error: quizErr } = await supabase
+  const { data: quiz, error: quizErr } = await firebase
     .from("quizzes")
     .insert({
       exam_id: args.examId,
@@ -40,7 +40,7 @@ export async function createQuizWithQuestions(args: {
     preferredLanguage: args.preferredLanguage ?? null
   });
 
-  const { error: qErr } = await supabase.from("quiz_questions").insert(
+  const { error: qErr } = await firebase.from("quiz_questions").insert(
     questions.map((q) => ({
       quiz_id: quiz.id,
       question: q.question,

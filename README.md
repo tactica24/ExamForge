@@ -1,10 +1,10 @@
-# ExamForge
+# ACE NAIJA
 
-Production-ready MVP for **ExamForge** — an AI-powered, subscription-based exam prep **PWA** (Nigeria-first, global-ready).
+Production-ready MVP for **ACE NAIJA** - an AI-powered, subscription-based exam prep **PWA**.
 
 ## Stack
 - **Next.js** (App Router) + TypeScript + Tailwind
-- **Supabase** (Auth + Postgres + Realtime)
+- **Firebase** (Auth + Firestore)
 - Optional: **OpenAI** (quiz generation + tutor), **Paystack** (billing), Twilio/Resend (notifications)
 
 ## Quick start
@@ -13,19 +13,17 @@ Production-ready MVP for **ExamForge** — an AI-powered, subscription-based exa
 npm install
 ```
 
-2) Create a Supabase project and run the SQL:
-- `supabase/migrations/0001_init.sql`
-- `supabase/migrations/0002_engagement.sql`
-- `supabase/seed.sql`
+2) Create `.env.local` from `.env.example` and set Firebase keys:
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- (required for login sessions + Firestore server routes) either:
+  - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+  - or `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (recommended)
 
-3) Create `.env.local` from `.env.example` and set:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- (recommended) `SUPABASE_SERVICE_ROLE_KEY` (for admin/cron/seed automation)
-- (optional) `OPENAI_API_KEY`
-- (optional) `PAYSTACK_SECRET_KEY` + `PAYSTACK_PUBLIC_KEY` + `PAYSTACK_CALLBACK_URL`
-- (optional) `APP_CRON_SECRET`
-- (optional) `RESEND_FROM_EMAIL` (if using Resend)
+3) Enable providers in Firebase Console
+- Authentication -> Sign-in method -> Email/Password
+- Authentication -> Sign-in method -> Google (optional)
 
 4) Run dev server
 ```bash
@@ -37,51 +35,62 @@ Open `http://localhost:3000`.
 ## Key routes
 - `/` marketing
 - `/signup`, `/login` (email/password + Google OAuth)
-- `/login/otp`, `/login/verify` (phone OTP; requires SMS configured in Supabase)
 - `/onboarding` (exam/subject + plan generation + optional group match)
 - `/dashboard`, `/plan`, `/quiz/today`, `/groups`, `/progress`, `/tutor`
 - `/billing` (Paystack checkout)
-- `/admin` (set `app_metadata.role=admin` in Supabase)
+- `/admin` (requires Firebase custom claim `role=admin`)
 
-## Reminders (cron)
-Call:
+## Firebase setup notes
+- Use Firestore in Native mode.
+- The app stores data in collections mirroring feature names (for example `profiles`, `exams`, `syllabi`, `user_plans`, `plan_items`, `quizzes`, `quiz_questions`, `user_quiz_results`, `groups`, `group_members`, `group_messages`).
+- Add Firebase admin service-account env vars for cron/admin features, login sessions, parent links, and avatar uploads.
+
+## Vercel setup (recommended path)
+1) Create a Firebase Web app and copy:
+   - API Key
+   - Auth Domain
+   - Project ID
+   - Storage Bucket
+   - Messaging Sender ID
+   - App ID
+2) Download Firebase service-account JSON (Project Settings -> Service Accounts).
+3) Run:
+```bash
+npm run firebase:env:print -- path/to/serviceAccountKey.json
+```
+4) Copy the printed values into Vercel Environment Variables (Production + Preview), then redeploy.
+5) In Firebase Auth, add your Vercel domain under **Authorized domains**.
+
+## Login troubleshooting
+1) Confirm Vercel env vars are set for Production and Preview:
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_APP_URL`
+   - `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (or `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`)
+2) Redeploy after changing env vars.
+3) If Google login fails, add your deployed domain under Firebase Authentication authorized domains.
+4) If avatar upload fails, set `FIREBASE_STORAGE_BUCKET` (usually `<project-id>.appspot.com`).
+5) Check `https://<your-domain>/api/health` and confirm `firebase.webConfigReady=true` and `firebase.adminReady=true`.
+
+## Reminders / cron endpoints
 ```bash
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/reminders
-```
-
-This checks `notification_prefs` and inserts `notifications` rows (and stubs provider sending).
-
-## Leaderboards + nudges (cron)
-```bash
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/leaderboards
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/group-nudges
 ```
 
-## Deploy on Vercel (no paid cron required)
-- Deploy directly from GitHub on Vercel (Hobby is fine).
+## Deploy on Vercel
+- Deploy directly from GitHub on Vercel.
 - Keep scheduled tasks outside Vercel using the `Cron Jobs` GitHub workflow.
 
-## Cron via GitHub Actions
-1) In GitHub repo settings, add:
-   - Variable: `APP_WEB_URL` = your live app URL (for example, `https://your-app.vercel.app`)
-   - Secret: `APP_CRON_SECRET` = same value as your app environment `APP_CRON_SECRET`
-2) GitHub workflow `Cron Jobs` runs:
-   - Reminders: every 5 minutes
-   - Leaderboards: every 15 minutes
-   - Group nudges: hourly
-3) You can also run it manually from **Actions -> Cron Jobs -> Run workflow**.
-
-## Offline support
-- Quizzes can be saved offline and synced later via `/api/quizzes/sync`.
-- Plan snapshot is cached via `/api/offline/snapshot` and the service worker.
-
-## Notes / disclaimers
-ExamForge is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.
 ## Android APK (GitHub Actions)
 This repo includes a workflow that builds a debug APK using Capacitor.
 
 ### One-time setup
-- In GitHub repo settings, set variable `APP_WEB_URL` to your deployed web URL (for example, your Vercel production URL).
+- In GitHub repo settings, set variable `APP_WEB_URL` to your deployed web URL (must start with `https://`).
 
 ### Trigger APK build
 - Go to **Actions** -> **Android APK**.
@@ -89,22 +98,8 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 
 ### Download APK
 - Open the completed workflow run.
-- Download artifact `examforge-apk-debug`.
+- Download artifact `ace-naija-apk-debug`.
 - Install `app-debug.apk` on Android (enable install from unknown sources if required).
 
-### Mobile helper scripts
-- `npm run mobile:android:prepare`
-- `npm run mobile:android:add`
-- `npm run mobile:android:sync`
-- `npm run mobile:android:assets`
-- `npm run mobile:android:open`
-
-## Mobile wrapper troubleshooting
-- If the app shows **deployment temporarily paused**, the mobile wrapper is pointing to a paused or protected URL.
-- In GitHub repo settings, set `APP_WEB_URL` to your active **production** Vercel URL (must start with `https://`).
-- You can override URL per run from **Actions -> Android APK -> Run workflow -> app_web_url**.
-- If Vercel paused the project, unpause it in Vercel dashboard before rebuilding the APK.
-
-## Temporary app logo
-- Save your attached logo into `assets/logo.png` (or `.jpg/.jpeg/.svg`).
-- Re-run **Android APK** workflow; it now auto-generates Android icons from `assets/`.
+## Notes / disclaimers
+ACE NAIJA is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.

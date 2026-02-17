@@ -10,7 +10,7 @@ export default function LoginOtpPage() {
   return (
     <AuthCard
       title="Login with OTP"
-      description="We’ll send a one-time code to your phone (configure SMS provider in Supabase)."
+      description="We’ll send a one-time code to your phone (configure SMS provider in Firebase)."
       footer={
         <div className="text-center text-sm text-muted-foreground">
           Prefer email/password?{" "}

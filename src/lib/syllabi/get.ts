@@ -1,12 +1,12 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFallbackTopics } from "@/lib/syllabi/fallback";
 
 export async function getTopicsForExamSubject(args: { examId: string; examSlug: string; subject: string }) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
 
-  const { data } = await supabase
+  const { data } = await firebase
     .from("syllabi")
     .select("topics")
     .eq("exam_id", args.examId)

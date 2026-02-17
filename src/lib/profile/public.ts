@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export async function syncProfilePublic(args: { userId: string }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: profile } = await supabase
+  const firebase = await createFirebaseServerClient();
+  const { data: profile } = await firebase
     .from("profiles")
     .select("display_name,name,leaderboard_anonymous")
     .eq("user_id", args.userId)
@@ -15,7 +15,7 @@ export async function syncProfilePublic(args: { userId: string }) {
     profile?.name?.trim() ||
     `Learner-${args.userId.slice(0, 6)}`;
 
-  await supabase.from("profile_public").upsert(
+  await firebase.from("profile_public").upsert(
     {
       user_id: args.userId,
       display_name: display,

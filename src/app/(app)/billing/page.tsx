@@ -1,19 +1,19 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaystackUpgradeButton } from "@/components/billing/paystack-upgrade-button";
 import { Button } from "@/components/ui/button";
 
 export default async function BillingPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile } = await firebase
     .from("profiles")
     .select("subscription_tier,pro_until")
     .eq("user_id", user.id)

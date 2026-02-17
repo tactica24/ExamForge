@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
@@ -19,11 +19,11 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const supabase = await createSupabaseServerClient();
-  const { data: exam } = await supabase.from("exams").select("*").eq("id", examId).maybeSingle();
+  const firebase = await createFirebaseServerClient();
+  const { data: exam } = await firebase.from("exams").select("*").eq("id", examId).maybeSingle();
   if (!exam) redirect("/admin/exams");
 
-  const { data: syllabi } = await supabase.from("syllabi").select("*").eq("exam_id", examId).order("subject", { ascending: true });
+  const { data: syllabi } = await firebase.from("syllabi").select("*").eq("exam_id", examId).order("subject", { ascending: true });
 
   const subjects = Array.isArray(exam.subjects) ? (exam.subjects as any[]).map(String) : [];
   const firstSubject = subjects[0] ?? "Subject";

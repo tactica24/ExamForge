@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export default async function OnboardingPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   const exams = await listActiveExams();

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 function makeCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -9,19 +9,19 @@ function makeCode() {
 }
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
-  const { data: existing } = await supabase.from("referral_codes").select("code").eq("user_id", user.id).maybeSingle();
+  const { data: existing } = await firebase.from("referral_codes").select("code").eq("user_id", user.id).maybeSingle();
   if (existing?.code) return NextResponse.json({ ok: true, code: existing.code });
 
   // Try a few times in case of rare collisions.
   for (let i = 0; i < 5; i++) {
     const code = makeCode();
-    const { error } = await supabase.from("referral_codes").insert({ user_id: user.id, code });
+    const { error } = await firebase.from("referral_codes").insert({ user_id: user.id, code });
     if (!error) return NextResponse.json({ ok: true, code });
   }
 

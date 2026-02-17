@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 const VerifySchema = z.object({
   phone: z.string().min(8).max(30),
@@ -16,8 +16,8 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Enter the code." };
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const firebase = await createFirebaseServerClient();
+  const { error } = await firebase.auth.verifyOtp({
     phone: parsed.data.phone,
     token: parsed.data.token,
     type: "sms"

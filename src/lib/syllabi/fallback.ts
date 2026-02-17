@@ -1,4 +1,4 @@
-import type { Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/firebase/database.types";
 import { seedSyllabiNG } from "@/data/seed/exams";
 
 export type Topic = {

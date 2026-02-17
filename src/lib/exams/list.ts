@@ -1,11 +1,11 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFallbackExams } from "@/lib/exams/fallback";
 
 export async function listActiveExams() {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const firebase = await createFirebaseServerClient();
+  const { data, error } = await firebase
     .from("exams")
     .select("*")
     .eq("is_active", true)

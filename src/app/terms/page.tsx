@@ -18,7 +18,7 @@ export default function TermsPage() {
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight">Terms of Use</h1>
             <p className="text-sm text-muted-foreground">
-              ExamForge is a preparation platform for study planning, practice, and performance monitoring.
+              ACE NAIJA is a preparation platform for study planning, practice, and performance monitoring.
               It is not an official exam authority and is not affiliated with any examination body.
             </p>
           </div>
@@ -26,7 +26,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">1) Educational purpose and no score guarantee</h2>
             <p className="text-sm text-muted-foreground">
-              ExamForge provides practice content, mock simulations, and analytics to support preparation.
+              ACE NAIJA provides practice content, mock simulations, and analytics to support preparation.
               Performance in practice or mock exams does not guarantee outcomes in any official exam.
               For example, a high mock score (including 400/400) does not guarantee the same result in a live exam,
               which may differ in difficulty, conditions, marking, and candidate factors.
@@ -56,7 +56,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">4) Content and intellectual property</h2>
             <p className="text-sm text-muted-foreground">
-              ExamForge retains rights in the platform, features, brand assets, and original materials.
+              ACE NAIJA retains rights in the platform, features, brand assets, and original materials.
               Third-party marks and exam names belong to their respective owners and are referenced only for preparation context.
             </p>
           </section>
@@ -72,7 +72,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">6) Availability and service updates</h2>
             <p className="text-sm text-muted-foreground">
-              We continuously improve ExamForge and may modify, add, pause, or discontinue features.
+              We continuously improve ACE NAIJA and may modify, add, pause, or discontinue features.
               We do not guarantee uninterrupted availability, error-free operation, or compatibility with every device and network condition.
             </p>
           </section>
@@ -80,7 +80,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">7) Limitation of liability</h2>
             <p className="text-sm text-muted-foreground">
-              To the fullest extent permitted by law, ExamForge and its operators are not liable for indirect, incidental,
+              To the fullest extent permitted by law, ACE NAIJA and its operators are not liable for indirect, incidental,
               special, consequential, or educational-outcome-related losses arising from use of the service,
               including exam results, missed opportunities, or reliance on practice analytics.
             </p>

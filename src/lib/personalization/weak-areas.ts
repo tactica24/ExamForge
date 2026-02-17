@@ -1,8 +1,8 @@
 import "server-only";
 
 import { addDays, formatISO } from "date-fns";
-import type { Json } from "@/lib/supabase/database.types";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/firebase/database.types";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 type WeakArea = {
   score: number; // percent 0..100
@@ -23,12 +23,12 @@ export async function updateWeakAreasAfterQuiz(args: {
   score: number;
   total: number;
 }) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
 
   const percent = args.total ? Math.round((args.score / args.total) * 100) : 0;
   const today = formatISO(new Date(), { representation: "date" });
 
-  const { data: plan } = await supabase
+  const { data: plan } = await firebase
     .from("user_plans")
     .select("*")
     .eq("user_id", args.userId)
@@ -52,12 +52,12 @@ export async function updateWeakAreasAfterQuiz(args: {
     }
   };
 
-  await supabase.from("user_plans").update({ weak_areas: next as unknown as Json }).eq("id", plan.id);
+  await firebase.from("user_plans").update({ weak_areas: next as unknown as Json }).eq("id", plan.id);
 
   const isWeak = percent < 60;
   if (isWeak) {
     const tomorrow = formatISO(addDays(new Date(), 1), { representation: "date" });
-    await supabase.from("plan_items").insert({
+    await firebase.from("plan_items").insert({
       plan_id: plan.id,
       scheduled_for: tomorrow,
       day_index: 9999,

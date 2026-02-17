@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,13 +18,13 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
   const sp = await props.searchParams;
   const period = (sp.period === "monthly" || sp.period === "all_time" ? sp.period : "weekly") as Period;
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: entries } = await supabase
+  const { data: entries } = await firebase
     .from("leaderboard_entries")
     .select("user_id,score,rank,computed_at")
     .eq("period", period)
@@ -33,7 +33,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
 
   const userIds = (entries ?? []).map((e) => e.user_id);
   const { data: pubs } = userIds.length
-    ? await supabase.from("profile_public").select("user_id,display_name,anonymous").in("user_id", userIds)
+    ? await firebase.from("profile_public").select("user_id,display_name,anonymous").in("user_id", userIds)
     : { data: [] as any[] };
   const byId = new Map((pubs ?? []).map((p) => [p.user_id, p]));
 

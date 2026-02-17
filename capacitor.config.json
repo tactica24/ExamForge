@@ -1,10 +1,10 @@
 {
-  "appId": "com.examforge.app",
-  "appName": "ExamForge",
+  "appId": "com.acenaija.app",
+  "appName": "ACE NAIJA",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://examforge.vercel.app",
+    "url": "https://your-app.vercel.app",
     "cleartext": false
   }
 }

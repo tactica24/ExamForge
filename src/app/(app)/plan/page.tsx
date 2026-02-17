@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { format, addDays } from "date-fns";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +9,10 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
 
 export default async function PlanPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
@@ -21,7 +21,7 @@ export default async function PlanPage() {
   const start = format(new Date(), "yyyy-MM-dd");
   const end = format(addDays(new Date(), 13), "yyyy-MM-dd");
 
-  const { data: items } = await supabase
+  const { data: items } = await firebase
     .from("plan_items")
     .select("*")
     .eq("plan_id", plan.id)

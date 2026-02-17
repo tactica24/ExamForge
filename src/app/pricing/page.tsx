@@ -53,7 +53,7 @@ export default function PricingPage() {
                 <Badge className="rounded-full">Best value</Badge>
                 <div className="mt-3 text-sm font-medium">Pro</div>
                 <div className="mt-2 text-4xl font-semibold tracking-tight">
-                  N7,500
+                  N3,000
                   <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">Designed for learners who want measurable score improvement.</p>
@@ -97,7 +97,7 @@ export default function PricingPage() {
 
           <p className="mt-8 flex items-center gap-2 text-xs text-muted-foreground">
             <Trophy className="h-3.5 w-3.5" />
-            ExamForge is an independent preparation platform and is not affiliated with any exam body.
+            ACE NAIJA is an independent preparation platform and is not affiliated with any exam body.
           </p>
         </div>
       </main>

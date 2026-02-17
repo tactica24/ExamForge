@@ -14,7 +14,6 @@ on:
       - "www/**"
       - "assets/**"
       - "package.json"
-      - "package-lock.json"
       - ".github/workflows/android-apk.yml"
 
 jobs:
@@ -41,7 +40,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install project deps
-        run: npm ci
+        run: npm install
 
       - name: Resolve mobile app URL
         id: app_url
@@ -97,6 +96,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: examforge-apk-debug
+          name: ace-naija-apk-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7

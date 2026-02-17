@@ -50,7 +50,7 @@ export function ParentLinksCard(props: { links: ParentLink[] }) {
           <div className="text-sm text-muted-foreground">No parent links yet.</div>
         )}
         <p className="text-xs text-muted-foreground">
-          Parent view uses a secure token. Revoke links in Supabase (MVP: revoke UI coming next).
+          Parent view uses a secure token. Revoke links in Firebase (MVP: revoke UI coming next).
         </p>
       </CardContent>
     </Card>

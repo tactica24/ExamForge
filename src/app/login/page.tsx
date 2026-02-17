@@ -7,9 +7,11 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
-export default async function LoginPage(props: { searchParams: Promise<{ next?: string }> }) {
+export default async function LoginPage(props: { searchParams: Promise<{ next?: string; verify?: string }> }) {
   const sp = await props.searchParams;
   const next = sp.next ?? "";
+  const showVerifyHint = sp.verify === "1";
+
   return (
     <AuthCard
       title="Welcome back"
@@ -23,6 +25,11 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
         </div>
       }
     >
+      {showVerifyHint ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+          Account created. Check your email and confirm your account, then log in.
+        </div>
+      ) : null}
       <OAuthButtons />
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
@@ -37,7 +44,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" placeholder="••••••••" required />
+          <Input id="password" name="password" type="password" placeholder="Enter your password" required />
         </div>
         <SubmitButton type="submit" className="w-full" pendingText="Logging in...">
           Log in

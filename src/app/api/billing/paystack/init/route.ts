@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { paystackInitialize } from "@/lib/billing/paystack";
 import { getServerEnv } from "@/lib/env";
 
 export async function POST() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const env = getServerEnv();
@@ -18,7 +18,7 @@ export async function POST() {
 
   const init = await paystackInitialize({
     email,
-    amountKobo: 500000, // ₦5,000 (adjust per tier/plan)
+    amountKobo: 300000, // NGN 3,000 (adjust per tier/plan)
     callbackUrl,
     metadata: {
       user_id: user.id,

@@ -13,7 +13,7 @@ export default async function AdminHomePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add/edit exams and syllabi. To enable admin access, set your Supabase user `app_metadata.role=admin`.
+          Add/edit exams and syllabi. To enable admin access, set your Firebase user `app_metadata.role=admin`.
         </p>
       </div>
 

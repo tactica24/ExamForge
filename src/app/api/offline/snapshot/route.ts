@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { addDays, formatISO } from "date-fns";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const plan = await getActivePlanForUser(user.id);
@@ -16,7 +16,7 @@ export async function GET() {
   const start = formatISO(new Date(), { representation: "date" });
   const end = formatISO(addDays(new Date(), 14), { representation: "date" });
 
-  const { data: items } = await supabase
+  const { data: items } = await firebase
     .from("plan_items")
     .select("id,scheduled_for,topic_path,title,resource_links,status")
     .eq("plan_id", plan.id)
@@ -24,7 +24,7 @@ export async function GET() {
     .lte("scheduled_for", end)
     .order("scheduled_for", { ascending: true });
 
-  const { data: recent } = await supabase
+  const { data: recent } = await firebase
     .from("user_quiz_results")
     .select("quiz_id,score,total,created_at")
     .eq("user_id", user.id)

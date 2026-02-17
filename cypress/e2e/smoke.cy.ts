@@ -1,8 +1,8 @@
 describe("marketing", () => {
   it("loads landing page", () => {
     cy.visit("/");
-    cy.contains("ExamForge");
-    cy.contains("Get started");
+    cy.contains("ACE NAIJA");
+    cy.contains("Start learning now");
   });
 });
 

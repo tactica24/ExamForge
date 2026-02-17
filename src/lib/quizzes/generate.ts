@@ -1,7 +1,7 @@
 import "server-only";
 
 import { startOfDay } from "date-fns";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { generateQuestions } from "@/lib/quizzes/questions";
 
 export async function getOrCreateDailyQuiz(args: {
@@ -13,11 +13,11 @@ export async function getOrCreateDailyQuiz(args: {
   difficulty?: "easy" | "medium" | "hard";
   preferredLanguage?: string | null;
 }) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const difficulty = args.difficulty ?? "medium";
   const dayStart = startOfDay(new Date()).toISOString();
 
-  const { data: existing } = await supabase
+  const { data: existing } = await firebase
     .from("quizzes")
     .select("id")
     .eq("exam_id", args.examId)
@@ -32,7 +32,7 @@ export async function getOrCreateDailyQuiz(args: {
 
   if (existing?.id) return existing.id;
 
-  const { data: quiz, error: quizErr } = await supabase
+  const { data: quiz, error: quizErr } = await firebase
     .from("quizzes")
     .insert({
       exam_id: args.examId,
@@ -57,7 +57,7 @@ export async function getOrCreateDailyQuiz(args: {
     preferredLanguage: args.preferredLanguage ?? null
   });
 
-  const { error: qErr } = await supabase.from("quiz_questions").insert(
+  const { error: qErr } = await firebase.from("quiz_questions").insert(
     questions.map((q) => ({
       quiz_id: quiz.id,
       question: q.question,

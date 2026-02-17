@@ -6,11 +6,11 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 export const metadata: Metadata = {
   title: {
-    default: "ExamForge",
-    template: "%s · ExamForge"
+    default: "ACE NAIJA",
+    template: "%s | ACE NAIJA"
   },
   description: "AI-powered exam prep PWA for WAEC, JAMB, IELTS, ACCA, and ICAN.",
-  applicationName: "ExamForge",
+  applicationName: "ACE NAIJA",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   manifest: "/manifest.webmanifest",
   icons: {
@@ -38,4 +38,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-

@@ -1,25 +1,25 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuizReview } from "@/components/quiz/quiz-review";
 
 export default async function QuizReviewPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await supabase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
+  const { data: quiz } = await firebase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
   if (!quiz) redirect("/dashboard");
 
-  const { data: exam } = await supabase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
+  const { data: exam } = await firebase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
   const examName = exam?.name ?? "Exam";
 
-  const { data: result } = await supabase
+  const { data: result } = await firebase
     .from("user_quiz_results")
     .select("answers,score,total,created_at")
     .eq("user_id", user.id)
@@ -31,7 +31,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
 
   const answers = Array.isArray(result.answers) ? (result.answers as any[]).map((n) => Number(n)) : [];
 
-  const { data: questions } = await supabase
+  const { data: questions } = await firebase
     .from("quiz_questions")
     .select("id,question,options,correct_index,explanation")
     .eq("quiz_id", quizId)

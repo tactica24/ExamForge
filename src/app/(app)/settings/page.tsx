@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,28 +16,29 @@ import {
 } from "@/app/(app)/settings/actions";
 import { ReferralCard } from "@/components/referrals/referral-card";
 import { ParentLinksCard } from "@/components/parent/parent-links-card";
+import { AvatarUploader } from "@/components/profile/avatar-uploader";
 
 function toSubjects(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
 }
 
 export default async function SettingsPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams] = await Promise.all([
-    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase
+    firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
+    firebase
       .from("parent_links")
       .select("token,label,created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
-    supabase
+    firebase
       .from("user_exam_subjects")
       .select("exam_id,subject,is_active,created_at")
       .eq("user_id", user.id)
@@ -76,6 +77,9 @@ export default async function SettingsPage() {
           <CardDescription>Used for personalization and group matching.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <AvatarUploader name={profile?.display_name ?? profile?.name ?? user.email ?? "Learner"} avatarUrl={profile?.avatar_url ?? null} />
+          </div>
           <AuthFormState action={updateProfileAction}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -89,6 +93,15 @@ export default async function SettingsPage() {
                   name="display_name"
                   defaultValue={profile?.display_name ?? ""}
                   placeholder="Shown on leaderboards"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="avatar_url">Avatar URL (optional)</Label>
+                <Input
+                  id="avatar_url"
+                  name="avatar_url"
+                  defaultValue={profile?.avatar_url ?? ""}
+                  placeholder="https://..."
                 />
               </div>
               <div className="space-y-2">

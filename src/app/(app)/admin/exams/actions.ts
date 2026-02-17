@@ -1,8 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 const ExamSchema = z.object({
   slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
@@ -13,10 +13,10 @@ const ExamSchema = z.object({
 });
 
 async function assertAdmin() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
   if (!user || !isAdmin) throw new Error("Forbidden");
 }
@@ -42,7 +42,7 @@ export async function createExamAction(_: unknown, formData: FormData) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
   const { error } = await admin.from("exams").insert({
     slug: parsed.data.slug,
     name: parsed.data.name,

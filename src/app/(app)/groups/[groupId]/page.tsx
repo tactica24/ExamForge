@@ -1,20 +1,20 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GroupChat } from "@/components/groups/group-chat";
 
 export default async function GroupPage(props: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await props.params;
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: group } = await supabase.from("groups").select("*").eq("id", groupId).maybeSingle();
+  const { data: group } = await firebase.from("groups").select("*").eq("id", groupId).maybeSingle();
   if (!group) redirect("/groups");
 
-  const { data: membership } = await supabase
+  const { data: membership } = await firebase
     .from("group_members")
     .select("group_id")
     .eq("group_id", groupId)
@@ -22,7 +22,7 @@ export default async function GroupPage(props: { params: Promise<{ groupId: stri
     .maybeSingle();
   if (!membership) redirect("/groups");
 
-  const { data: messages } = await supabase
+  const { data: messages } = await firebase
     .from("group_messages")
     .select("id,user_id,content,flagged,is_system,created_at")
     .eq("group_id", groupId)

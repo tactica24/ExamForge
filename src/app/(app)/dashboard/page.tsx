@@ -5,24 +5,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");
 
+  const { data: profile } = await firebase
+    .from("profiles")
+    .select("name,display_name,avatar_url")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
-  const { data: gamificationData, error: gamificationErr } = await supabase
+  const { data: gamificationData, error: gamificationErr } = await firebase
     .from("user_gamification")
     .select("streak_count,total_xp,level,badges")
     .eq("user_id", user.id)
@@ -36,21 +43,21 @@ export default async function DashboardPage() {
   const levelProgress = Math.min(100, Math.round((totalXp / Math.max(1, nextLevelAt)) * 100));
   const badgesCount = Array.isArray(gamification?.badges) ? (gamification?.badges as any[]).length : 0;
 
-  const { data: todayItems } = await supabase
+  const { data: todayItems } = await firebase
     .from("plan_items")
     .select("*")
     .eq("plan_id", plan.id)
     .eq("scheduled_for", todayStr)
     .order("day_index", { ascending: true });
 
-  const { data: recentResults } = await supabase
+  const { data: recentResults } = await firebase
     .from("user_quiz_results")
     .select("score,total,created_at,quiz_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const { data: storiesData, error: storiesErr } = await supabase
+  const { data: storiesData, error: storiesErr } = await firebase
     .from("success_stories")
     .select("id,content,created_at")
     .order("created_at", { ascending: false })
@@ -59,13 +66,13 @@ export default async function DashboardPage() {
 
   const completion = todayItems?.length
     ? Math.round(
-        (todayItems.filter((i) => i.status === "done").length / Math.max(1, todayItems.length)) * 100
+        (todayItems.filter((item) => item.status === "done").length / Math.max(1, todayItems.length)) * 100
       )
     : 0;
 
   const avgPercent = recentResults?.length
     ? Math.round(
-        recentResults.reduce((acc, r) => acc + (r.total ? (r.score / r.total) * 100 : 0), 0) /
+        recentResults.reduce((acc, result) => acc + (result.total ? (result.score / result.total) * 100 : 0), 0) /
           recentResults.length
       )
     : 0;
@@ -73,11 +80,20 @@ export default async function DashboardPage() {
   const weakEntries =
     plan?.weak_areas && typeof plan.weak_areas === "object" && !Array.isArray(plan.weak_areas)
       ? Object.entries(plan.weak_areas as any)
-          .map(([topic, v]) => ({ topic, score: Number((v as any)?.score ?? v ?? 0) }))
-          .filter((x) => Number.isFinite(x.score))
+          .map(([topic, value]) => ({ topic, score: Number((value as any)?.score ?? value ?? 0) }))
+          .filter((entry) => Number.isFinite(entry.score))
           .sort((a, b) => a.score - b.score)
           .slice(0, 3)
       : [];
+
+  const displayName = profile?.display_name ?? profile?.name ?? user.email ?? "Learner";
+  const avatarFallback =
+    displayName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((piece) => piece[0]?.toUpperCase())
+      .join("") || "U";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -85,18 +101,9 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.mode === "group" ? "Group mode" : "Solo mode"} · {plan.pace} pace ·{" "}
+            {plan.mode === "group" ? "Group mode" : "Solo mode"} • {plan.pace} pace •{" "}
             <span className="font-medium text-foreground">{todayStr}</span>
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <Badge variant="secondary">Streak: {streak} day{streak === 1 ? "" : "s"}</Badge>
-            <Badge variant="secondary">XP: {totalXp}</Badge>
-            <Badge variant="secondary">Level: {level}</Badge>
-            <Badge variant="secondary">Badges: {badgesCount}</Badge>
-          </div>
-          <div className="mt-2 h-2 w-full max-w-sm overflow-hidden rounded-full bg-muted">
-            <div className={cn("h-full bg-primary")} style={{ width: `${levelProgress}%` }} />
-          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="secondary">
@@ -107,6 +114,36 @@ export default async function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={profile?.avatar_url ?? undefined} alt={`${displayName} avatar`} />
+              <AvatarFallback>{avatarFallback}</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-sm text-muted-foreground">Welcome back</div>
+              <div className="text-lg font-semibold">{displayName}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Keep your streak alive with one focused session today.
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">Streak: {streak} day{streak === 1 ? "" : "s"}</Badge>
+            <Badge variant="secondary">XP: {totalXp}</Badge>
+            <Badge variant="secondary">Level: {level}</Badge>
+            <Badge variant="secondary">Badges: {badgesCount}</Badge>
+          </div>
+        </CardContent>
+        <CardContent className="pt-0">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className={cn("h-full bg-primary")} style={{ width: `${levelProgress}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Level progress: {levelProgress}%</p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -129,19 +166,17 @@ export default async function DashboardPage() {
                       <div className="mt-1 text-xs text-muted-foreground">{item.topic_path}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {Array.isArray(item.resource_links)
-                          ? (item.resource_links as any[])
-                              .slice(0, 2)
-                              .map((r) => (
-                                <a
-                                  key={r.url}
-                                  className="text-xs text-primary underline underline-offset-4"
-                                  href={r.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {r.title}
-                                </a>
-                              ))
+                          ? (item.resource_links as any[]).slice(0, 2).map((resource) => (
+                              <a
+                                key={resource.url}
+                                className="text-xs text-primary underline underline-offset-4"
+                                href={resource.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {resource.title}
+                              </a>
+                            ))
                           : null}
                       </div>
                     </div>
@@ -166,13 +201,13 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {recentResults?.length ? (
-              recentResults.map((r) => (
-                <div key={r.quiz_id} className="flex items-center justify-between">
+              recentResults.map((result) => (
+                <div key={result.quiz_id} className="flex items-center justify-between">
                   <div className="text-sm font-medium">
-                    {r.score}/{r.total}
+                    {result.score}/{result.total}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleDateString()}
+                    {new Date(result.created_at).toLocaleDateString()}
                   </div>
                 </div>
               ))
@@ -192,10 +227,10 @@ export default async function DashboardPage() {
                 <Separator />
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Weak areas</div>
-                  {weakEntries.map((w) => (
-                    <div key={w.topic} className="flex items-center justify-between text-sm">
-                      <div className="text-muted-foreground">{w.topic}</div>
-                      <div className="font-medium">{Math.round(w.score)}%</div>
+                  {weakEntries.map((entry) => (
+                    <div key={entry.topic} className="flex items-center justify-between text-sm">
+                      <div className="text-muted-foreground">{entry.topic}</div>
+                      <div className="font-medium">{Math.round(entry.score)}%</div>
                     </div>
                   ))}
                   <Button asChild variant="outline" className="w-full">
@@ -219,9 +254,9 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {stories?.length ? (
-            stories.map((s: any) => (
-              <div key={s.id} className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
-                {s.content}
+            stories.map((story: any) => (
+              <div key={story.id} className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+                {story.content}
               </div>
             ))
           ) : (

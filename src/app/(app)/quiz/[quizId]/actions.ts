@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 const SubmitSchema = z.object({
   quiz_id: z.string().uuid(),
@@ -19,13 +19,13 @@ export async function submitQuizAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid submission." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: qs, error: qErr } = await supabase
+  const { data: qs, error: qErr } = await firebase
     .from("quiz_questions")
     .select("correct_index")
     .eq("quiz_id", parsed.data.quiz_id)
@@ -36,7 +36,7 @@ export async function submitQuizAction(_: unknown, formData: FormData) {
   const total = correct.length;
   const score = correct.reduce((acc, ci, idx) => acc + (parsed.data.answers[idx] === ci ? 1 : 0), 0);
 
-  const { error } = await supabase.from("user_quiz_results").insert({
+  const { error } = await firebase.from("user_quiz_results").insert({
     user_id: user.id,
     quiz_id: parsed.data.quiz_id,
     score,

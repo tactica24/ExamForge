@@ -2,15 +2,15 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createFirebaseBrowserClient } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 
 export function OAuthButtons() {
   async function start(provider: "google") {
     try {
-      const supabase = createSupabaseBrowserClient();
+      const firebase = createFirebaseBrowserClient();
       const redirectTo = `${window.location.origin}/onboarding`;
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await firebase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo

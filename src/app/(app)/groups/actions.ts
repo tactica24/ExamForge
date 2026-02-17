@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { simpleModerate } from "@/lib/moderation/simple";
 
 const SendSchema = z.object({
@@ -16,16 +16,16 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Message is required." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const mod = simpleModerate(parsed.data.content);
   if (!mod.ok) return { ok: false, message: "Message too long." };
 
-  const { error } = await supabase.from("group_messages").insert({
+  const { error } = await firebase.from("group_messages").insert({
     group_id: parsed.data.group_id,
     user_id: user.id,
     content: parsed.data.content.trim(),

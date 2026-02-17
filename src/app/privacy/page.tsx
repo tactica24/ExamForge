@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
             <p className="text-sm text-muted-foreground">
-              ExamForge is designed with practical privacy controls to support modern expectations across
+              ACE NAIJA is designed with practical privacy controls to support modern expectations across
               NDPR-aligned, GDPR/UK GDPR-style, and other global data protection principles.
             </p>
             <p className="text-sm text-muted-foreground">
@@ -100,7 +100,7 @@ export default function PrivacyPage() {
               ))}
             </ul>
             <p className="text-sm text-muted-foreground">
-              You can submit privacy-related requests through official ExamForge support channels. We may verify
+              You can submit privacy-related requests through official ACE NAIJA support channels. We may verify
               identity before completing sensitive account actions.
             </p>
           </section>

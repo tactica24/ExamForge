@@ -1,14 +1,14 @@
 "use server";
 
 import { z } from "zod";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 async function assertAdmin() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
   if (!user || !isAdmin) throw new Error("Forbidden");
 }
@@ -41,7 +41,7 @@ export async function upsertSyllabusAction(_: unknown, formData: FormData) {
     return { ok: false, message: `Invalid JSON: ${e?.message ?? "parse error"}` };
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
   const { error } = await admin.from("syllabi").upsert(
     {
       exam_id: parsed.data.exam_id,

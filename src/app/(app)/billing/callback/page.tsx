@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { paystackVerify } from "@/lib/billing/paystack";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,10 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   const sp = await props.searchParams;
   const reference = sp.reference;
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   if (!reference) {
@@ -42,7 +42,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
       throw new Error("Payment not verified for this account.");
     }
 
-    await supabase.from("subscriptions").upsert(
+    await firebase.from("subscriptions").upsert(
       {
         user_id: user.id,
         provider: "paystack",
@@ -52,7 +52,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
       },
       { onConflict: "user_id,provider" }
     );
-    await supabase.from("profiles").update({ subscription_tier: "pro" }).eq("user_id", user.id);
+    await firebase.from("profiles").update({ subscription_tier: "pro" }).eq("user_id", user.id);
 
     return (
       <Card className="mx-auto max-w-lg">

@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
 import { subDays, format } from "date-fns";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressCharts } from "@/components/progress/progress-charts";
 
 export default async function ProgressPage() {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
   const since = subDays(new Date(), 30).toISOString();
-  const { data: results } = await supabase
+  const { data: results } = await firebase
     .from("user_quiz_results")
     .select("score,total,created_at")
     .eq("user_id", user.id)

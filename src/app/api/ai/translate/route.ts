@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { languageInstruction } from "@/lib/ai/language";
 
 export async function POST(req: Request) {
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);

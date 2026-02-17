@@ -4,6 +4,7 @@ import { Logo } from "@/components/site-logo";
 
 export function AppShell(props: {
   name: string | null;
+  avatarUrl?: string | null;
   isAdmin: boolean;
   children: React.ReactNode;
 }) {
@@ -14,7 +15,7 @@ export function AppShell(props: {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Logo className="h-6 w-6" />
-              <span className="text-sm font-semibold tracking-tight">ExamForge</span>
+              <span className="text-sm font-semibold tracking-tight">ACE NAIJA</span>
             </div>
             <nav className="hidden items-center gap-1 sm:flex">
               <NavLink href="/dashboard" label="Dashboard" />
@@ -28,7 +29,7 @@ export function AppShell(props: {
           </div>
           <div className="flex items-center gap-2">
             <form id="logout-form" action="/logout" method="post" className="hidden" />
-            <UserMenu name={props.name} isAdmin={props.isAdmin} />
+            <UserMenu name={props.name} avatarUrl={props.avatarUrl} isAdmin={props.isAdmin} />
           </div>
         </div>
         <div className="container pb-3 sm:hidden">

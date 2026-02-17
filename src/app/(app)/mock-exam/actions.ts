@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 
@@ -20,17 +20,17 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid mock exam settings." };
 
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) return { ok: false, message: "No active plan." };
 
-  const { data: exam } = await supabase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle();
-  const { data: profile } = await supabase
+  const { data: exam } = await firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle();
+  const { data: profile } = await firebase
     .from("profiles")
     .select("preferred_explanation_language")
     .eq("user_id", user.id)

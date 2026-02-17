@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { subDays } from "date-fns";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getServerEnv } from "@/lib/env";
 
 export async function GET(req: Request) {
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
   const since = subDays(new Date(), 7).toISOString();
   const today = new Date().toISOString().slice(0, 10);
 

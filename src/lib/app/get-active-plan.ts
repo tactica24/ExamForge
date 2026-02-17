@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export async function getActivePlanForUser(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  const { data: plan } = await supabase
+  const firebase = await createFirebaseServerClient();
+  const { data: plan } = await firebase
     .from("user_plans")
     .select("*")
     .eq("user_id", userId)

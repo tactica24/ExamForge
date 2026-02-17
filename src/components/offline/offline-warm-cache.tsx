@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-const KEY = "examforge.offline.snapshot.v1";
+const KEY = "ace-naija.offline.snapshot.v1";
 
 export function OfflineWarmCache(props: { lowDataMode: boolean }) {
   React.useEffect(() => {

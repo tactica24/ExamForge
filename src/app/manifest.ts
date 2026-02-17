@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ExamForge",
-    short_name: "ExamForge",
+    name: "ACE NAIJA",
+    short_name: "ACE NAIJA",
     description: "AI-powered exam prep PWA for WAEC, JAMB, IELTS, ACCA, and ICAN.",
     start_url: "/",
     display: "standalone",

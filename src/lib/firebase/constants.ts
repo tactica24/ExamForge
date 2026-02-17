@@ -1,0 +1,1 @@
+export const FIREBASE_SESSION_COOKIE = "ace_naija_session";

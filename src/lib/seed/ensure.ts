@@ -1,13 +1,13 @@
 import "server-only";
 
 import { seedExamsNG, seedSyllabiNG } from "@/data/seed/exams";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 
 export async function ensureSeedExamExists(args: { slug: string }) {
   const exam = seedExamsNG.find((e) => e.slug === args.slug);
   if (!exam) throw new Error(`No seed exam found for slug: ${args.slug}`);
 
-  const admin = createSupabaseAdminClient();
+  const admin = createFirebaseAdminClient();
   const { data: existing } = await admin.from("exams").select("id,slug").eq("slug", exam.slug).maybeSingle();
   if (existing) return existing.id;
 

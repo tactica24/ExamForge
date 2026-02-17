@@ -1,21 +1,21 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { MockRunner } from "@/components/mock/mock-runner";
 
 export default async function MockExamRunPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
-  const supabase = await createSupabaseServerClient();
+  const firebase = await createFirebaseServerClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await supabase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
+  const { data: quiz } = await firebase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
   if (!quiz) redirect("/mock-exam");
 
   const durationSec = Number((quiz.meta as any)?.duration_sec ?? 3600);
 
-  const { data: questions } = await supabase
+  const { data: questions } = await firebase
     .from("quiz_questions")
     .select("id,question,options")
     .eq("quiz_id", quizId)

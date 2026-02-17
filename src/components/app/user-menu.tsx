@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LogOut, Settings, Shield, CreditCard, User } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-export function UserMenu(props: { name: string | null; isAdmin: boolean }) {
+export function UserMenu(props: { name: string | null; avatarUrl?: string | null; isAdmin: boolean }) {
   const initials =
     props.name
       ?.split(" ")
@@ -27,6 +27,7 @@ export function UserMenu(props: { name: string | null; isAdmin: boolean }) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-9 gap-2 px-2">
           <Avatar className="h-7 w-7">
+            <AvatarImage src={props.avatarUrl ?? undefined} alt={props.name ?? "User avatar"} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <span className="hidden text-sm sm:inline">{props.name ?? "Account"}</span>

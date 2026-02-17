@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createFirebaseBrowserClient } from "@/lib/firebase/client";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,11 @@ export function GroupChat(props: {
   currentUserId: string;
   initialMessages: Message[];
 }) {
-  const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
+  const firebase = React.useMemo(() => createFirebaseBrowserClient(), []);
   const [messages, setMessages] = React.useState<Message[]>(props.initialMessages);
 
   React.useEffect(() => {
-    const channel = supabase
+    const channel = firebase
       .channel(`group:${props.groupId}`)
       .on(
         "postgres_changes",
@@ -41,9 +41,9 @@ export function GroupChat(props: {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      firebase.removeChannel(channel);
     };
-  }, [supabase, props.groupId]);
+  }, [firebase, props.groupId]);
 
   return (
     <div className="grid gap-3">
@@ -61,9 +61,9 @@ export function GroupChat(props: {
                 ].join(" ")}
               >
                 <div className="mb-1 text-xs text-muted-foreground">
-                  {system ? "ExamForge" : mine ? "You" : m.author_name ?? "Member"} ·{" "}
+                  {system ? "ACE NAIJA" : mine ? "You" : m.author_name ?? "Member"} -{" "}
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {m.flagged ? " · flagged" : ""}
+                  {m.flagged ? " - flagged" : ""}
                 </div>
                 <div className="whitespace-pre-wrap">{m.content}</div>
               </div>
