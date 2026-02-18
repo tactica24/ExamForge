@@ -95,16 +95,31 @@ export async function createExamAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Forbidden." };
   }
 
-  const admin = createFirebaseAdminClient();
-  const { error } = await admin.from("exams").insert({
-    slug,
-    name: parsedRaw.data.name.trim(),
-    country_code: countryCode,
-    description: parsedRaw.data.description ?? null,
-    subjects,
-    syllabus_sources: [],
-    is_active: true
-  });
+  let admin;
+  try {
+    admin = createFirebaseAdminClient();
+  } catch {
+    return {
+      ok: false,
+      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+    };
+  }
+
+  let error: { message?: string } | null = null;
+  try {
+    const result = await admin.from("exams").insert({
+      slug,
+      name: parsedRaw.data.name.trim(),
+      country_code: countryCode,
+      description: parsedRaw.data.description ?? null,
+      subjects,
+      syllabus_sources: [],
+      is_active: true
+    });
+    error = result.error;
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Failed to create exam." };
+  }
 
   if (error) {
     const msg = String(error.message ?? "");

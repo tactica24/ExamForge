@@ -54,17 +54,33 @@ export async function upsertSyllabusAction(_: unknown, formData: FormData) {
     return { ok: false, message: `Invalid JSON: ${e?.message ?? "parse error"}` };
   }
 
-  const admin = createFirebaseAdminClient();
-  const { error } = await admin.from("syllabi").upsert(
-    {
-      exam_id: parsed.data.exam_id,
-      subject: parsed.data.subject,
-      topics,
-      source_meta: { updated_by: "admin_ui" },
-      last_updated: new Date().toISOString()
-    },
-    { onConflict: "exam_id,subject" }
-  );
+  let admin;
+  try {
+    admin = createFirebaseAdminClient();
+  } catch {
+    return {
+      ok: false,
+      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+    };
+  }
+
+  let error: { message?: string } | null = null;
+  try {
+    const result = await admin.from("syllabi").upsert(
+      {
+        exam_id: parsed.data.exam_id,
+        subject: parsed.data.subject,
+        topics,
+        source_meta: { updated_by: "admin_ui" },
+        last_updated: new Date().toISOString()
+      },
+      { onConflict: "exam_id,subject" }
+    );
+    error = result.error;
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Failed to save syllabus." };
+  }
+
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
   return { ok: true };
@@ -84,18 +100,22 @@ export async function generateSubjectSyllabusAiAction(_: unknown, formData: Form
     return { ok: false, message: "Forbidden." };
   }
 
-  const aiTopics = await regenerateSyllabusWithAi({
-    examId: parsed.data.exam_id,
-    examSlug: parsed.data.exam_slug,
-    subject: parsed.data.subject
-  });
-
-  if (!aiTopics?.length) {
-    await getTopicsForExamSubject({
+  try {
+    const aiTopics = await regenerateSyllabusWithAi({
       examId: parsed.data.exam_id,
       examSlug: parsed.data.exam_slug,
       subject: parsed.data.subject
     });
+
+    if (!aiTopics?.length) {
+      await getTopicsForExamSubject({
+        examId: parsed.data.exam_id,
+        examSlug: parsed.data.exam_slug,
+        subject: parsed.data.subject
+      });
+    }
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Failed to generate syllabus for selected subject." };
   }
 
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
@@ -132,20 +152,24 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
     return { ok: false, message: "No subjects configured for this exam." };
   }
 
-  for (const subject of subjects) {
-    const aiTopics = await regenerateSyllabusWithAi({
-      examId: parsed.data.exam_id,
-      examSlug: parsed.data.exam_slug,
-      subject
-    });
-
-    if (!aiTopics?.length) {
-      await getTopicsForExamSubject({
+  try {
+    for (const subject of subjects) {
+      const aiTopics = await regenerateSyllabusWithAi({
         examId: parsed.data.exam_id,
         examSlug: parsed.data.exam_slug,
         subject
       });
+
+      if (!aiTopics?.length) {
+        await getTopicsForExamSubject({
+          examId: parsed.data.exam_id,
+          examSlug: parsed.data.exam_slug,
+          subject
+        });
+      }
     }
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Failed to generate syllabus for all subjects." };
   }
 
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
