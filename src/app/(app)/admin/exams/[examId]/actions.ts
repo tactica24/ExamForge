@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getTopicsForExamSubject, regenerateSyllabusWithAi } from "@/lib/syllabi/get";
+import { regenerateSyllabusWithAi } from "@/lib/syllabi/get";
 
 async function assertAdmin() {
   const firebase = await createFirebaseServerClient();
@@ -108,11 +108,11 @@ export async function generateSubjectSyllabusAiAction(_: unknown, formData: Form
     });
 
     if (!aiTopics?.length) {
-      await getTopicsForExamSubject({
-        examId: parsed.data.exam_id,
-        examSlug: parsed.data.exam_slug,
-        subject: parsed.data.subject
-      });
+      return {
+        ok: false,
+        message:
+          "AI did not return valid syllabus topics for this subject. Check OpenAI model access/quota and try again."
+      };
     }
   } catch (e: any) {
     return { ok: false, message: e?.message ?? "Failed to generate syllabus for selected subject." };
@@ -153,6 +153,7 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
   }
 
   try {
+    const failed: string[] = [];
     for (const subject of subjects) {
       const aiTopics = await regenerateSyllabusWithAi({
         examId: parsed.data.exam_id,
@@ -161,12 +162,15 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
       });
 
       if (!aiTopics?.length) {
-        await getTopicsForExamSubject({
-          examId: parsed.data.exam_id,
-          examSlug: parsed.data.exam_slug,
-          subject
-        });
+        failed.push(subject);
       }
+    }
+
+    if (failed.length) {
+      return {
+        ok: false,
+        message: `AI generation failed for ${failed.length} subject(s): ${failed.slice(0, 6).join(", ")}.`
+      };
     }
   } catch (e: any) {
     return { ok: false, message: e?.message ?? "Failed to generate syllabus for all subjects." };

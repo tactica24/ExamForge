@@ -52,7 +52,7 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
           <CardHeader>
             <CardTitle className="text-base">Generate syllabus with AI</CardTitle>
             <CardDescription>
-              OpenAI is used first. If unavailable, the app stores fallback topics so study planning still works.
+              Generates syllabus topics with OpenAI and stores the exact model/status metadata for each subject.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
@@ -99,16 +99,19 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
           <CardContent className="space-y-2">
             {syllabi?.length ? (
               syllabi.map((entry) => {
-                const source =
-                  entry?.source_meta && typeof entry.source_meta === "object"
-                    ? String((entry.source_meta as any).source ?? "manual")
-                    : "manual";
+                const meta = entry?.source_meta && typeof entry.source_meta === "object" ? (entry.source_meta as any) : {};
+                const source = String(meta.source ?? "manual");
+                const model = meta.model ? String(meta.model) : null;
+                const aiError = meta.ai_error ? String(meta.ai_error) : meta.ai_retry_error ? String(meta.ai_retry_error) : null;
                 return (
                   <div key={entry.id} className="rounded-lg border bg-card px-3 py-2 text-sm">
                     <div className="font-medium">{entry.subject}</div>
                     <div className="text-xs text-muted-foreground">
-                      Source: {source} | Updated {new Date(entry.last_updated).toLocaleDateString()}
+                      Source: {source}
+                      {model ? ` | Model: ${model}` : ""}
+                      {" | "}Updated {new Date(entry.last_updated).toLocaleDateString()}
                     </div>
+                    {aiError ? <div className="mt-1 text-[11px] text-amber-700">AI note: {aiError}</div> : null}
                   </div>
                 );
               })
