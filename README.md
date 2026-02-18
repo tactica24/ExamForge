@@ -21,6 +21,7 @@ npm install
 - (required for login sessions + Firestore server routes) either:
   - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
   - or `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (recommended)
+- For AI generation, also set `OPENAI_API_KEY`
 
 3) Enable providers in Firebase Console
 - Authentication -> Sign-in method -> Email/Password
@@ -91,7 +92,19 @@ npm run firebase:env:print -- path/to/serviceAccountKey.json
 ```bash
 curl -H "x-health-secret: $APP_CRON_SECRET" https://<your-domain>/api/health
 ```
-and confirm `firebase.webConfigReady=true` and `firebase.adminReady=true`.
+and confirm `firebase.webConfigReady=true`, `firebase.adminReady=true`, and `ai.openaiReady=true`.
+
+## OpenAI integration and syllabus-first flow
+1) Set `OPENAI_API_KEY` in local `.env.local` and in Vercel (Production + Preview), then redeploy.
+2) Check readiness:
+```bash
+curl -H "x-health-secret: $APP_CRON_SECRET" https://<your-domain>/api/health
+```
+Expect: `ai.openaiReady=true`.
+3) In admin, open `/admin/exams/<examId>` and use:
+- `Generate selected subject` for one subject
+- `Generate all subjects` to prebuild syllabus for the full exam
+4) Onboarding and quiz generation also call syllabus loading automatically. If AI is unavailable, stored fallback syllabus is used so planning still works.
 
 ## Reminders / cron endpoints
 ```bash

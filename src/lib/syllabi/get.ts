@@ -4,6 +4,34 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { getFallbackTopics, getGenericTopicsForSubject, type Topic } from "@/lib/syllabi/fallback";
 
+export type SyllabusTopic = Topic;
+
+async function persistTopics(args: {
+  examId: string;
+  subject: string;
+  topics: SyllabusTopic[];
+  source: "ai_auto" | "ai_admin" | "seed_fallback" | "generic_fallback";
+}) {
+  const firebase = await createFirebaseServerClient();
+  await firebase
+    .from("syllabi")
+    .upsert(
+      {
+        exam_id: args.examId,
+        subject: args.subject,
+        topics: args.topics as any,
+        source_meta: {
+          source: args.source,
+          updated_at: new Date().toISOString()
+        },
+        last_updated: new Date().toISOString()
+      },
+      { onConflict: "exam_id,subject" }
+    )
+    .then(() => {})
+    .catch(() => {});
+}
+
 async function generateAiTopics(args: { examSlug: string; subject: string }) {
   const client = getOpenAIClient();
   if (!client) return null;
@@ -36,16 +64,34 @@ async function generateAiTopics(args: { examSlug: string; subject: string }) {
   const parsed = JSON.parse(text);
   const raw = Array.isArray(parsed?.topics) ? parsed.topics : [];
 
-  const topics: Topic[] = raw
+  const topics: SyllabusTopic[] = raw
     .filter((item: any) => typeof item?.title === "string")
     .map((item: any) => ({
       title: String(item.title).slice(0, 120),
       path: String(item.path ?? item.title).slice(0, 120),
-      subtopics: Array.isArray(item.subtopics) ? item.subtopics.map((sub: any) => String(sub).slice(0, 120)).slice(0, 8) : []
+      subtopics: Array.isArray(item.subtopics)
+        ? item.subtopics.map((sub: any) => String(sub).slice(0, 120)).slice(0, 8)
+        : []
     }))
-    .filter((item: Topic) => item.title.length >= 2);
+    .filter((item: SyllabusTopic) => item.title.length >= 2);
 
   return topics.length ? topics : null;
+}
+
+export async function regenerateSyllabusWithAi(args: { examId: string; examSlug: string; subject: string }) {
+  try {
+    const aiTopics = await generateAiTopics({ examSlug: args.examSlug, subject: args.subject });
+    if (!aiTopics?.length) return null;
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: aiTopics,
+      source: "ai_admin"
+    });
+    return aiTopics;
+  } catch {
+    return null;
+  }
 }
 
 export async function getTopicsForExamSubject(args: { examId: string; examSlug: string; subject: string }) {
@@ -63,28 +109,37 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
   }
 
   const fallback = getFallbackTopics(args.examSlug, args.subject);
-  if (fallback) return fallback;
+  if (fallback) {
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: fallback,
+      source: "seed_fallback"
+    });
+    return fallback;
+  }
 
   try {
     const aiTopics = await generateAiTopics({ examSlug: args.examSlug, subject: args.subject });
     if (aiTopics?.length) {
-      await firebase
-        .from("syllabi")
-        .upsert(
-          {
-            exam_id: args.examId,
-            subject: args.subject,
-            topics: aiTopics as any
-          },
-          { onConflict: "exam_id,subject" }
-        )
-        .then(() => {})
-        .catch(() => {});
+      await persistTopics({
+        examId: args.examId,
+        subject: args.subject,
+        topics: aiTopics,
+        source: "ai_auto"
+      });
       return aiTopics;
     }
   } catch {
     // Ignore AI failures and continue to deterministic fallback topics.
   }
 
-  return getGenericTopicsForSubject(args.subject);
+  const generic = getGenericTopicsForSubject(args.subject);
+  await persistTopics({
+    examId: args.examId,
+    subject: args.subject,
+    topics: generic,
+    source: "generic_fallback"
+  });
+  return generic;
 }

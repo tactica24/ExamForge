@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   );
 
   const env = getServerEnv();
+  const hasOpenAiKey = Boolean(env.OPENAI_API_KEY);
   const includeDiagnostics =
     process.env.NODE_ENV !== "production" ||
     (env.APP_CRON_SECRET &&
@@ -30,6 +31,9 @@ export async function GET(request: Request) {
     firebase: {
       webConfigReady: hasFirebaseWebConfig,
       adminReady: isFirebaseAdminConfigured()
+    },
+    ai: {
+      openaiReady: hasOpenAiKey
     }
   });
 }
