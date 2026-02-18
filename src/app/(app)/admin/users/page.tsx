@@ -11,7 +11,11 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
-import { setUserRoleAction, setUserRoleByEmailAction } from "@/app/(app)/admin/users/actions";
+import {
+  setUserRoleAction,
+  setUserRoleByEmailAction,
+  updateUserSubscriptionAction
+} from "@/app/(app)/admin/users/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +154,39 @@ export default async function AdminUsersPage() {
               <div className="self-end">
                 <SubmitButton type="submit" pendingText="Saving...">
                   Update role
+                </SubmitButton>
+              </div>
+            </div>
+          </AuthFormState>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Support fixes</CardTitle>
+          <CardDescription>Resolve subscription/tier issues when users report billing or access problems.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuthFormState action={updateUserSubscriptionAction}>
+            <div className="grid gap-4 sm:grid-cols-[1fr_160px_160px_auto]">
+              <div className="space-y-2">
+                <Label htmlFor="support_email">User email</Label>
+                <Input id="support_email" name="email" type="email" placeholder="user@example.com" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="support_tier">Tier</Label>
+                <NativeSelect id="support_tier" name="tier" defaultValue="pro">
+                  <option value="pro">pro</option>
+                  <option value="free">free</option>
+                </NativeSelect>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pro_days">Pro days</Label>
+                <Input id="pro_days" name="pro_days" type="number" min={0} max={3650} defaultValue={30} />
+              </div>
+              <div className="self-end">
+                <SubmitButton type="submit" pendingText="Applying...">
+                  Apply fix
                 </SubmitButton>
               </div>
             </div>

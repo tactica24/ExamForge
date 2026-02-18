@@ -8,6 +8,24 @@ export function AppShell(props: {
   isAdmin: boolean;
   children: React.ReactNode;
 }) {
+  const navItems = props.isAdmin
+    ? [
+        { href: "/admin", label: "Overview" },
+        { href: "/admin/exams", label: "Exams" },
+        { href: "/admin/users", label: "Users" }
+      ]
+    : [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/plan", label: "Plan" },
+        { href: "/groups", label: "Groups" },
+        { href: "/tutor", label: "Tutor" },
+        { href: "/progress", label: "Progress" },
+        { href: "/leaderboard", label: "Leaderboard" },
+        { href: "/mock-exam", label: "Mock" }
+      ];
+
+  const brandLabel = props.isAdmin ? "ACE NAIJA Admin" : "ACE NAIJA";
+
   return (
     <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/20">
       <div className="pointer-events-none absolute -left-24 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
@@ -19,16 +37,12 @@ export function AppShell(props: {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
                 <Logo className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-display text-sm font-semibold tracking-tight">ACE NAIJA</span>
+              <span className="font-display text-sm font-semibold tracking-tight">{brandLabel}</span>
             </div>
             <nav className="hidden items-center gap-1 sm:flex">
-              <NavLink href="/dashboard" label="Dashboard" />
-              <NavLink href="/plan" label="Plan" />
-              <NavLink href="/groups" label="Groups" />
-              <NavLink href="/tutor" label="Tutor" />
-              <NavLink href="/progress" label="Progress" />
-              <NavLink href="/leaderboard" label="Leaderboard" />
-              <NavLink href="/mock-exam" label="Mock" />
+              {navItems.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} />
+              ))}
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -38,13 +52,9 @@ export function AppShell(props: {
         </div>
         <div className="container pb-3 sm:hidden">
           <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            <NavLink href="/dashboard" label="Dashboard" />
-            <NavLink href="/plan" label="Plan" />
-            <NavLink href="/groups" label="Groups" />
-            <NavLink href="/tutor" label="Tutor" />
-            <NavLink href="/progress" label="Progress" />
-            <NavLink href="/leaderboard" label="Leaderboard" />
-            <NavLink href="/mock-exam" label="Mock" />
+            {navItems.map((item) => (
+              <NavLink key={item.href} href={item.href} label={item.label} />
+            ))}
           </nav>
         </div>
       </header>

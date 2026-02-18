@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/leaderboard",
   "/mock-exam",
   "/admin",
+  "/superadmin",
   "/billing"
 ];
 
@@ -57,7 +58,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next({ request });
+  const headers = new Headers(request.headers);
+  headers.set("x-pathname", pathname);
+
+  return NextResponse.next({
+    request: {
+      headers
+    }
+  });
 }
 
 export const config = {
@@ -74,6 +82,7 @@ export const config = {
     "/leaderboard/:path*",
     "/mock-exam/:path*",
     "/admin/:path*",
+    "/superadmin/:path*",
     "/billing/:path*",
     "/api/:path*",
     "/logout"

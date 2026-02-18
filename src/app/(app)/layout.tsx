@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { AppShell } from "@/components/app/app-shell";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 
@@ -12,6 +13,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
   const isAdmin = (user.app_metadata as any)?.role === "admin";
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") ?? "";
+  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/superadmin");
+
+  if (isAdmin && pathname && !isAdminRoute) {
+    redirect("/admin");
+  }
+  if (!isAdmin && isAdminRoute) {
+    redirect("/dashboard");
+  }
 
   return (
     <AppShell

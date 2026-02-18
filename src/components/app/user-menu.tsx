@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Settings, Shield, CreditCard, User } from "lucide-react";
+import { BookOpenCheck, LogOut, Settings, Shield, CreditCard, User, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -42,28 +42,43 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
           <div className="mt-1 text-sm font-semibold text-foreground">{props.name ?? "Account"}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex items-center gap-2">
-            <User className="h-4 w-4" /> Profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" /> Settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/billing" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" /> Billing
-          </Link>
-        </DropdownMenuItem>
         {props.isAdmin ? (
-          <DropdownMenuItem asChild>
-            <Link href="/admin" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" /> Admin
-            </Link>
-          </DropdownMenuItem>
-        ) : null}
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Admin overview
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/exams" className="flex items-center gap-2">
+                <BookOpenCheck className="h-4 w-4" /> Exams and syllabus
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" /> Users and roles
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center gap-2">
+                <User className="h-4 w-4" /> Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/billing" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" /> Billing
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={(e) => {

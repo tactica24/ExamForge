@@ -28,7 +28,12 @@ export const metadata: Metadata = {
   metadataBase: getAppOrigin(),
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon.svg"
+    icon: [
+      { url: "/icon", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" }
+    ],
+    shortcut: "/icon",
+    apple: "/icon"
   }
 };
 
