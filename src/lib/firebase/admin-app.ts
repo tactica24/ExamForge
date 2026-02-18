@@ -5,7 +5,6 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { getServerEnv } from "@/lib/env";
 
 type CredentialConfig = {
   projectId: string;
@@ -48,15 +47,14 @@ function parseServiceAccountJson(raw: string): CredentialConfig | null {
 function getCredentialConfig() {
   if (cachedCredentialConfig !== undefined) return cachedCredentialConfig;
 
-  const env = getServerEnv();
-  const fallbackProjectId = env.FIREBASE_PROJECT_ID ?? env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const fallbackProjectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const fallbackStorageBucket =
-    env.FIREBASE_STORAGE_BUCKET ??
-    env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
+    process.env.FIREBASE_STORAGE_BUCKET ??
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
     (fallbackProjectId ? `${fallbackProjectId}.appspot.com` : undefined);
 
-  if (env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64) {
-    const decoded = Buffer.from(env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64, "base64").toString("utf8");
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64) {
+    const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64, "base64").toString("utf8");
     const parsed = parseServiceAccountJson(decoded);
     if (parsed) {
       cachedCredentialConfig = {
@@ -67,8 +65,8 @@ function getCredentialConfig() {
     }
   }
 
-  if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const parsed = parseServiceAccountJson(env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    const parsed = parseServiceAccountJson(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     if (parsed) {
       cachedCredentialConfig = {
         ...parsed,
@@ -79,8 +77,8 @@ function getCredentialConfig() {
   }
 
   const projectId = fallbackProjectId;
-  const clientEmail = env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !privateKey) {
     cachedCredentialConfig = null;

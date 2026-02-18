@@ -34,6 +34,9 @@ function normalizeAuthError(message: string) {
 async function callIdentityToolkit(endpoint: string, payload: Record<string, unknown>) {
   const env = getServerEnv();
   const apiKey = env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error("Firebase web API key is missing. Set NEXT_PUBLIC_FIREBASE_API_KEY.");
+  }
 
   const res = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${apiKey}`, {
     method: "POST",

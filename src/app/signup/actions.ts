@@ -24,7 +24,10 @@ const SignupSchema = z
     confirm_password: z.string().min(1),
     country: z.string().trim().min(2).max(80),
     state: z.string().trim().max(80).optional(),
-    exam_interests: z.array(z.string().trim().min(2)).min(2).max(3)
+    exam_interests: z
+      .array(z.string().trim().min(2))
+      .min(1, "Select at least one exam.")
+      .max(3, "Select up to 3 exams.")
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirm_password) {

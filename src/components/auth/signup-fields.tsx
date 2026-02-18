@@ -37,7 +37,7 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
   const passwordsMatch = confirmPassword.length > 0 ? password === confirmPassword : true;
-  const examCountValid = selectedExams.length >= 2 && selectedExams.length <= 3;
+  const examCountValid = selectedExams.length >= 1 && selectedExams.length <= 3;
 
   const canSubmit =
     hasMinLength &&
@@ -111,7 +111,7 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="exam_interests">Exams interested (select 2-3)</Label>
+        <Label htmlFor="exam_interests">Exams interested (select 1-3)</Label>
         <NativeSelect
           id="exam_interests"
           name="exam_interests"
@@ -128,7 +128,7 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
           ))}
         </NativeSelect>
         <p className="text-xs text-muted-foreground">
-          Selected: {selectedExams.length}/3. Choose at least 2. On desktop, use Ctrl/Cmd to select multiple.
+          Selected: {selectedExams.length}/3. Choose at least 1. On desktop, use Ctrl/Cmd to select multiple.
         </p>
       </div>
 
