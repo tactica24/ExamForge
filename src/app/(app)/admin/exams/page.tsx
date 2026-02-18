@@ -62,30 +62,36 @@ export default async function AdminExamsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Add an exam</CardTitle>
-            <CardDescription>Example: Ghana WASSCE (`country_code=GH`).</CardDescription>
+            <CardDescription>Example: WAEC (`slug=waec`, `country_code=NG`).</CardDescription>
           </CardHeader>
           <CardContent>
             <AuthFormState action={createExamAction}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug</Label>
-                  <Input id="slug" name="slug" placeholder="wassce" required />
+                  <Input id="slug" name="slug" placeholder="waec" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country_code">Country code</Label>
-                  <Input id="country_code" name="country_code" placeholder="GH" required />
+                  <Input id="country_code" name="country_code" placeholder="NG" required />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" name="name" placeholder="WASSCE" required />
+                  <Input id="name" name="name" placeholder="WAEC" required />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" name="description" placeholder="Short description..." />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="subjects">Subjects (comma-separated)</Label>
-                  <Input id="subjects" name="subjects" placeholder="Mathematics, English, Biology" required />
+                  <Label htmlFor="subjects">Subjects (comma/new line separated)</Label>
+                  <Textarea
+                    id="subjects"
+                    name="subjects"
+                    className="min-h-[120px]"
+                    placeholder={"English Language\nMathematics\nBiology\nChemistry"}
+                    required
+                  />
                 </div>
               </div>
               <div className="mt-4">
@@ -100,4 +106,3 @@ export default async function AdminExamsPage() {
     </div>
   );
 }
-

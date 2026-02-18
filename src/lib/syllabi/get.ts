@@ -32,13 +32,32 @@ async function persistTopics(args: {
     .catch(() => {});
 }
 
+function parseJsonObject(text: string): any | null {
+  const raw = String(text ?? "").trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) return null;
+
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
 async function generateAiTopics(args: { examSlug: string; subject: string }) {
   const client = getOpenAIClient();
   if (!client) return null;
 
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
-    temperature: 0.4,
+    temperature: 0.35,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -61,7 +80,7 @@ async function generateAiTopics(args: { examSlug: string; subject: string }) {
   });
 
   const text = completion.choices[0]?.message?.content ?? "";
-  const parsed = JSON.parse(text);
+  const parsed = parseJsonObject(text);
   const raw = Array.isArray(parsed?.topics) ? parsed.topics : [];
 
   const topics: SyllabusTopic[] = raw
@@ -108,17 +127,6 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
     return data.topics as unknown as Array<{ title: string; path: string; subtopics?: string[]; resources?: any[] }>;
   }
 
-  const fallback = getFallbackTopics(args.examSlug, args.subject);
-  if (fallback) {
-    await persistTopics({
-      examId: args.examId,
-      subject: args.subject,
-      topics: fallback,
-      source: "seed_fallback"
-    });
-    return fallback;
-  }
-
   try {
     const aiTopics = await generateAiTopics({ examSlug: args.examSlug, subject: args.subject });
     if (aiTopics?.length) {
@@ -132,6 +140,17 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
     }
   } catch {
     // Ignore AI failures and continue to deterministic fallback topics.
+  }
+
+  const fallback = getFallbackTopics(args.examSlug, args.subject);
+  if (fallback) {
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: fallback,
+      source: "seed_fallback"
+    });
+    return fallback;
   }
 
   const generic = getGenericTopicsForSubject(args.subject);
