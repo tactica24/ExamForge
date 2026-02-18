@@ -532,6 +532,47 @@ class UpdateQuery implements PromiseLike<DbResponse<any[]>> {
   }
 }
 
+class DeleteQuery implements PromiseLike<DbResponse<{ count: number }>> {
+  private readonly filters: FilterSpec[] = [];
+
+  constructor(
+    private readonly db: Firestore | null,
+    private readonly table: string
+  ) {}
+
+  eq(field: string, value: unknown) {
+    this.filters.push({ kind: "eq", field, value });
+    return this;
+  }
+
+  in(field: string, values: unknown[]) {
+    this.filters.push({ kind: "in", field, value: values });
+    return this;
+  }
+
+  then<TResult1 = DbResponse<{ count: number }>, TResult2 = never>(
+    onfulfilled?: ((value: DbResponse<{ count: number }>) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled ?? undefined, onrejected ?? undefined);
+  }
+
+  private async execute(): Promise<DbResponse<{ count: number }>> {
+    try {
+      if (!this.db) throw new Error("Firebase Firestore is not configured.");
+
+      const rows = await loadRows(this.db, this.table);
+      const matched = rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
+
+      await Promise.all(matched.map((row) => this.db!.collection(this.table).doc(row.__docId).delete()));
+
+      return { data: { count: matched.length }, error: null, count: matched.length };
+    } catch (error) {
+      return { data: null, error: asError(error), count: null };
+    }
+  }
+}
+
 export type FirebaseDataClient = {
   from: (table: string) => {
     select: (columns?: string, options?: SelectOptions) => SelectQuery;
@@ -541,6 +582,7 @@ export type FirebaseDataClient = {
       options?: { onConflict?: string; ignoreDuplicates?: boolean }
     ) => InsertQuery;
     update: (values: Record<string, any>) => UpdateQuery;
+    delete: () => DeleteQuery;
   };
 };
 
@@ -561,6 +603,9 @@ export function createFirebaseDataClient(db: Firestore | null): FirebaseDataClie
         },
         update(values: Record<string, any>) {
           return new UpdateQuery(db, table, values);
+        },
+        delete() {
+          return new DeleteQuery(db, table);
         }
       };
     }

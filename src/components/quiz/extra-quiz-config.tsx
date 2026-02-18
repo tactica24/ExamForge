@@ -20,7 +20,7 @@ export function ExtraQuizConfig(props: { exams: ExamOption[]; defaultExamId?: st
   const [topic, setTopic] = React.useState("");
 
   const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
-  const subjects = exam?.subjects ?? [];
+  const subjects = React.useMemo(() => exam?.subjects ?? [], [exam]);
 
   React.useEffect(() => {
     if (!subjects.length) return;

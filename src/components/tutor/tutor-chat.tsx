@@ -32,7 +32,7 @@ export function TutorChat(props: { exams: ExamOption[] }) {
   ]);
 
   const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
-  const subjects = exam?.subjects ?? [];
+  const subjects = React.useMemo(() => exam?.subjects ?? [], [exam]);
 
   React.useEffect(() => {
     if (!subjects.length) return;

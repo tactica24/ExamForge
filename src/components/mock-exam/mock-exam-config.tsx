@@ -19,7 +19,7 @@ export function MockExamConfig(props: { exams: ExamOption[]; defaultExamId?: str
   const [subject, setSubject] = React.useState(props.defaultSubject ?? initialExam?.subjects?.[0] ?? "");
 
   const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
-  const subjects = exam?.subjects ?? [];
+  const subjects = React.useMemo(() => exam?.subjects ?? [], [exam]);
 
   React.useEffect(() => {
     if (!subjects.length) return;

@@ -53,8 +53,14 @@ jobs:
           APP_URL="$(echo "$APP_URL" | xargs)"
 
           if [ -z "$APP_URL" ]; then
+            APP_URL="$(node -e "const fs=require('fs');const p='capacitor.config.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));console.log(c?.server?.url||'');")"
+            APP_URL="$(echo "$APP_URL" | xargs)"
+          fi
+
+          if [ -z "$APP_URL" ]; then
             echo "Missing mobile URL."
             echo "Set repository variable APP_WEB_URL (or NEXT_PUBLIC_APP_URL), or pass workflow input app_web_url."
+            echo "Alternatively set server.url in capacitor.config.json."
             exit 1
           fi
 
