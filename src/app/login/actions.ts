@@ -48,6 +48,14 @@ export async function loginAction(_: unknown, formData: FormData) {
     return { ok: false, message: error.message };
   }
 
-  const next = (formData.get("next") as string | null) ?? "/dashboard";
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  const next = String(formData.get("next") ?? "").trim();
+  if (next.startsWith("/")) {
+    redirect(next);
+  }
+
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+  const isAdmin = (user?.app_metadata as any)?.role === "admin";
+  redirect(isAdmin ? "/admin" : "/dashboard");
 }
