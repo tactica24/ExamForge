@@ -14,7 +14,7 @@ export type ReviewQuestion = {
   user_index: number;
 };
 
-export function QuizReview(props: { examName: string; subject: string; questions: ReviewQuestion[] }) {
+export function QuizReview(props: { examId?: string; examName: string; subject: string; questions: ReviewQuestion[] }) {
   const [open, setOpen] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [ai, setAi] = React.useState<Record<string, string>>({});
@@ -26,6 +26,7 @@ export function QuizReview(props: { examName: string; subject: string; questions
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          exam_id: props.examId,
           exam: props.examName,
           subject: props.subject,
           question: q.question,

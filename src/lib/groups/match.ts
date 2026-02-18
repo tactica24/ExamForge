@@ -9,6 +9,7 @@ export async function matchOrCreateGroup(args: {
   pace: "steady" | "intensive";
   level: string;
   timezone: string;
+  groupName?: string;
 }) {
   const firebase = await createFirebaseServerClient();
 
@@ -30,7 +31,7 @@ export async function matchOrCreateGroup(args: {
       .from("group_members")
       .select("*", { count: "exact", head: true })
       .eq("group_id", pickedGroupId);
-    if ((count ?? 0) >= 10) pickedGroupId = null;
+    if ((count ?? 0) >= 15) pickedGroupId = null;
   }
 
   if (!pickedGroupId) {
@@ -41,7 +42,8 @@ export async function matchOrCreateGroup(args: {
         subject: args.subject,
         pace: args.pace,
         level: args.level,
-        timezone: args.timezone
+        timezone: args.timezone,
+        name: args.groupName ?? `${args.subject} group`
       })
       .select("id")
       .single();

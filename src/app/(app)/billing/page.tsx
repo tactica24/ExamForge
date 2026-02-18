@@ -52,9 +52,6 @@ export default async function BillingPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Paystack is currently enabled as the default payment processor. Additional providers can be integrated in `src/lib/billing/` as needed.
-      </p>
     </div>
   );
 }

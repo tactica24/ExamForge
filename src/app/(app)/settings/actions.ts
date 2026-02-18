@@ -91,17 +91,39 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   return { ok: true, message: "Subject added successfully." };
 }
 
-const PrefsSchema = z.object({
-  reminder_time: z.string().regex(/^\d{2}:\d{2}$/),
-  channels: z.enum(["in_app", "sms", "whatsapp", "email"])
+const ReminderSchema = z.object({
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  channel: z.enum(["in_app", "sms", "whatsapp", "email"]),
+  destination: z.string().trim().max(120).optional()
 });
 
 export async function updateNotificationPrefsAction(_: unknown, formData: FormData) {
-  const parsed = PrefsSchema.safeParse({
-    reminder_time: formData.get("reminder_time"),
-    channels: formData.get("channel")
-  });
-  if (!parsed.success) return { ok: false, message: "Invalid notification preferences." };
+  const reminders = [1, 2, 3]
+    .map((idx) => {
+      const time = String(formData.get(`reminder_time_${idx}`) ?? "").trim();
+      const channel = String(formData.get(`reminder_channel_${idx}`) ?? "").trim();
+      const destination = String(formData.get(`reminder_destination_${idx}`) ?? "").trim();
+
+      if (!time && !channel && !destination) return null;
+
+      const parsed = ReminderSchema.safeParse({
+        time,
+        channel,
+        destination: destination || undefined
+      });
+
+      if (!parsed.success) return { invalid: true };
+      return parsed.data;
+    })
+    .filter(Boolean);
+
+  if (reminders.some((r: any) => r?.invalid)) {
+    return { ok: false, message: "Invalid reminder details. Use HH:MM time and a valid channel." };
+  }
+
+  if (!reminders.length) {
+    return { ok: false, message: "Add at least one reminder." };
+  }
 
   const firebase = await createFirebaseServerClient();
   const {
@@ -109,10 +131,12 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  const primary = reminders[0] as { time: string; channel: string } | undefined;
   const { error } = await firebase.from("notification_prefs").upsert({
     user_id: user.id,
-    reminder_time: parsed.data.reminder_time,
-    channels: [parsed.data.channels]
+    reminder_time: primary?.time ?? "19:00",
+    channels: primary ? [primary.channel] : ["in_app"],
+    reminders
   });
   if (error) return { ok: false, message: error.message };
 

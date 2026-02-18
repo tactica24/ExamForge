@@ -7,21 +7,48 @@ export type SeedExam = {
   syllabus_sources: string[];
 };
 
+const coreExamSubjects = [
+  "English Language",
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Economics",
+  "Geography",
+  "Government",
+  "Literature in English",
+  "Christian Religious Studies (CRS)",
+  "Islamic Religious Studies (IRS)",
+  "History",
+  "Financial Accounting",
+  "Commerce",
+  "Further Mathematics",
+  "Civic Education"
+];
+
 export const seedExamsNG: SeedExam[] = [
   {
     slug: "waec",
     name: "WAEC",
     country_code: "NG",
     description: "West African Senior School Certificate Examination preparation.",
-    subjects: ["Mathematics", "English Language", "Biology", "Chemistry", "Physics", "Economics"],
+    subjects: coreExamSubjects,
     syllabus_sources: ["https://www.waecnigeria.org/"]
+  },
+  {
+    slug: "neco",
+    name: "NECO",
+    country_code: "NG",
+    description: "National Examinations Council (SSCE) preparation.",
+    subjects: coreExamSubjects,
+    syllabus_sources: ["https://neco.gov.ng/"]
   },
   {
     slug: "jamb",
     name: "JAMB",
     country_code: "NG",
     description: "Unified Tertiary Matriculation Examination (UTME) prep.",
-    subjects: ["Use of English", "Mathematics", "Biology", "Chemistry", "Physics", "Government"],
+    subjects: coreExamSubjects,
     syllabus_sources: ["https://www.jamb.gov.ng/"]
   },
   {

@@ -43,6 +43,29 @@ const learnerBenefits = [
   "AI explanations that clarify mistakes instantly"
 ];
 
+const successStories = [
+  {
+    exam: "JAMB",
+    text: "Raised my score by 62 points in 6 weeks by drilling weak topics daily."
+  },
+  {
+    exam: "WAEC",
+    text: "Turned Physics into my strongest subject after consistent mock exams and explanations."
+  },
+  {
+    exam: "NECO",
+    text: "Went from guessing to confident answers with the subject-by-subject plan."
+  },
+  {
+    exam: "IELTS",
+    text: "Improved Writing band by following daily practice targets and feedback."
+  },
+  {
+    exam: "ICAN",
+    text: "Broke complex topics into small daily wins and passed my first paper."
+  }
+];
+
 export default function HomePage() {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/30">
@@ -107,6 +130,21 @@ export default function HomePage() {
               <Card key={item.exam} className="p-5">
                 <div className="text-sm font-semibold text-primary">{item.exam}</div>
                 <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto mt-16 max-w-5xl">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Recent success stories</h2>
+            <Badge variant="secondary" className="rounded-full">Learner wins</Badge>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {successStories.map((story) => (
+              <Card key={story.exam} className="p-5">
+                <div className="text-xs font-semibold text-primary">{story.exam}</div>
+                <p className="mt-2 text-sm text-muted-foreground">{story.text}</p>
               </Card>
             ))}
           </div>

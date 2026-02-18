@@ -67,12 +67,12 @@ export async function signupAction(_: unknown, formData: FormData) {
   );
 
   const parsed = SignupSchema.safeParse({
-    surname: formData.get("surname"),
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    confirm_password: formData.get("confirm_password"),
-    country: formData.get("country"),
+    surname: String(formData.get("surname") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+    confirm_password: String(formData.get("confirm_password") ?? ""),
+    country: String(formData.get("country") ?? ""),
     state: (formData.get("state") as string | null) || undefined,
     exam_interests: examInterests
   });

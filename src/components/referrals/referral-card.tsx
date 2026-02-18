@@ -35,7 +35,7 @@ export function ReferralCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Referral</CardTitle>
-        <CardDescription>Invite friends. When they onboard, you both get a 7-day Pro trial.</CardDescription>
+        <CardDescription>Invite friends. When they onboard, you both get a 3-day Pro trial.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Input value={loading ? "Loading..." : url} readOnly />

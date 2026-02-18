@@ -122,6 +122,7 @@ export type GroupsRow = {
   pace: "steady" | "intensive" | string;
   level: string;
   timezone: string;
+  name?: string | null;
   created_at: string;
 };
 export type GroupsInsert = Partial<GroupsRow> & {
@@ -237,6 +238,7 @@ export type NotificationPrefsRow = {
   user_id: string;
   channels: Json;
   reminder_time: string;
+  reminders?: Json;
   created_at: string;
   updated_at: string;
 };

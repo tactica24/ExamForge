@@ -36,14 +36,12 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
-  const passwordsMatch = confirmPassword.length > 0 ? password === confirmPassword : true;
+  const passwordValid = hasMinLength && hasUpper && hasLower && hasNumber;
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const examCountValid = selectedExams.length >= 1 && selectedExams.length <= 3;
 
   const canSubmit =
-    hasMinLength &&
-    hasUpper &&
-    hasLower &&
-    hasNumber &&
+    passwordValid &&
     passwordsMatch &&
     examCountValid &&
     (!isNigeria || state.length > 0);
@@ -142,11 +140,10 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
             autoComplete="new-password"
             placeholder="Create password"
             minLength={8}
-            pattern="(?=.*\\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-            title="Use at least 8 characters with uppercase, lowercase, and a number."
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            aria-invalid={password.length > 0 && !passwordValid}
           />
         </div>
         <div className="space-y-2">
@@ -160,8 +157,11 @@ export function SignupFields(props: { examOptions: ExamInterestOption[] }) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
           />
-          {!passwordsMatch ? <p className="text-xs text-destructive">Passwords do not match.</p> : null}
+          {confirmPassword.length > 0 && !passwordsMatch ? (
+            <p className="text-xs text-destructive">Passwords do not match.</p>
+          ) : null}
         </div>
       </div>
 

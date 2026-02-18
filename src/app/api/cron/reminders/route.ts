@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   const { data: prefs, error: prefsErr } = await admin
     .from("notification_prefs")
-    .select("user_id,channels,reminder_time")
+    .select("user_id,channels,reminder_time,reminders")
     .limit(5000);
   if (prefsErr) return NextResponse.json({ ok: false, message: prefsErr.message }, { status: 500 });
 
@@ -44,7 +44,16 @@ export async function GET(req: Request) {
     const profile = profileByUserId.get(p.user_id);
     const tz = profile?.timezone ?? "Africa/Lagos";
     const local = getLocalTimeHHmm(tz, now);
-    if (local !== p.reminder_time) continue;
+
+    const reminderList = Array.isArray((p as any).reminders)
+      ? ((p as any).reminders as any[])
+      : [
+          {
+            time: p.reminder_time,
+            channel: Array.isArray(p.channels) ? (p.channels[0] as Channel) : "in_app",
+            destination: null
+          }
+        ];
 
     const { data: plan } = await admin
       .from("user_plans")
@@ -65,27 +74,35 @@ export async function GET(req: Request) {
     const count = items?.length ?? 0;
     if (count === 0) continue;
 
-    const channel = (Array.isArray(p.channels) ? (p.channels[0] as Channel) : "in_app") ?? "in_app";
-    const msg = `ACE NAIJA reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your quiz and keep your streak.`;
+    for (const reminder of reminderList) {
+      if (!reminder?.time || local !== String(reminder.time)) continue;
 
-    const provider = await sendViaProvider({
-      channel,
-      to: { email: profile?.email, phone: profile?.phone },
-      message: msg
-    });
+      const channel = (reminder.channel as Channel) ?? "in_app";
+      const destination = String(reminder.destination ?? "").trim();
+      const msg = `ACE NAIJA reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your quiz and keep your streak.`;
 
-    await admin.from("notifications").insert({
-      user_id: p.user_id,
-      channel,
-      notif_type: "reminder",
-      message: msg,
-      scheduled_for: now.toISOString(),
-      sent_at: provider.ok ? now.toISOString() : null,
-      status: provider.ok ? "sent" : "failed",
-      provider_meta: provider
-    });
+      const provider = await sendViaProvider({
+        channel,
+        to: {
+          email: channel === "email" && destination ? destination : profile?.email,
+          phone: channel === "sms" || channel === "whatsapp" ? (destination || profile?.phone) : profile?.phone
+        },
+        message: msg
+      });
 
-    sent += 1;
+      await admin.from("notifications").insert({
+        user_id: p.user_id,
+        channel,
+        notif_type: "reminder",
+        message: msg,
+        scheduled_for: now.toISOString(),
+        sent_at: provider.ok ? now.toISOString() : null,
+        status: provider.ok ? "sent" : "failed",
+        provider_meta: provider
+      });
+
+      sent += 1;
+    }
   }
 
   return NextResponse.json({ ok: true, sent });

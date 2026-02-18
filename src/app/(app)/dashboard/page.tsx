@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
+import { listActiveExams } from "@/lib/exams/list";
 
 export default async function DashboardPage() {
   const firebase = await createFirebaseServerClient();
@@ -57,12 +58,20 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const { data: storiesData, error: storiesErr } = await firebase
-    .from("success_stories")
-    .select("id,content,created_at")
-    .order("created_at", { ascending: false })
-    .limit(3);
-  const stories = storiesErr ? [] : (storiesData ?? []);
+  const { data: userExamSubjects } = await firebase
+    .from("user_exam_subjects")
+    .select("exam_id,subject,is_active")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const exams = await listActiveExams();
+  const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
+  const subjectsByExam = (userExamSubjects ?? []).reduce((acc: Record<string, string[]>, item: any) => {
+    if (!item?.exam_id || !item?.subject) return acc;
+    acc[item.exam_id] = acc[item.exam_id] ?? [];
+    if (!acc[item.exam_id].includes(item.subject)) acc[item.exam_id].push(item.subject);
+    return acc;
+  }, {});
 
   const completion = todayItems?.length
     ? Math.round(
@@ -249,18 +258,39 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Success stories</CardTitle>
-          <CardDescription>Small wins from learners like you.</CardDescription>
+          <CardTitle className="text-base">Your exams & subjects</CardTitle>
+          <CardDescription>Pick an exam, then practice a subject or launch a mock exam.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {stories?.length ? (
-            stories.map((story: any) => (
-              <div key={story.id} className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
-                {story.content}
+        <CardContent className="space-y-4">
+          {Object.keys(subjectsByExam).length ? (
+            Object.entries(subjectsByExam).map(([examId, subjects]) => (
+              <div key={examId} className="rounded-xl border bg-card p-4">
+                <div className="text-sm font-semibold">{examNameById.get(examId) ?? "Exam"}</div>
+                <div className="mt-3 grid gap-2">
+                  {subjects.map((subject) => (
+                    <div key={subject} className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge variant="secondary">{subject}</Badge>
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild size="sm" variant="secondary">
+                          <Link href={`/quiz/extra?exam_id=${examId}&subject=${encodeURIComponent(subject)}`}>
+                            Practice
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm">
+                          <Link href={`/mock-exam?exam_id=${examId}&subject=${encodeURIComponent(subject)}`}>
+                            Mock exam
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))
           ) : (
-            <div className="text-sm text-muted-foreground">No stories yet.</div>
+            <div className="text-sm text-muted-foreground">
+              Add subjects in settings to see your personalized practice shortcuts.
+            </div>
           )}
         </CardContent>
       </Card>

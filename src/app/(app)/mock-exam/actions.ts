@@ -3,10 +3,12 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 
 const Schema = z.object({
+  exam_id: z.string().min(3),
+  exam_slug: z.string().min(2),
+  subject: z.string().min(2).max(120),
   question_count: z.coerce.number().int().min(10).max(100).default(40),
   duration_min: z.coerce.number().int().min(5).max(180).default(60),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium")
@@ -14,6 +16,9 @@ const Schema = z.object({
 
 export async function startMockExamAction(_: unknown, formData: FormData) {
   const parsed = Schema.safeParse({
+    exam_id: formData.get("exam_id"),
+    exam_slug: formData.get("exam_slug"),
+    subject: formData.get("subject"),
     question_count: formData.get("question_count") ?? 40,
     duration_min: formData.get("duration_min") ?? 60,
     difficulty: formData.get("difficulty") ?? "medium"
@@ -26,10 +31,11 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const plan = await getActivePlanForUser(user.id);
-  if (!plan) return { ok: false, message: "No active plan." };
-
-  const { data: exam } = await firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle();
+  const { data: exam } = await firebase
+    .from("exams")
+    .select("name,slug")
+    .eq("id", parsed.data.exam_id)
+    .maybeSingle();
   const { data: profile } = await firebase
     .from("profiles")
     .select("preferred_explanation_language")
@@ -38,10 +44,11 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
 
   const quizId = await createQuizWithQuestions({
     userId: user.id,
-    examId: plan.exam_id,
+    examId: parsed.data.exam_id,
     examName: exam?.name ?? "Exam",
-    subject: plan.subject,
-    topicPath: `Mock exam: ${plan.subject}`,
+    examSlug: exam?.slug ?? parsed.data.exam_slug,
+    subject: parsed.data.subject,
+    topicPath: `Mock exam: ${parsed.data.subject}`,
     quizType: "mock",
     difficulty: parsed.data.difficulty,
     questionCount: parsed.data.question_count,

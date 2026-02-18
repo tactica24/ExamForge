@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TutorChat } from "@/components/tutor/tutor-chat";
+import { listActiveExams } from "@/lib/exams/list";
 
 export default async function TutorPage() {
   const firebase = await createFirebaseServerClient();
@@ -9,6 +10,8 @@ export default async function TutorPage() {
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
+
+  const exams = await listActiveExams();
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -22,7 +25,14 @@ export default async function TutorPage() {
           <CardDescription>Best for concept explanations and quick drills.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TutorChat />
+          <TutorChat
+            exams={exams.map((exam) => ({
+              id: exam.id,
+              slug: exam.slug,
+              name: exam.name,
+              subjects: Array.isArray(exam.subjects) ? (exam.subjects as string[]) : []
+            }))}
+          />
         </CardContent>
       </Card>
     </div>

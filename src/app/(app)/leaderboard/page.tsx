@@ -62,7 +62,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{displayPeriod(period)} top 50</CardTitle>
-          <CardDescription>Ranks update via cron. If empty, run `/api/cron/leaderboards`.</CardDescription>
+          <CardDescription>Ranks update regularly based on completed quizzes.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {mine ? (
@@ -91,7 +91,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">
-              No entries yet. Complete a quiz to earn XP, then run the leaderboard cron.
+              No entries yet. Complete a quiz to earn XP and appear here.
             </div>
           )}
         </CardContent>

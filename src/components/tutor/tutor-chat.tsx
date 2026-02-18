@@ -8,11 +8,19 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NativeSelect } from "@/components/ui/native-select";
 
+type ExamOption = {
+  id: string;
+  slug: string;
+  name: string;
+  subjects: string[];
+};
+
 type Turn = { role: "user" | "assistant"; content: string };
 
-export function TutorChat(props: { defaultExam?: string; defaultSubject?: string }) {
-  const [exam, setExam] = React.useState(props.defaultExam ?? "JAMB");
-  const [subject, setSubject] = React.useState(props.defaultSubject ?? "Mathematics");
+export function TutorChat(props: { exams: ExamOption[] }) {
+  const initialExam = props.exams[0];
+  const [examId, setExamId] = React.useState(initialExam?.id ?? "");
+  const [subject, setSubject] = React.useState(initialExam?.subjects?.[0] ?? "");
   const [language, setLanguage] = React.useState<"en" | "pidgin" | "hausa" | "yoruba" | "igbo">("en");
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -22,6 +30,14 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
       content: "Tell me what you’re stuck on. I’ll explain and give you a quick practice question."
     }
   ]);
+
+  const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
+  const subjects = exam?.subjects ?? [];
+
+  React.useEffect(() => {
+    if (!subjects.length) return;
+    if (!subjects.includes(subject)) setSubject(subjects[0] ?? "");
+  }, [subjects, subject]);
 
   async function send() {
     const text = input.trim();
@@ -33,7 +49,7 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
       const res = await fetch("/api/ai/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, exam, subject })
+        body: JSON.stringify({ message: text, exam: exam?.name ?? "", exam_id: exam?.id ?? "", subject })
       });
       const json = await res.json();
       if (!json?.ok) throw new Error(json?.message ?? "Tutor failed.");
@@ -50,17 +66,24 @@ export function TutorChat(props: { defaultExam?: string; defaultSubject?: string
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Exam</div>
-          <NativeSelect value={exam} onChange={(e) => setExam(e.target.value)}>
-            <option value="WAEC">WAEC</option>
-            <option value="JAMB">JAMB</option>
-            <option value="IELTS">IELTS</option>
-            <option value="ACCA">ACCA</option>
-            <option value="ICAN">ICAN</option>
+          <NativeSelect value={examId} onChange={(e) => setExamId(e.target.value)}>
+            {props.exams.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
           </NativeSelect>
         </div>
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Subject</div>
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject/paper" />
+          <NativeSelect value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!subjects.length}>
+            {subjects.length ? null : <option value="">Select exam first</option>}
+            {subjects.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Language</div>

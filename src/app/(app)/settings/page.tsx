@@ -52,6 +52,21 @@ export default async function SettingsPage() {
   const userExamSubjects = userSubjectsRes.data ?? [];
 
   const channel = Array.isArray(prefs?.channels) ? String((prefs?.channels as any[])[0] ?? "in_app") : "in_app";
+  const remindersFromPrefs = Array.isArray((prefs as any)?.reminders) ? ((prefs as any).reminders as any[]) : [];
+  const reminderDefaults = [
+    { time: String(prefs?.reminder_time ?? "19:00"), channel, destination: profile?.phone ?? profile?.email ?? "" },
+    { time: "08:00", channel: "in_app", destination: profile?.phone ?? profile?.email ?? "" },
+    { time: "20:00", channel: "in_app", destination: profile?.phone ?? profile?.email ?? "" }
+  ];
+  const reminderSlots = [0, 1, 2].map((idx) => {
+    const data = remindersFromPrefs[idx] ?? {};
+    const fallback = reminderDefaults[idx];
+    return {
+      time: String(data?.time ?? fallback.time ?? ""),
+      channel: String(data?.channel ?? fallback.channel ?? "in_app"),
+      destination: String(data?.destination ?? fallback.destination ?? "")
+    };
+  });
 
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
   const allExamSubjectOptions = exams.flatMap((exam) =>
@@ -232,25 +247,44 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Reminders</CardTitle>
           <CardDescription>
-            Choose when to get nudges. WhatsApp/SMS/email require provider keys configured in env.
+            Add up to three reminders with time, channel, and destination (phone or email).
           </CardDescription>
         </CardHeader>
         <CardContent>
           <AuthFormState action={updateNotificationPrefsAction}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="reminder_time">Time (24h)</Label>
-                <Input id="reminder_time" name="reminder_time" defaultValue={prefs?.reminder_time ?? "19:00"} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Channel</Label>
-                <NativeSelect name="channel" defaultValue={channel}>
-                  <option value="in_app">In-app</option>
-                  <option value="sms">SMS</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="email">Email</option>
-                </NativeSelect>
-              </div>
+            <div className="grid gap-4">
+              {reminderSlots.map((reminder, idx) => (
+                <div key={idx} className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-[1fr_1fr_1.2fr]">
+                  <div className="space-y-2">
+                    <Label htmlFor={`reminder_time_${idx + 1}`}>Time #{idx + 1} (24h)</Label>
+                    <Input
+                      id={`reminder_time_${idx + 1}`}
+                      name={`reminder_time_${idx + 1}`}
+                      defaultValue={reminder.time}
+                      placeholder="19:00"
+                      required={idx === 0}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Channel</Label>
+                    <NativeSelect name={`reminder_channel_${idx + 1}`} defaultValue={reminder.channel}>
+                      <option value="in_app">In-app</option>
+                      <option value="sms">SMS</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="email">Email</option>
+                    </NativeSelect>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`reminder_destination_${idx + 1}`}>Destination</Label>
+                    <Input
+                      id={`reminder_destination_${idx + 1}`}
+                      name={`reminder_destination_${idx + 1}`}
+                      defaultValue={reminder.destination}
+                      placeholder="Phone or email"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="mt-4">
               <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">

@@ -36,14 +36,21 @@ export async function generateQuestions(args: {
   topic: string;
   count: number;
   preferredLanguage?: string | null;
+  syllabus?: string[];
 }): Promise<GeneratedQuestion[]> {
   const client = getOpenAIClient();
   if (!client) return fallbackQuestions(args.topic, args.subject, args.count);
 
   const lang = languageInstruction(args.preferredLanguage);
+  const syllabusHint =
+    args.syllabus && args.syllabus.length
+      ? `Use only these syllabus topics/subtopics when possible:\n- ${args.syllabus.join("\n- ")}`
+      : "If no syllabus is provided, answer generally for the exam level.";
+
   const system = [
     "You generate high-quality multiple-choice exam prep questions.",
     "Output must be valid JSON only.",
+    syllabusHint,
     lang
   ]
     .filter(Boolean)

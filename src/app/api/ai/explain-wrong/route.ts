@@ -5,6 +5,19 @@ import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
+import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+
+function flattenTopics(topics: Array<{ title: string; path: string; subtopics?: string[] }>) {
+  const out: string[] = [];
+  for (const topic of topics) {
+    if (topic.title) out.push(String(topic.title));
+    if (topic.path && topic.path !== topic.title) out.push(String(topic.path));
+    if (Array.isArray(topic.subtopics)) {
+      for (const sub of topic.subtopics) out.push(`${topic.title}: ${sub}`);
+    }
+  }
+  return Array.from(new Set(out)).slice(0, 30);
+}
 
 export async function POST(req: Request) {
   if (!hasTrustedOrigin(req.headers)) {
@@ -31,6 +44,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const exam = String(body?.exam ?? "").trim();
+  const examId = String(body?.exam_id ?? "").trim();
   const subject = String(body?.subject ?? "").trim();
   const question = String(body?.question ?? "").trim();
   const options: string[] = Array.isArray(body?.options) ? body.options.map(String) : [];
@@ -44,7 +58,8 @@ export async function POST(req: Request) {
     question.length > 2500 ||
     options.some((option) => option.length < 1 || option.length > 500) ||
     exam.length > 120 ||
-    subject.length > 120
+    subject.length > 120 ||
+    examId.length > 120
   ) {
     return NextResponse.json({ ok: false, message: "Payload is too large or malformed." }, { status: 400 });
   }
@@ -61,6 +76,19 @@ export async function POST(req: Request) {
     });
   }
 
+  let syllabusNote = "If a syllabus is available, keep the explanation aligned to it. Otherwise, respond generally.";
+  if (examId && subject) {
+    const { data: examRow } = await firebase.from("exams").select("slug").eq("id", examId).maybeSingle();
+    const examSlug = examRow?.slug ?? "";
+    if (examSlug) {
+      const topics = await getTopicsForExamSubject({ examId, examSlug, subject });
+      const syllabus = topics.length ? flattenTopics(topics) : [];
+      if (syllabus.length) {
+        syllabusNote = `Use only these syllabus topics/subtopics when possible:\n- ${syllabus.join("\n- ")}`;
+      }
+    }
+  }
+
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.4,
@@ -72,6 +100,7 @@ export async function POST(req: Request) {
           "Explain why the user's selected option is incorrect and why the correct option is correct.",
           "Use 3 short bullets and then a 1-sentence memory tip.",
           "Do not invent official marking schemes.",
+          syllabusNote,
           lang
         ]
           .filter(Boolean)

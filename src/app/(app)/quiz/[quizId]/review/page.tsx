@@ -72,7 +72,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
           <CardDescription>Review mistakes, then ask the AI coach why.</CardDescription>
         </CardHeader>
         <CardContent>
-          <QuizReview examName={examName} subject={quiz.subject} questions={qs as any} />
+          <QuizReview examId={quiz.exam_id} examName={examName} subject={quiz.subject} questions={qs as any} />
         </CardContent>
       </Card>
     </div>

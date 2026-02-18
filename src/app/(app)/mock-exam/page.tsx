@@ -3,17 +3,19 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { startMockExamAction } from "@/app/(app)/mock-exam/actions";
+import { listActiveExams } from "@/lib/exams/list";
+import { MockExamConfig } from "@/components/mock-exam/mock-exam-config";
 
-export default async function MockExamStartPage() {
+export default async function MockExamStartPage(props: { searchParams: Promise<{ exam_id?: string; subject?: string }> }) {
+  const sp = await props.searchParams;
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
+
+  const exams = await listActiveExams();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -29,24 +31,16 @@ export default async function MockExamStartPage() {
         </CardHeader>
         <CardContent>
           <AuthFormState action={startMockExamAction}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="question_count">Questions</Label>
-                <Input id="question_count" name="question_count" type="number" min={10} max={100} defaultValue={40} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="duration_min">Duration (minutes)</Label>
-                <Input id="duration_min" name="duration_min" type="number" min={5} max={180} defaultValue={60} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Difficulty</Label>
-                <NativeSelect name="difficulty" defaultValue="medium">
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </NativeSelect>
-              </div>
-            </div>
+            <MockExamConfig
+              exams={exams.map((exam) => ({
+                id: exam.id,
+                slug: exam.slug,
+                name: exam.name,
+                subjects: Array.isArray(exam.subjects) ? (exam.subjects as string[]) : []
+              }))}
+              defaultExamId={sp.exam_id}
+              defaultSubject={sp.subject}
+            />
             <div className="mt-4">
               <SubmitButton type="submit" pendingText="Generating..." className="w-full sm:w-auto">
                 Start mock exam
