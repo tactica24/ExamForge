@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
+import { getAppOrigin } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request.headers)) {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
 
   const firebase = await createFirebaseServerClient();
   await firebase.auth.signOut();
-  return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"), {
+  return NextResponse.redirect(new URL("/", getAppOrigin()), {
     status: 303
   });
 }

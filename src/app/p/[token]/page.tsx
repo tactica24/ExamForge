@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { getAppUrl } from "@/lib/app-url";
 
 export default async function ParentViewPage(props: { params: Promise<{ token: string }> }) {
   const { token } = await props.params;
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/parent/${token}`, {
+  const res = await fetch(`${getAppUrl()}/api/parent/${token}`, {
     cache: "no-store"
   });
   const json = await res.json().catch(() => null);

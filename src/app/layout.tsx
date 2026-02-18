@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { getAppOrigin } from "@/lib/app-url";
 
 export const metadata: Metadata = {
   title: {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   },
   description: "AI-powered exam prep PWA for WAEC, JAMB, IELTS, ACCA, and ICAN.",
   applicationName: "ACE NAIJA",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: getAppOrigin(),
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg"

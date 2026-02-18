@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 const ServerEnvSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1).optional(),
@@ -30,6 +30,19 @@ const ServerEnvSchema = z.object({
   RESEND_FROM_EMAIL: z.string().email().optional()
 });
 
+function normalizeHttpUrl(value: string | undefined) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return undefined;
+
+  const candidate = raw.includes("://") ? raw : `https://${raw}`;
+
+  try {
+    return new URL(candidate).toString().replace(/\/$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
 export function getServerEnv() {
   const parsed = ServerEnvSchema.safeParse(process.env);
   if (!parsed.success) {
@@ -38,5 +51,9 @@ export function getServerEnv() {
       .join("\n");
     throw new Error(`Missing/invalid environment variables:\n${message}`);
   }
-  return parsed.data;
+
+  return {
+    ...parsed.data,
+    NEXT_PUBLIC_APP_URL: normalizeHttpUrl(parsed.data.NEXT_PUBLIC_APP_URL)
+  };
 }
