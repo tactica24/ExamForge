@@ -48,7 +48,7 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
       });
       const json = await res.json();
       if (!json?.ok) throw new Error(json?.message ?? "Could not save result.");
-      toast.success(`Saved: ${json.score}/${json.total}`);
+      toast.success(`Score: ${json.score}/${json.total}`);
       const unlocked = json?.gamification?.unlockedBadges;
       if (Array.isArray(unlocked) && unlocked.length) {
         toast.success(`Unlocked badge${unlocked.length === 1 ? "" : "s"}: ${unlocked.join(", ")}`);
@@ -139,7 +139,7 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
       </Card>
 
       <Button type="button" className="w-full" onClick={finish} disabled={!answeredAll || submitting}>
-        {submitting ? "Saving..." : "Finish quiz"}
+        {submitting ? "Saving..." : "Finish objective questions"}
       </Button>
       {!answeredAll ? (
         <p className="text-center text-xs text-muted-foreground">Answer all questions to finish.</p>

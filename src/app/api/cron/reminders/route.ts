@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
       const channel = (reminder.channel as Channel) ?? "in_app";
       const destination = String(reminder.destination ?? "").trim();
-      const msg = `ACE NAIJA reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your quiz and keep your streak.`;
+      const msg = `ACE NAIJA reminder: you have ${count} task${count === 1 ? "" : "s"} today. Take your objective questions and keep your streak.`;
 
       const provider = await sendViaProvider({
         channel,

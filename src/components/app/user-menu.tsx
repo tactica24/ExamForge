@@ -25,7 +25,10 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-9 gap-2 px-2">
+        <Button
+          variant="ghost"
+          className="h-10 gap-2 rounded-full border border-transparent px-2.5 hover:border-border/70 hover:bg-muted/70 data-[state=open]:border-border/70 data-[state=open]:bg-muted/70"
+        >
           <Avatar className="h-7 w-7">
             <AvatarImage src={props.avatarUrl ?? undefined} alt={props.name ?? "User avatar"} />
             <AvatarFallback>{initials}</AvatarFallback>
@@ -33,8 +36,11 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
           <span className="hidden text-sm sm:inline">{props.name ?? "Account"}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Account</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="py-2">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Signed in as</div>
+          <div className="mt-1 text-sm font-semibold text-foreground">{props.name ?? "Account"}</div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/profile" className="flex items-center gap-2">

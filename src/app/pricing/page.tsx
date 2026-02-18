@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 const proBenefits = [
-  "Unlimited quizzes across subjects",
+  "Unlimited objective questions across subjects",
   "Weak-area practice mode",
   "Full mock exams with timer and review",
   "Learning groups, leaderboard, and challenges",
@@ -20,7 +20,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-dvh bg-gradient-to-b from-background via-background to-muted/20">
       <SiteHeader />
-      <main className="container pb-16 pt-12">
+      <main className="container page-enter pb-16 pt-12">
         <div className="mx-auto max-w-5xl">
           <Badge variant="secondary" className="mb-4 rounded-full">
             Flexible plans
@@ -35,7 +35,7 @@ export default function PricingPage() {
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>Limited daily quizzes</li>
+                <li>Limited daily objective questions</li>
                 <li>Basic progress view</li>
                 <li>One active group</li>
                 <li>In-app reminders</li>
@@ -81,7 +81,7 @@ export default function PricingPage() {
             <Card className="p-5">
               <BrainCircuit className="h-5 w-5 text-primary" />
               <div className="mt-3 text-sm font-medium">Adaptive learning</div>
-              <p className="mt-1 text-sm text-muted-foreground">Quizzes adapt around mistakes so practice time stays efficient.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Objective questions adapt around mistakes so practice time stays efficient.</p>
             </Card>
             <Card className="p-5">
               <BarChart3 className="h-5 w-5 text-primary" />

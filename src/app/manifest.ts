@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "AI-powered exam prep PWA for WAEC, JAMB, IELTS, ACCA, and ICAN.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#0b1220",
+    background_color: "#08314a",
+    theme_color: "#0d4a6a",
     icons: [
       {
         src: "/icon.svg",

@@ -40,10 +40,10 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
   const mine = entries?.find((e) => e.user_id === user.id);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Leaderboard</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Leaderboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">Compete on XP. Stay consistent.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -62,12 +62,12 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{displayPeriod(period)} top 50</CardTitle>
-          <CardDescription>Ranks update regularly based on completed quizzes.</CardDescription>
+          <CardDescription>Ranks update regularly based on completed objective questions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {mine ? (
             <div className="rounded-xl border bg-muted/30 p-3 text-sm">
-              Your rank: <span className="font-medium">#{mine.rank}</span> · XP:{" "}
+              Your rank: <span className="font-medium">#{mine.rank}</span> | XP:{" "}
               <span className="font-medium">{mine.score}</span>
             </div>
           ) : null}
@@ -91,7 +91,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">
-              No entries yet. Complete a quiz to earn XP and appear here.
+              No entries yet. Complete objective questions to earn XP and appear here.
             </div>
           )}
         </CardContent>

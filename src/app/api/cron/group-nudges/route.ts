@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       ? "A member"
       : byId.get(leader[0])?.display_name ?? "A member";
 
-    const msg = `${leaderName} is ahead by ${gap} quiz${gap === 1 ? "" : "zes"} on ${g.subject}. Catch up today!`;
+    const msg = `${leaderName} is ahead by ${gap} objective-question session${gap === 1 ? "" : "s"} on ${g.subject}. Catch up today!`;
 
     await admin.from("group_messages").insert({
       group_id: g.id,

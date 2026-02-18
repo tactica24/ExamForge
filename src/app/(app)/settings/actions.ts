@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { redirect } from "next/navigation";
+import { ensureSeedExamExists } from "@/lib/seed/ensure";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
@@ -52,21 +53,20 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
 
 const AddExamSubjectSchema = z.object({
   exam_id: z.string().min(3),
+  exam_slug: z.string().min(2),
   subject: z.string().trim().min(2).max(120)
 });
 
 export async function addExamSubjectAction(_: unknown, formData: FormData) {
-  const raw = String(formData.get("exam_subject") ?? "").trim();
-  const separator = "::";
-  const splitIndex = raw.indexOf(separator);
-
-  if (splitIndex <= 0) {
+  const selectionReady = String(formData.get("selection_ready") ?? "").trim();
+  if (!selectionReady) {
     return { ok: false, message: "Select an exam and subject." };
   }
 
   const parsed = AddExamSubjectSchema.safeParse({
-    exam_id: raw.slice(0, splitIndex),
-    subject: raw.slice(splitIndex + separator.length)
+    exam_id: String(formData.get("exam_id") ?? "").trim(),
+    exam_slug: String(formData.get("exam_slug") ?? "").trim(),
+    subject: String(formData.get("subject") ?? "").trim()
   });
 
   if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
@@ -77,10 +77,23 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  let examId = parsed.data.exam_id;
+  if (examId.startsWith("fallback-")) {
+    try {
+      examId = await ensureSeedExamExists({ slug: parsed.data.exam_slug });
+    } catch {
+      return {
+        ok: false,
+        message:
+          "Seed exam setup requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY."
+      };
+    }
+  }
+
   const { error } = await firebase.from("user_exam_subjects").upsert(
     {
       user_id: user.id,
-      exam_id: parsed.data.exam_id,
+      exam_id: examId,
       subject: parsed.data.subject,
       is_active: true
     },

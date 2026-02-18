@@ -11,8 +11,8 @@ export function NavLink(props: { href: string; label: string }) {
     <Link
       href={props.href}
       className={cn(
-        "rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground",
-        active && "bg-accent text-foreground"
+        "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground",
+        active && "bg-primary/12 text-foreground ring-1 ring-primary/25"
       )}
     >
       {props.label}

@@ -30,7 +30,7 @@ export function OfflineSync() {
 
         if (syncedIds.length) {
           dequeueSyncedQuizSubmissions(syncedIds);
-          toast.success(`Synced ${syncedIds.length} offline quiz result(s).`);
+          toast.success(`Synced ${syncedIds.length} offline objective-question result(s).`);
         }
       } catch {
         // ignore

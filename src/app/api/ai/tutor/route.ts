@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       answer:
-        "AI tutor is not configured. Add OPENAI_API_KEY to enable. For now: break the topic into definitions, formulas, examples, then practice 5 questions."
+        "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes."
     });
   }
 
@@ -105,6 +105,6 @@ export async function POST(req: Request) {
     ]
   });
 
-  const answer = completion.choices[0]?.message?.content ?? "Sorry - could not generate a reply.";
+  const answer = completion.choices[0]?.message?.content ?? "Sorry, I could not generate a reply.";
   return NextResponse.json({ ok: true, answer });
 }

@@ -17,6 +17,8 @@ import {
 import { ReferralCard } from "@/components/referrals/referral-card";
 import { ParentLinksCard } from "@/components/parent/parent-links-card";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
+import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
+import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 function toSubjects(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
@@ -69,20 +71,26 @@ export default async function SettingsPage() {
   });
 
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
-  const allExamSubjectOptions = exams.flatMap((exam) =>
-    toSubjects(exam.subjects).map((subject) => ({
-      value: `${exam.id}::${subject}`,
-      label: `${exam.name} - ${subject}`
-    }))
-  );
-
-  const existingSelections = new Set(userExamSubjects.map((item) => `${item.exam_id}::${item.subject}`));
-  const availableExamSubjectOptions = allExamSubjectOptions.filter((item) => !existingSelections.has(item.value));
+  const examOptions = exams.map((exam) => ({
+    id: exam.id,
+    slug: exam.slug,
+    name: exam.name,
+    subjects: toSubjects(exam.subjects)
+  }));
+  const existingSelections = userExamSubjects.map((item) => ({ examId: item.exam_id, subject: item.subject }));
+  const existingSet = new Set(existingSelections.map((item) => `${item.examId}::${item.subject}`));
+  const hasMoreExamSubjects = examOptions.some((exam) => {
+    const subjects =
+      exam.slug === "waec" || exam.slug === "neco" || exam.slug === "jamb"
+        ? mergeNigerianAndExamSubjects(exam.subjects)
+        : mergeUniqueSubjects(exam.subjects);
+    return subjects.some((subject) => !existingSet.has(`${exam.id}::${subject}`));
+  });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Profile, subjects, and reminders.</p>
       </div>
 
@@ -194,7 +202,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Subjects</CardTitle>
-          <CardDescription>Add exam subjects to personalize plans and quiz recommendations.</CardDescription>
+          <CardDescription>Add exam subjects to personalize plans and objective question recommendations.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -210,31 +218,13 @@ export default async function SettingsPage() {
           </div>
 
           <AuthFormState action={addExamSubjectAction}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="exam_subject">Add exam subject</Label>
-                <NativeSelect
-                  id="exam_subject"
-                  name="exam_subject"
-                  defaultValue={availableExamSubjectOptions[0]?.value ?? ""}
-                  disabled={!availableExamSubjectOptions.length}
-                  required
-                >
-                  {availableExamSubjectOptions.length ? null : <option value="">All available subjects already selected</option>}
-                  {availableExamSubjectOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-            </div>
+            <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
             <div className="mt-4">
               <SubmitButton
                 type="submit"
                 pendingText="Adding..."
                 className="w-full sm:w-auto"
-                disabled={!availableExamSubjectOptions.length}
+                disabled={!hasMoreExamSubjects}
               >
                 Add subject
               </SubmitButton>

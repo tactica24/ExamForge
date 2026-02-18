@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NativeSelect } from "@/components/ui/native-select";
+import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 type ExamOption = {
   id: string;
@@ -17,22 +18,30 @@ type ExamOption = {
 
 type Turn = { role: "user" | "assistant"; content: string };
 
+function examSubjects(exam: ExamOption | undefined) {
+  if (!exam) return [];
+  if (exam.slug === "waec" || exam.slug === "neco" || exam.slug === "jamb") {
+    return mergeNigerianAndExamSubjects(exam.subjects);
+  }
+  return mergeUniqueSubjects(exam.subjects);
+}
+
 export function TutorChat(props: { exams: ExamOption[] }) {
   const initialExam = props.exams[0];
   const [examId, setExamId] = React.useState(initialExam?.id ?? "");
-  const [subject, setSubject] = React.useState(initialExam?.subjects?.[0] ?? "");
+  const [subject, setSubject] = React.useState(examSubjects(initialExam)[0] ?? "");
   const [language, setLanguage] = React.useState<"en" | "pidgin" | "hausa" | "yoruba" | "igbo">("en");
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [turns, setTurns] = React.useState<Turn[]>([
     {
       role: "assistant",
-      content: "Tell me what you’re stuck on. I’ll explain and give you a quick practice question."
+      content: "Tell me what you're stuck on. I'll explain and give you a quick practice question."
     }
   ]);
 
   const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
-  const subjects = React.useMemo(() => exam?.subjects ?? [], [exam]);
+  const subjects = React.useMemo(() => examSubjects(exam), [exam]);
 
   React.useEffect(() => {
     if (!subjects.length) return;
@@ -97,7 +106,7 @@ export function TutorChat(props: { exams: ExamOption[] }) {
         </div>
       </div>
 
-      <ScrollArea className="h-[55vh] rounded-xl border bg-card p-4">
+      <ScrollArea className="h-[52vh] rounded-xl border bg-card p-3 sm:h-[55vh] sm:p-4">
         <div className="space-y-3">
           {turns.map((t, idx) => (
             <Card
@@ -107,9 +116,7 @@ export function TutorChat(props: { exams: ExamOption[] }) {
                 t.role === "assistant" ? "border-border bg-background" : "border-primary/30 bg-primary/10"
               ].join(" ")}
             >
-              <div className="mb-1 text-xs text-muted-foreground">
-                {t.role === "assistant" ? "Tutor" : "You"}
-              </div>
+              <div className="mb-1 text-xs text-muted-foreground">{t.role === "assistant" ? "Tutor" : "You"}</div>
               <div className="whitespace-pre-wrap">{t.content}</div>
               {t.role === "assistant" && language !== "en" ? (
                 <div className="mt-3">
@@ -126,7 +133,9 @@ export function TutorChat(props: { exams: ExamOption[] }) {
                         });
                         const json = await res.json();
                         if (!json?.ok) throw new Error(json?.message ?? "Translate failed.");
-                        setTurns((prev) => prev.map((x, i) => (i === idx ? { ...x, content: String(json.text ?? x.content) } : x)));
+                        setTurns((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, content: String(json.text ?? x.content) } : x))
+                        );
                       } catch (e: any) {
                         toast.error(e?.message ?? "Translate error.");
                       }

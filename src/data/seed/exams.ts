@@ -1,3 +1,5 @@
+import { NIGERIAN_EXAM_SUBJECTS } from "@/data/subjects";
+
 export type SeedExam = {
   slug: string;
   name: string;
@@ -7,32 +9,13 @@ export type SeedExam = {
   syllabus_sources: string[];
 };
 
-const coreExamSubjects = [
-  "English Language",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Economics",
-  "Geography",
-  "Government",
-  "Literature in English",
-  "Christian Religious Studies (CRS)",
-  "Islamic Religious Studies (IRS)",
-  "History",
-  "Financial Accounting",
-  "Commerce",
-  "Further Mathematics",
-  "Civic Education"
-];
-
 export const seedExamsNG: SeedExam[] = [
   {
     slug: "waec",
     name: "WAEC",
     country_code: "NG",
     description: "West African Senior School Certificate Examination preparation.",
-    subjects: coreExamSubjects,
+    subjects: [...NIGERIAN_EXAM_SUBJECTS],
     syllabus_sources: ["https://www.waecnigeria.org/"]
   },
   {
@@ -40,7 +23,7 @@ export const seedExamsNG: SeedExam[] = [
     name: "NECO",
     country_code: "NG",
     description: "National Examinations Council (SSCE) preparation.",
-    subjects: coreExamSubjects,
+    subjects: [...NIGERIAN_EXAM_SUBJECTS],
     syllabus_sources: ["https://neco.gov.ng/"]
   },
   {
@@ -48,7 +31,7 @@ export const seedExamsNG: SeedExam[] = [
     name: "JAMB",
     country_code: "NG",
     description: "Unified Tertiary Matriculation Examination (UTME) prep.",
-    subjects: coreExamSubjects,
+    subjects: [...NIGERIAN_EXAM_SUBJECTS],
     syllabus_sources: ["https://www.jamb.gov.ng/"]
   },
   {

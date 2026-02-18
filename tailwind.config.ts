@@ -7,13 +7,19 @@ const config: Config = {
     extend: {
       container: {
         center: true,
-        padding: "1rem",
+        padding: {
+          DEFAULT: "1rem",
+          sm: "1.25rem",
+          lg: "1.5rem",
+          xl: "2rem"
+        },
         screens: {
           "2xl": "1280px"
         }
       },
       fontFamily: {
-        sans: ["ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "Inter", "Arial", "sans-serif"]
+        sans: ["var(--font-body)", "ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+        display: ["var(--font-heading)", "var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       colors: {
         border: "hsl(var(--border))",

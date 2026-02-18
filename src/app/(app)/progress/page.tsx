@@ -50,16 +50,16 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
   const quizById = new Map((quizzes ?? []).map((q) => [q.id, q]));
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Progress</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Filter and review your quiz history.</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Progress</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Filter and review your objective-question history.</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Date range</CardTitle>
-          <CardDescription>Select a range to review past quizzes.</CardDescription>
+          <CardDescription>Select a range to review past objective questions.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
@@ -80,22 +80,22 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
 
       <Card>
         <CardHeader>
-          <CardTitle>Quiz performance</CardTitle>
+          <CardTitle>Objective-question performance</CardTitle>
           <CardDescription>Average: {avg}%</CardDescription>
         </CardHeader>
         <CardContent>
           {quizSeries.length ? (
             <ProgressCharts quizSeries={quizSeries} />
           ) : (
-            <div className="text-sm text-muted-foreground">Take a quiz to see your trend.</div>
+            <div className="text-sm text-muted-foreground">Take objective questions to see your trend.</div>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Quizzes in range</CardTitle>
-          <CardDescription>Select a quiz to review.</CardDescription>
+          <CardTitle className="text-base">Objective-question sessions in range</CardTitle>
+          <CardDescription>Select a session to review.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {results?.length ? (
@@ -106,7 +106,7 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
                   <div>
                     <div className="font-medium">{quiz?.subject ?? "Subject"}</div>
                     <div className="text-xs text-muted-foreground">
-                      {quiz?.quiz_type ?? "quiz"} · {new Date(r.created_at).toLocaleDateString()}
+                      {quiz?.quiz_type ?? "objective"} | {new Date(r.created_at).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
               );
             })
           ) : (
-            <div className="text-sm text-muted-foreground">No quizzes in this range.</div>
+            <div className="text-sm text-muted-foreground">No objective-question sessions in this range.</div>
           )}
         </CardContent>
       </Card>

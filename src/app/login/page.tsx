@@ -15,7 +15,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
   return (
     <AuthCard
       title="Welcome back"
-      description="Log in to continue your plan, quizzes, and groups."
+      description="Log in to continue your plan, objective questions, and groups."
       footer={
         <div className="text-center text-sm text-muted-foreground">
           New here?{" "}

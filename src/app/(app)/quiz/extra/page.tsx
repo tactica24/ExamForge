@@ -18,17 +18,17 @@ export default async function ExtraQuizPage(props: { searchParams: Promise<{ exa
   const exams = await listActiveExams();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Extra practice</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Extra practice</h1>
         <p className="mt-1 text-sm text-muted-foreground">Target weak areas with quick drills.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Generate an extra quiz</CardTitle>
+          <CardTitle className="text-base">Generate extra objective questions</CardTitle>
           <CardDescription>
-            Pick an exam, subject, and optional topic focus. Questions adapt to your AI language preference.
+            Pick an exam, subject, and optional topic focus. Objective questions adapt to your AI language preference.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -45,7 +45,7 @@ export default async function ExtraQuizPage(props: { searchParams: Promise<{ exa
             />
             <div className="mt-4">
               <SubmitButton type="submit" pendingText="Generating..." className="w-full sm:w-auto">
-                Start quiz
+                Start objective questions
               </SubmitButton>
             </div>
           </AuthFormState>

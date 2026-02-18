@@ -105,10 +105,10 @@ export default async function DashboardPage() {
       .join("") || "U";
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             {plan.mode === "group" ? "Group mode" : "Solo mode"} | {plan.pace} pace |{" "}
             <span className="font-medium text-foreground">{todayStr}</span>
@@ -119,7 +119,7 @@ export default async function DashboardPage() {
             <Link href="/plan">Open plan</Link>
           </Button>
           <Button asChild>
-            <Link href="/quiz/today">Take today&apos;s quiz</Link>
+            <Link href="/quiz/today">Take today&apos;s objective questions</Link>
           </Button>
         </div>
       </div>
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent quizzes</CardTitle>
+            <CardTitle>Recent objective questions</CardTitle>
             <CardDescription>Fast feedback loop.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -221,14 +221,14 @@ export default async function DashboardPage() {
                 </div>
               ))
             ) : (
-              <div className="text-sm text-muted-foreground">No quiz results yet.</div>
+              <div className="text-sm text-muted-foreground">No objective question results yet.</div>
             )}
             <Separator />
             <div className="text-sm">
               <div className="text-muted-foreground">Predicted performance</div>
               <div className="mt-1 font-medium">{avgPercent}%</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Rough estimate from your last {recentResults?.length ?? 0} quizzes.
+                Rough estimate from your last {recentResults?.length ?? 0} objective-question sessions.
               </div>
             </div>
             {weakEntries.length ? (

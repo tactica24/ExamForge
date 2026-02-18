@@ -19,11 +19,11 @@ const rights = [
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-gradient-to-b from-background via-background to-muted/20">
       <SiteHeader />
-      <main className="container pb-16 pt-12">
+      <main className="container page-enter pb-16 pt-12">
         <div className="mx-auto max-w-4xl space-y-8">
-          <div className="space-y-3">
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
             <p className="text-sm text-muted-foreground">
               ACE NAIJA is designed with practical privacy controls to support modern expectations across
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             </p>
           </div>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">1) Privacy principles we apply</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {privacyPrinciples.map((item) => (
@@ -44,21 +44,21 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">2) Data we collect</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               <li>Account data (name, email, optional phone, auth metadata).</li>
-              <li>Learning data (exam preferences, study plans, quiz attempts, scores, streaks, progress trends).</li>
+              <li>Learning data (exam preferences, study plans, objective-question attempts, scores, streaks, progress trends).</li>
               <li>Community data (group messages, participation, and moderation events).</li>
               <li>Billing data needed for subscription state and transaction verification.</li>
               <li>Technical and security data (logs, device/browser info, and anti-abuse signals).</li>
             </ul>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">3) How we use data</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              <li>Deliver core product features (planning, quizzes, analytics, reminders, and groups).</li>
+              <li>Deliver core product features (planning, objective questions, analytics, reminders, and groups).</li>
               <li>Personalize practice and recommendations based on performance patterns.</li>
               <li>Protect users and platform integrity, including abuse prevention and moderation.</li>
               <li>Operate subscriptions, payment confirmation, and support workflows.</li>
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">4) Legal bases and consent</h2>
             <p className="text-sm text-muted-foreground">
               Depending on jurisdiction, we rely on contract performance, legitimate interests, consent,
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">5) Sharing, processors, and transfers</h2>
             <p className="text-sm text-muted-foreground">
               We use trusted processors for infrastructure, authentication, storage, payments, messaging,
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">6) Security and retention</h2>
             <p className="text-sm text-muted-foreground">
               We use technical and organizational controls (for example, access restrictions, transport security,
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">7) Your rights and requests</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {rights.map((item) => (
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">8) Policy updates</h2>
             <p className="text-sm text-muted-foreground">
               We may update this policy as features, laws, or operational requirements evolve.

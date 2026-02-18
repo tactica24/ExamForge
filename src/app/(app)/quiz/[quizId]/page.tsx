@@ -27,11 +27,5 @@ export default async function QuizPage(props: { params: Promise<{ quizId: string
       explanation: q.explanation
     })) ?? [];
 
-  return (
-    <QuizRunner
-      quizId={quizId}
-      title={`${quiz.subject} · ${quiz.topic_path}`}
-      questions={safeQuestions}
-    />
-  );
+  return <QuizRunner quizId={quizId} title={`${quiz.subject} | ${quiz.topic_path}`} questions={safeQuestions} />;
 }

@@ -9,13 +9,17 @@ export function AppShell(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-background to-muted/15">
-      <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur">
+    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/20">
+      <div className="pointer-events-none absolute -left-24 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 top-24 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Logo className="h-6 w-6" />
-              <span className="text-sm font-semibold tracking-tight">ACE NAIJA</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
+                <Logo className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-display text-sm font-semibold tracking-tight">ACE NAIJA</span>
             </div>
             <nav className="hidden items-center gap-1 sm:flex">
               <NavLink href="/dashboard" label="Dashboard" />
@@ -33,7 +37,7 @@ export function AppShell(props: {
           </div>
         </div>
         <div className="container pb-3 sm:hidden">
-          <nav className="flex flex-wrap gap-2">
+          <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             <NavLink href="/dashboard" label="Dashboard" />
             <NavLink href="/plan" label="Plan" />
             <NavLink href="/groups" label="Groups" />
@@ -44,7 +48,9 @@ export function AppShell(props: {
           </nav>
         </div>
       </header>
-      <main className="container py-8">{props.children}</main>
+      <main className="container page-enter pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:pb-8 sm:pt-8">
+        {props.children}
+      </main>
     </div>
   );
 }

@@ -31,7 +31,7 @@ export default async function MockExamRunPage(props: { params: Promise<{ quizId:
   return (
     <MockRunner
       quizId={quizId}
-      title={`${quiz.subject} · Mock exam`}
+      title={`${quiz.subject} | Mock exam`}
       durationSec={durationSec}
       questions={safeQuestions}
     />

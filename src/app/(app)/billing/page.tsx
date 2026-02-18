@@ -24,16 +24,16 @@ export default async function BillingPage() {
   const tier = effectivePro ? "pro" : "free";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Billing</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage your subscription.</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Current plan</CardTitle>
-          <CardDescription>Upgrade for unlimited quizzes, groups, and reminders.</CardDescription>
+          <CardDescription>Upgrade for unlimited objective questions, groups, and reminders.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">

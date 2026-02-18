@@ -48,10 +48,10 @@ export default async function ProfilePage() {
   const isAnonymous = Boolean(profile?.leaderboard_anonymous);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Profile</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your account and performance identity.</p>
         </div>
         <Button asChild variant="secondary">
@@ -124,7 +124,9 @@ export default async function ProfilePage() {
               );
             })
           ) : (
-            <div className="text-sm text-muted-foreground">No badges yet. Complete a quiz to unlock your first.</div>
+            <div className="text-sm text-muted-foreground">
+              No badges yet. Complete objective questions to unlock your first.
+            </div>
           )}
         </CardContent>
       </Card>

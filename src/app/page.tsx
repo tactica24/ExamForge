@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SuccessStoriesSlider } from "@/components/marketing/success-stories-slider";
 
 const examTracks = [
   {
@@ -22,7 +23,8 @@ const examTracks = [
   },
   {
     exam: "JAMB UTME",
-    detail: "Train with timed quiz sessions, track speed and accuracy, and focus on the topics that impact your score."
+    detail:
+      "Train with timed objective-question sessions, track speed and accuracy, and focus on the topics that impact your score."
   },
   {
     exam: "IELTS",
@@ -36,34 +38,11 @@ const examTracks = [
 
 const learnerBenefits = [
   "Personalized syllabus plan that adapts to your pace",
-  "Daily quizzes plus weak-area drills after every attempt",
+  "Daily objective questions plus weak-area drills after every attempt",
   "Performance dashboard with topic-level growth insights",
   "Mock exam mode with timer, scoring, and review",
   "Learning groups for accountability, challenges, and momentum",
   "AI explanations that clarify mistakes instantly"
-];
-
-const successStories = [
-  {
-    exam: "JAMB",
-    text: "Raised my score by 62 points in 6 weeks by drilling weak topics daily."
-  },
-  {
-    exam: "WAEC",
-    text: "Turned Physics into my strongest subject after consistent mock exams and explanations."
-  },
-  {
-    exam: "NECO",
-    text: "Went from guessing to confident answers with the subject-by-subject plan."
-  },
-  {
-    exam: "IELTS",
-    text: "Improved Writing band by following daily practice targets and feedback."
-  },
-  {
-    exam: "ICAN",
-    text: "Broke complex topics into small daily wins and passed my first paper."
-  }
 ];
 
 export default function HomePage() {
@@ -71,8 +50,9 @@ export default function HomePage() {
     <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/30">
       <div className="pointer-events-none absolute -top-28 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 top-72 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 top-[38rem] h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
       <SiteHeader />
-      <main className="container pb-20 pt-12">
+      <main className="container page-enter pb-20 pt-12">
         <section className="mx-auto max-w-5xl">
           <Badge variant="secondary" className="mb-5 inline-flex gap-2 rounded-full px-3 py-1 text-sm">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -82,7 +62,7 @@ export default function HomePage() {
             Ace JAMB, WAEC, NECO, IELTS, ICAN, and ACCA with a tailored learning pace.
           </h1>
           <p className="mt-5 max-w-3xl text-pretty text-lg text-muted-foreground">
-            ACE NAIJA turns each exam syllabus into a personalized daily plan, delivers focused quizzes,
+            ACE NAIJA turns each exam syllabus into a personalized daily plan, delivers focused objective questions,
             and tracks weak areas in real time so you keep improving every week until exam day.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -104,8 +84,8 @@ export default function HomePage() {
             </Card>
             <Card className="p-5">
               <BrainCircuit className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-sm font-medium">Adaptive Quiz Engine</div>
-              <p className="mt-1 text-sm text-muted-foreground">Topic-focused practice with weak-area reinforcement after each attempt.</p>
+              <div className="mt-3 text-sm font-medium">Adaptive Objective Engine</div>
+              <p className="mt-1 text-sm text-muted-foreground">Topic-focused objective questions with weak-area reinforcement after each attempt.</p>
             </Card>
             <Card className="p-5">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -130,21 +110,6 @@ export default function HomePage() {
               <Card key={item.exam} className="p-5">
                 <div className="text-sm font-semibold text-primary">{item.exam}</div>
                 <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section className="mx-auto mt-16 max-w-5xl">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Recent success stories</h2>
-            <Badge variant="secondary" className="rounded-full">Learner wins</Badge>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {successStories.map((story) => (
-              <Card key={story.exam} className="p-5">
-                <div className="text-xs font-semibold text-primary">{story.exam}</div>
-                <p className="mt-2 text-sm text-muted-foreground">{story.text}</p>
               </Card>
             ))}
           </div>
@@ -179,7 +144,7 @@ export default function HomePage() {
                 <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>Unlimited quizzes and weak-area mode</li>
+                <li>Unlimited objective questions and weak-area mode</li>
                 <li>Mock exams with timer and review</li>
                 <li>Learning groups and challenge mode</li>
                 <li>AI explanations and guided tutoring</li>
@@ -194,6 +159,16 @@ export default function HomePage() {
               </div>
             </div>
           </Card>
+        </section>
+
+        <section className="mx-auto mt-16 max-w-5xl">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Success stories</h2>
+            <Badge variant="secondary" className="rounded-full">
+              Learner wins
+            </Badge>
+          </div>
+          <SuccessStoriesSlider />
         </section>
       </main>
       <SiteFooter />

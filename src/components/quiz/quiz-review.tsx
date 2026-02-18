@@ -15,13 +15,19 @@ export type ReviewQuestion = {
 };
 
 export function QuizReview(props: { examId?: string; examName: string; subject: string; questions: ReviewQuestion[] }) {
-  const [open, setOpen] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
+  const [loadingId, setLoadingId] = React.useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = React.useState(false);
   const [ai, setAi] = React.useState<Record<string, string>>({});
+
+  const wrongQuestions = React.useMemo(
+    () => props.questions.filter((q) => q.correct_index !== q.user_index),
+    [props.questions]
+  );
+  const correctCount = props.questions.length - wrongQuestions.length;
 
   async function explain(q: ReviewQuestion) {
     try {
-      setLoading(true);
+      setLoadingId(q.id);
       const res = await fetch("/api/ai/explain-wrong", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,16 +44,77 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
       const json = await res.json();
       if (!json?.ok) throw new Error(json?.message ?? "Explain failed.");
       setAi((prev) => ({ ...prev, [q.id]: String(json.answer ?? "") }));
-      setOpen(q.id);
     } catch (e: any) {
       toast.error(e?.message ?? "Explain error.");
     } finally {
-      setLoading(false);
+      setLoadingId(null);
     }
   }
 
+  React.useEffect(() => {
+    if (!wrongQuestions.length) return;
+    if (wrongQuestions.every((q) => ai[q.id])) return;
+
+    let active = true;
+
+    async function autoExplainWrong() {
+      try {
+        setBulkLoading(true);
+        const res = await fetch("/api/ai/explain-review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exam_id: props.examId,
+            exam: props.examName,
+            subject: props.subject,
+            questions: wrongQuestions.map((q) => ({
+              id: q.id,
+              question: q.question,
+              options: q.options,
+              correct_index: q.correct_index,
+              user_index: q.user_index
+            }))
+          })
+        });
+        const json = await res.json();
+        if (!active || !json?.ok || typeof json?.answers !== "object") return;
+        const next = Object.fromEntries(
+          Object.entries(json.answers as Record<string, unknown>)
+            .filter(([key, value]) => key && typeof value === "string" && value.length)
+            .map(([key, value]) => [key, String(value)])
+        );
+        if (Object.keys(next).length) {
+          setAi((prev) => ({ ...prev, ...next }));
+        }
+      } catch {
+        // Keep default explanations visible if AI auto-explain fails.
+      } finally {
+        if (active) setBulkLoading(false);
+      }
+    }
+
+    autoExplainWrong();
+    return () => {
+      active = false;
+    };
+  }, [wrongQuestions, ai, props.examId, props.examName, props.subject]);
+
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-4 text-sm">
+          <div className="rounded-full border bg-muted/40 px-3 py-1">
+            Correct: <span className="font-semibold">{correctCount}</span>
+          </div>
+          <div className="rounded-full border bg-muted/40 px-3 py-1">
+            Incorrect: <span className="font-semibold">{wrongQuestions.length}</span>
+          </div>
+          {bulkLoading ? (
+            <div className="text-muted-foreground">Generating AI feedback for missed questions...</div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {props.questions.map((q, idx) => {
         const correct = q.correct_index === q.user_index;
         const aiText = ai[q.id];
@@ -75,7 +142,7 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
                     >
                       <div className="font-medium">
                         {String.fromCharCode(65 + i)}.{" "}
-                        {isCorrect ? <span className="text-green-700">Correct</span> : null}
+                        {isCorrect ? <span className="text-green-700">Correct answer</span> : null}
                         {!isCorrect && isUser ? <span className="text-destructive">Your choice</span> : null}
                       </div>
                       <div className="text-muted-foreground">{o}</div>
@@ -85,30 +152,28 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
               </div>
 
               <div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
-                <div className="text-xs font-medium text-muted-foreground">Default explanation</div>
+                <div className="text-xs font-medium text-muted-foreground">Explanation</div>
                 <div className="mt-2 whitespace-pre-wrap">{q.explanation}</div>
               </div>
 
               {!correct ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => explain(q)} disabled={loading}>
-                    {loading ? "Thinking..." : "Explain why I'm wrong"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setOpen((v) => (v === q.id ? null : q.id))}
-                    disabled={!aiText}
-                  >
-                    {open === q.id ? "Hide AI" : "Show AI"}
-                  </Button>
-                </div>
-              ) : null}
-
-              {aiText && open === q.id ? (
-                <div className="rounded-xl border bg-card p-3 text-sm">
-                  <div className="text-xs font-medium text-muted-foreground">AI coach</div>
-                  <div className="mt-2 whitespace-pre-wrap">{aiText}</div>
-                </div>
+                <>
+                  {aiText ? (
+                    <div className="rounded-xl border bg-card p-3 text-sm">
+                      <div className="text-xs font-medium text-muted-foreground">AI coach</div>
+                      <div className="mt-2 whitespace-pre-wrap">{aiText}</div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
+                      {bulkLoading ? "Preparing AI feedback..." : "AI feedback not ready yet."}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" onClick={() => explain(q)} disabled={loadingId === q.id}>
+                      {loadingId === q.id ? "Thinking..." : aiText ? "Refresh AI explanation" : "Generate AI explanation"}
+                    </Button>
+                  </div>
+                </>
               ) : null}
             </CardContent>
           </Card>
@@ -117,4 +182,3 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
     </div>
   );
 }
-

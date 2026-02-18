@@ -62,7 +62,7 @@ export function MockRunner(props: {
       });
       const json = await res.json();
       if (!json?.ok) throw new Error(json?.message ?? "Submit failed.");
-      toast.success(`Mock saved: ${json.score}/${json.total}`);
+      toast.success(`Score: ${json.score}/${json.total}`);
       router.push(`/quiz/${props.quizId}/review`);
     } catch (e: any) {
       enqueueQuizSubmission({ quizId: props.quizId, answers });
@@ -79,7 +79,7 @@ export function MockRunner(props: {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{props.title}</h1>
           <p className="text-sm text-muted-foreground">
-            Timer: <span className="font-medium text-foreground">{formatTime(remaining)}</span> · Question{" "}
+            Timer: <span className="font-medium text-foreground">{formatTime(remaining)}</span> | Question{" "}
             {current + 1}/{props.questions.length}
           </p>
         </div>

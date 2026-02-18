@@ -4,6 +4,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 type ExamOption = {
   id: string;
@@ -12,15 +13,23 @@ type ExamOption = {
   subjects: string[];
 };
 
+function examSubjects(exam: ExamOption | undefined) {
+  if (!exam) return [];
+  if (exam.slug === "waec" || exam.slug === "neco" || exam.slug === "jamb") {
+    return mergeNigerianAndExamSubjects(exam.subjects);
+  }
+  return mergeUniqueSubjects(exam.subjects);
+}
+
 export function ExtraQuizConfig(props: { exams: ExamOption[]; defaultExamId?: string; defaultSubject?: string }) {
   const initialExam =
     props.exams.find((item) => item.id === props.defaultExamId) ?? props.exams[0];
   const [examId, setExamId] = React.useState(initialExam?.id ?? "");
-  const [subject, setSubject] = React.useState(props.defaultSubject ?? initialExam?.subjects?.[0] ?? "");
+  const [subject, setSubject] = React.useState(props.defaultSubject ?? examSubjects(initialExam)[0] ?? "");
   const [topic, setTopic] = React.useState("");
 
   const exam = React.useMemo(() => props.exams.find((item) => item.id === examId), [props.exams, examId]);
-  const subjects = React.useMemo(() => exam?.subjects ?? [], [exam]);
+  const subjects = React.useMemo(() => examSubjects(exam), [exam]);
 
   React.useEffect(() => {
     if (!subjects.length) return;

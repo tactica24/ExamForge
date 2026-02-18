@@ -30,11 +30,11 @@ export default async function PlanPage() {
     .order("scheduled_for", { ascending: true });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Plan</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Next 14 days · {plan.mode} mode · {plan.pace} pace
+          Next 14 days | {plan.mode} mode | {plan.pace} pace
         </p>
       </div>
 
@@ -46,7 +46,10 @@ export default async function PlanPage() {
         <CardContent className="space-y-4">
           {items?.length ? (
             items.map((item) => (
-              <div key={item.id} className="flex flex-col gap-2 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div
+                key={item.id}
+                className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-sm font-medium">{item.title}</div>
@@ -55,20 +58,20 @@ export default async function PlanPage() {
                     </Badge>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {item.scheduled_for} · {item.topic_path}
+                    {item.scheduled_for} | {item.topic_path}
                   </div>
                 </div>
 
                 <AuthFormState action={updatePlanItemStatusAction}>
                   <input type="hidden" name="item_id" value={item.id} />
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="submit" name="status" value="done" variant="secondary" size="sm">
+                  <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+                    <Button type="submit" name="status" value="done" variant="secondary" size="sm" className="w-full sm:w-auto">
                       Done
                     </Button>
-                    <Button type="submit" name="status" value="skipped" variant="outline" size="sm">
+                    <Button type="submit" name="status" value="skipped" variant="outline" size="sm" className="w-full sm:w-auto">
                       Skip
                     </Button>
-                    <Button type="submit" name="status" value="todo" variant="ghost" size="sm">
+                    <Button type="submit" name="status" value="todo" variant="ghost" size="sm" className="w-full sm:w-auto">
                       Reset
                     </Button>
                   </div>

@@ -109,15 +109,28 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 
 ### One-time setup
 - In GitHub repo settings, set variable `APP_WEB_URL` to your deployed web URL (must start with `https://`).
+- Current production URL: `https://exam-forge-ten.vercel.app`
+- Do not leave placeholder domains in `capacitor.config.json`; the workflow now fails if `APP_WEB_URL` is missing.
 
 ### Trigger APK build
 - Go to **Actions** -> **Android APK**.
 - Click **Run workflow**.
 
+### Local Android build (optional)
+```bash
+npm run mobile:url:set -- https://<your-domain>
+npm run mobile:android:sync
+```
+
 ### Download APK
 - Open the completed workflow run.
 - Download artifact `ace-naija-apk-debug`.
 - Install `app-debug.apk` on Android (enable install from unknown sources if required).
+
+### If login fails on installed APK
+1. Confirm `APP_WEB_URL` points to your real deployed app (not a placeholder or another project).
+2. In Firebase Authentication -> Authorized domains, add that exact domain.
+3. Ensure deployed env vars are set (`NEXT_PUBLIC_FIREBASE_*` + admin vars).
 
 ## Notes / disclaimers
 ACE NAIJA is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.

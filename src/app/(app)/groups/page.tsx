@@ -15,18 +15,12 @@ export default async function GroupsPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: memberships } = await firebase
-    .from("group_members")
-    .select("group_id,groups(*)")
-    .eq("user_id", user.id);
+  const { data: memberships } = await firebase.from("group_members").select("group_id,groups(*)").eq("user_id", user.id);
 
   const groups = memberships?.map((m: any) => m.groups).filter(Boolean) ?? [];
   const groupCount = groups.length;
 
-  const { data: subjects } = await firebase
-    .from("user_exam_subjects")
-    .select("exam_id,subject")
-    .eq("user_id", user.id);
+  const { data: subjects } = await firebase.from("user_exam_subjects").select("exam_id,subject").eq("user_id", user.id);
 
   const exams = await listActiveExams();
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
@@ -39,10 +33,7 @@ export default async function GroupsPage() {
   const groupMemberCounts = new Map<string, number>();
   for (const g of [...groups, ...(allGroups ?? [])]) {
     if (!g?.id || groupMemberCounts.has(g.id)) continue;
-    const { count } = await firebase
-      .from("group_members")
-      .select("*", { count: "exact", head: true })
-      .eq("group_id", g.id);
+    const { count } = await firebase.from("group_members").select("*", { count: "exact", head: true }).eq("group_id", g.id);
     groupMemberCounts.set(g.id, count ?? 0);
   }
 
@@ -63,15 +54,13 @@ export default async function GroupsPage() {
     }) ?? [];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-end justify-between gap-3">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Groups</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Collaborative mode: chat, challenges, and peer support.
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Groups</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Collaborative mode: chat, challenges, and peer support.</p>
         </div>
-        <Button asChild variant="secondary">
+        <Button asChild variant="secondary" className="w-full sm:w-auto">
           <Link href="/onboarding">Find a new group</Link>
         </Button>
       </div>
@@ -81,7 +70,7 @@ export default async function GroupsPage() {
           <CardTitle className="text-base">Suggested groups</CardTitle>
           <CardDescription>Select up to 3 groups based on your subjects.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-4 md:grid-cols-2">
           {suggestions.length ? (
             suggestions.map((s) => {
               const already = membershipBySubject.has(s.key);
@@ -90,10 +79,10 @@ export default async function GroupsPage() {
                 <Card key={s.key} className="border-dashed">
                   <CardHeader>
                     <CardTitle className="text-base">
-                      {s.subject} · {s.exam_name}
+                      {s.subject} | {s.exam_name}
                     </CardTitle>
                     <CardDescription>
-                      {s.group?.name ?? `${s.subject} group`} · {members}/15 members
+                      {s.group?.name ?? `${s.subject} group`} | {members}/15 members
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-2">
@@ -105,13 +94,8 @@ export default async function GroupsPage() {
                       <AuthFormState action={joinSubjectGroupAction}>
                         <input type="hidden" name="exam_id" value={s.exam_id} />
                         <input type="hidden" name="subject" value={s.subject} />
-                        <SubmitButton
-                          type="submit"
-                          pendingText="Joining..."
-                          className="w-full"
-                          disabled={groupCount >= 3}
-                        >
-                          {groupCount >= 3 ? "Group limit reached" : s.group ? "Join group" : "Create & join"}
+                        <SubmitButton type="submit" pendingText="Joining..." className="w-full" disabled={groupCount >= 3}>
+                          {groupCount >= 3 ? "Group limit reached" : s.group ? "Join group" : "Create and join"}
                         </SubmitButton>
                       </AuthFormState>
                     )}
@@ -125,16 +109,16 @@ export default async function GroupsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {groups.length ? (
           groups.map((g: any) => (
             <Card key={g.id}>
               <CardHeader>
                 <CardTitle className="text-base">
-                  {g.name ?? g.subject} · {g.pace}
+                  {g.name ?? g.subject} | {g.pace}
                 </CardTitle>
                 <CardDescription>
-                  Level: {g.level} · TZ: {g.timezone} · {groupMemberCounts.get(g.id) ?? 0}/15 members
+                  Level: {g.level} | TZ: {g.timezone} | {groupMemberCounts.get(g.id) ?? 0}/15 members
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -159,7 +143,7 @@ export default async function GroupsPage() {
             </Card>
           ))
         ) : (
-          <Card className="sm:col-span-2">
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>No groups yet</CardTitle>
               <CardDescription>Choose group mode in onboarding to get matched automatically.</CardDescription>

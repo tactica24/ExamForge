@@ -48,12 +48,12 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
     })) ?? [];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Quiz review</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Objective question review</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {quiz.subject} · {quiz.topic_path} · {result.score}/{result.total}
+            {quiz.subject} | {quiz.topic_path} | {result.score}/{result.total}
           </p>
         </div>
         <div className="flex gap-2">
@@ -69,7 +69,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Questions</CardTitle>
-          <CardDescription>Review mistakes, then ask the AI coach why.</CardDescription>
+          <CardDescription>Score is ready. AI feedback is generated automatically for wrong answers.</CardDescription>
         </CardHeader>
         <CardContent>
           <QuizReview examId={quiz.exam_id} examName={examName} subject={quiz.subject} questions={qs as any} />

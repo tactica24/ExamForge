@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <Logo className="h-6 w-6" />
-          <span className="text-sm font-semibold tracking-tight">ACE NAIJA</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
+            <Logo className="h-5 w-5 text-primary" />
+          </div>
+          <span className="font-display text-sm font-semibold tracking-tight">ACE NAIJA</span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
           <Link href="/pricing" className="hover:text-foreground">

@@ -3,27 +3,24 @@ import { cn } from "@/lib/utils";
 export function Logo({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("text-foreground", className)}
-      viewBox="0 0 24 24"
+      className={cn(className)}
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
     >
-      <path
-        d="M7 4.5h10a2 2 0 0 1 2 2v10.2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path d="M8.5 8h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8.5 11h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8.5 14h4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path
-        d="M14.5 14.5 16 16l3-3"
-        stroke="#22c55e"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <defs>
+        <linearGradient id="exam-forge-logo" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0D4A6A" />
+          <stop offset="1" stopColor="#1CA3A3" />
+        </linearGradient>
+      </defs>
+      <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#exam-forge-logo)" />
+      <rect x="14.5" y="17" width="35" height="30" rx="6" fill="#F7FBFF" fillOpacity="0.95" />
+      <path d="M22 24H42" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M22 31H36" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M22 38H42" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M40 26L45.5 31.5L40 37" stroke="#14B8A6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
-

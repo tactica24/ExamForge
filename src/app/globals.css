@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --background: 210 45% 98%;
+  --foreground: 217 45% 13%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 217 45% 13%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
+  --popover-foreground: 217 45% 13%;
+  --primary: 198 78% 34%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  --secondary: 200 38% 94%;
+  --secondary-foreground: 217 45% 13%;
+  --muted: 203 32% 94%;
+  --muted-foreground: 216 20% 42%;
+  --accent: 188 42% 92%;
+  --accent-foreground: 217 45% 13%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
+  --border: 205 30% 87%;
+  --input: 205 30% 87%;
+  --ring: 198 78% 34%;
   --radius: 12px;
 }
 
@@ -53,10 +53,45 @@ body {
 }
 
 body {
-  @apply bg-background text-foreground;
+  @apply text-foreground;
+  font-family: var(--font-body), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background:
+    radial-gradient(circle at 8% -10%, hsl(var(--primary) / 0.13) 0, transparent 30%),
+    radial-gradient(circle at 92% 0%, hsl(var(--primary) / 0.08) 0, transparent 24%),
+    hsl(var(--background));
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-display {
+  font-family: var(--font-heading), var(--font-body), "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+a {
+  transition: color 180ms ease, opacity 180ms ease;
 }
 
 ::selection {
   background: hsl(var(--primary) / 0.18);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: fade-up 320ms ease-out;
 }
 

@@ -23,8 +23,7 @@ export function fallbackQuestions(topic: string, subject: string, count: number)
         "Option D (best answer)"
       ],
       correct_index: correct,
-      explanation:
-        "This is a fallback question. Add OPENAI_API_KEY to generate exam-style questions with detailed explanations."
+      explanation: "Review the core rule for this topic and compare each option against that rule before choosing."
     });
   }
   return qs;

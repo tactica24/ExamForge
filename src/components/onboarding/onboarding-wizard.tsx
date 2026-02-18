@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { completeOnboardingAction } from "@/app/(app)/onboarding/actions";
+import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 type ExamRow = Database["public"]["Tables"]["exams"]["Row"];
 
@@ -22,6 +23,15 @@ const learningStyles = [
 
 function toSubjectList(value: ExamRow["subjects"]): string[] {
   return Array.isArray(value) ? (value as unknown as string[]) : [];
+}
+
+function subjectsForExam(exam: ExamRow | null | undefined) {
+  if (!exam) return [];
+  const base = toSubjectList(exam.subjects);
+  if (exam.slug === "waec" || exam.slug === "neco" || exam.slug === "jamb") {
+    return mergeNigerianAndExamSubjects(base);
+  }
+  return mergeUniqueSubjects(base);
 }
 
 function getInitialExam(exams: ExamRow[], preferredExamSlugs: string[]): ExamRow | null {
@@ -48,7 +58,7 @@ export function OnboardingWizard(props: {
   const [examId, setExamId] = React.useState<string>(initialExam?.id ?? "");
   const [examSlug, setExamSlug] = React.useState<string>(initialExam?.slug ?? "");
   const [subject, setSubject] = React.useState<string>(() => {
-    const subjects = initialExam ? toSubjectList(initialExam.subjects) : [];
+    const subjects = subjectsForExam(initialExam);
     return subjects[0] ?? "";
   });
   const [learningStyle, setLearningStyle] = React.useState<string>("visual");
@@ -58,7 +68,7 @@ export function OnboardingWizard(props: {
 
   const subjects = React.useMemo(() => {
     const exam = props.exams.find((item) => item.id === examId);
-    return exam ? toSubjectList(exam.subjects) : [];
+    return subjectsForExam(exam);
   }, [props.exams, examId]);
 
   React.useEffect(() => {
@@ -69,16 +79,16 @@ export function OnboardingWizard(props: {
   const defaultStart = formatISO(new Date(), { representation: "date" });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Onboarding</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Onboarding</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Set up your first plan. You can add more exams and subjects later in settings.
         </p>
       </div>
 
       <AuthFormState action={completeOnboardingAction}>
-        <Card className="space-y-4 p-6">
+        <Card className="space-y-4 p-5 sm:p-6">
           <div className="text-sm font-medium">1) Profile</div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -96,7 +106,7 @@ export function OnboardingWizard(props: {
           </div>
         </Card>
 
-        <Card className="space-y-4 p-6">
+        <Card className="space-y-4 p-5 sm:p-6">
           <div className="text-sm font-medium">2) How you learn</div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -132,7 +142,7 @@ export function OnboardingWizard(props: {
           </div>
         </Card>
 
-        <Card className="space-y-4 p-6">
+        <Card className="space-y-4 p-5 sm:p-6">
           <div className="text-sm font-medium">3) Your first plan</div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

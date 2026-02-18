@@ -4,7 +4,7 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://your-app.vercel.app",
+    "url": "https://exam-forge-ten.vercel.app",
     "cleartext": false
   }
 }

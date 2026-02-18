@@ -11,11 +11,11 @@ const prohibitedUses = [
 
 export default function TermsPage() {
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-gradient-to-b from-background via-background to-muted/20">
       <SiteHeader />
-      <main className="container pb-16 pt-12">
+      <main className="container page-enter pb-16 pt-12">
         <div className="mx-auto max-w-4xl space-y-8">
-          <div className="space-y-3">
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h1 className="text-3xl font-semibold tracking-tight">Terms of Use</h1>
             <p className="text-sm text-muted-foreground">
               ACE NAIJA is a preparation platform for study planning, practice, and performance monitoring.
@@ -23,7 +23,7 @@ export default function TermsPage() {
             </p>
           </div>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">1) Educational purpose and no score guarantee</h2>
             <p className="text-sm text-muted-foreground">
               ACE NAIJA provides practice content, mock simulations, and analytics to support preparation.
@@ -33,7 +33,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">2) Account responsibilities</h2>
             <p className="text-sm text-muted-foreground">
               You are responsible for maintaining account confidentiality, ensuring your profile information is accurate,
@@ -41,7 +41,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">3) Acceptable use</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {prohibitedUses.map((item) => (
@@ -53,7 +53,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">4) Content and intellectual property</h2>
             <p className="text-sm text-muted-foreground">
               ACE NAIJA retains rights in the platform, features, brand assets, and original materials.
@@ -61,7 +61,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">5) Subscriptions, billing, and changes</h2>
             <p className="text-sm text-muted-foreground">
               Paid features require an active subscription and successful payment processing.
@@ -69,7 +69,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">6) Availability and service updates</h2>
             <p className="text-sm text-muted-foreground">
               We continuously improve ACE NAIJA and may modify, add, pause, or discontinue features.
@@ -77,7 +77,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">7) Limitation of liability</h2>
             <p className="text-sm text-muted-foreground">
               To the fullest extent permitted by law, ACE NAIJA and its operators are not liable for indirect, incidental,
@@ -86,7 +86,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">8) Suspension and termination</h2>
             <p className="text-sm text-muted-foreground">
               We may suspend or terminate access for violations of these terms, abuse, security risk, legal requirements,
@@ -94,7 +94,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">9) Updates to these terms</h2>
             <p className="text-sm text-muted-foreground">
               We may revise these terms as the product, legal environment, and operational requirements evolve.

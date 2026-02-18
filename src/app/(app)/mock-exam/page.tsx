@@ -18,16 +18,16 @@ export default async function MockExamStartPage(props: { searchParams: Promise<{
   const exams = await listActiveExams();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Mock exam</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Mock exam</h1>
         <p className="mt-1 text-sm text-muted-foreground">Timed CBT-style practice from your current plan.</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Configure</CardTitle>
-          <CardDescription>Start a full timed quiz and practice real exam pressure.</CardDescription>
+          <CardDescription>Start a full timed objective-question session and practice real exam pressure.</CardDescription>
         </CardHeader>
         <CardContent>
           <AuthFormState action={startMockExamAction}>
