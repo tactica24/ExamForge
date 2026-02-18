@@ -13,20 +13,25 @@ export default async function AdminHomePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add/edit exams and syllabi. To enable admin access, set your Firebase user `app_metadata.role=admin`.
+          Manage exams, users, and roles. Admin access is controlled by Firebase custom claim `role=admin`.
         </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Tools</CardTitle>
-          <CardDescription>Exam and content management.</CardDescription>
+          <CardDescription>Exam, user, and role management.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-wrap gap-2">
           {isAdmin ? (
-            <Button asChild>
-              <Link href="/admin/exams">Manage exams</Link>
-            </Button>
+            <>
+              <Button asChild>
+                <Link href="/admin/exams">Manage exams</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/admin/users">Users and roles</Link>
+              </Button>
+            </>
           ) : (
             <div className="text-sm text-muted-foreground">Access denied.</div>
           )}

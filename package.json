@@ -16,6 +16,7 @@
     "test:e2e": "cypress run",
     "format": "prettier . --check",
     "firebase:env:print": "node scripts/firebase-env-from-service-account.mjs",
+    "firebase:role:set": "node scripts/firebase-set-role.mjs",
     "mobile:android:sync": "npx cap sync android",
     "mobile:android:prepare": "npm install --no-save @capacitor/cli@8 @capacitor/core@8 @capacitor/android@8 @capacitor/assets",
     "mobile:android:add": "npx cap add android",

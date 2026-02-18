@@ -39,7 +39,20 @@ Open `http://localhost:3000`.
 - `/onboarding` (exam/subject + plan generation + optional group match)
 - `/dashboard`, `/plan`, `/quiz/today`, `/groups`, `/progress`, `/tutor`
 - `/billing` (Paystack checkout)
-- `/admin` (requires Firebase custom claim `role=admin`)
+- `/admin` and `/admin/users` (requires Firebase custom claim `role=admin`)
+
+## Admin role bootstrap
+Set or update a user role from your terminal:
+```bash
+npm run firebase:role:set -- path/to/serviceAccountKey.json user@example.com admin
+```
+
+To remove admin access:
+```bash
+npm run firebase:role:set -- path/to/serviceAccountKey.json user@example.com user
+```
+
+After role changes, the user should log out and log back in.
 
 ## Firebase setup notes
 - Use Firestore in Native mode.
