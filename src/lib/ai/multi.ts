@@ -36,7 +36,32 @@ export type AiJsonResult<T> = {
 
 const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano"] as const;
 const GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] as const;
-const GEMINI_MODELS = ["gemini-1.5-flash", "gemini-1.5-pro"] as const;
+const GEMINI_MODEL_PREFERENCES = [
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-pro-latest",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro"
+] as const;
+const GEMINI_MODELS_FALLBACK = [
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro-latest",
+  "gemini-1.5-pro"
+] as const;
+const GEMINI_MODELS_CACHE_TTL_MS = 10 * 60 * 1000;
+const GEMINI_MODELS_CACHE_KEY = "__aceNaijaGeminiModelsCache";
+
+type GeminiModelCache = {
+  fetchedAt: number;
+  models: string[];
+};
 
 function trimError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "unknown_error");
@@ -68,6 +93,131 @@ function parseJsonObject(text: string): any | null {
       return null;
     }
   }
+}
+
+function normalizeGeminiModelName(name: unknown) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return "";
+  return raw.startsWith("models/") ? raw.slice("models/".length) : raw;
+}
+
+function isTextGeminiModel(modelName: string) {
+  const name = modelName.toLowerCase();
+  if (!name.startsWith("gemini")) return false;
+
+  const blockedTags = ["embedding", "image", "vision", "tts", "transcribe", "audio"];
+  return !blockedTags.some((tag) => name.includes(tag));
+}
+
+function extractGeminiText(payload: unknown) {
+  const root = (payload ?? {}) as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{ text?: unknown }>;
+      };
+    }>;
+  };
+
+  const first = Array.isArray(root.candidates) ? root.candidates[0] : undefined;
+  const parts = Array.isArray(first?.content?.parts) ? first.content.parts : [];
+
+  return parts
+    .map((part) => String(part?.text ?? ""))
+    .join("\n")
+    .trim();
+}
+
+function getGeminiModelCache() {
+  const globalRef = globalThis as typeof globalThis & {
+    [GEMINI_MODELS_CACHE_KEY]?: GeminiModelCache;
+  };
+
+  const cache = globalRef[GEMINI_MODELS_CACHE_KEY];
+  if (!cache) return null;
+  if (!Array.isArray(cache.models) || !cache.models.length) return null;
+  if (Date.now() - cache.fetchedAt > GEMINI_MODELS_CACHE_TTL_MS) return null;
+
+  return cache.models;
+}
+
+function setGeminiModelCache(models: string[]) {
+  const globalRef = globalThis as typeof globalThis & {
+    [GEMINI_MODELS_CACHE_KEY]?: GeminiModelCache;
+  };
+
+  globalRef[GEMINI_MODELS_CACHE_KEY] = {
+    fetchedAt: Date.now(),
+    models: Array.from(new Set(models.filter(Boolean)))
+  };
+}
+
+function sortGeminiModels(models: string[]) {
+  const ranking = new Map<string, number>(
+    GEMINI_MODEL_PREFERENCES.map((name, index) => [name, index])
+  );
+
+  return [...models].sort((a, b) => {
+    const left = ranking.get(a) ?? Number.MAX_SAFE_INTEGER;
+    const right = ranking.get(b) ?? Number.MAX_SAFE_INTEGER;
+    if (left !== right) return left - right;
+    return a.localeCompare(b);
+  });
+}
+
+async function listGeminiGenerateModels(apiKey: string): Promise<string[] | null> {
+  const discovered = new Set<string>();
+  let pageToken: string | null = null;
+
+  for (let page = 0; page < 4; page += 1) {
+    const params = new URLSearchParams({ key: apiKey });
+    if (pageToken) params.set("pageToken", pageToken);
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?${params.toString()}`, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const payload = (await res.json().catch(() => null)) as {
+      models?: Array<{ name?: unknown; supportedGenerationMethods?: unknown }>;
+      nextPageToken?: unknown;
+      error?: { message?: unknown };
+    } | null;
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const models = Array.isArray(payload?.models) ? payload.models : [];
+    for (const model of models) {
+      const modelName = normalizeGeminiModelName(model?.name);
+      if (!modelName || !isTextGeminiModel(modelName)) continue;
+
+      const methods = Array.isArray(model?.supportedGenerationMethods)
+        ? model.supportedGenerationMethods.map((method) => String(method).toLowerCase())
+        : [];
+
+      if (!methods.includes("generatecontent")) continue;
+      discovered.add(modelName);
+    }
+
+    pageToken = typeof payload?.nextPageToken === "string" && payload.nextPageToken ? payload.nextPageToken : null;
+    if (!pageToken) break;
+  }
+
+  const models = sortGeminiModels(Array.from(discovered));
+  return models.length ? models : null;
+}
+
+async function getGeminiModels(apiKey: string, options?: { forceRefresh?: boolean }) {
+  if (!options?.forceRefresh) {
+    const cached = getGeminiModelCache();
+    if (cached?.length) return cached;
+  }
+
+  const discovered = await listGeminiGenerateModels(apiKey).catch(() => null);
+  const models = discovered?.length ? discovered : [...GEMINI_MODELS_FALLBACK];
+  setGeminiModelCache(models);
+  return models;
 }
 
 async function runOpenAi(args: ProviderRunArgs): Promise<ProviderRunResult> {
@@ -129,12 +279,12 @@ async function runGroq(args: ProviderRunArgs): Promise<ProviderRunResult> {
 
       const json = await res.json().catch(() => null);
       if (!res.ok) {
-        const detail = String(json?.error?.message ?? `HTTP ${res.status}`);
+        const detail = String((json as { error?: { message?: unknown } } | null)?.error?.message ?? `HTTP ${res.status}`);
         lastError = `Groq ${model}: ${detail}`.slice(0, 280);
         continue;
       }
 
-      const text = String(json?.choices?.[0]?.message?.content ?? "").trim();
+      const text = String((json as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content ?? "").trim();
       if (text) return { text, model, error: null };
       lastError = `Groq ${model} returned empty content.`;
     } catch (error) {
@@ -162,40 +312,51 @@ async function runGemini(args: ProviderRunArgs): Promise<ProviderRunResult> {
     .filter(Boolean)
     .join("\n");
 
-  for (const model of GEMINI_MODELS) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: args.temperature ?? 0.4,
-            ...(args.maxTokens ? { maxOutputTokens: args.maxTokens } : {})
-          }
-        }),
-        cache: "no-store"
-      });
+  let models = await getGeminiModels(env.GEMINI_API_KEY);
+  let refreshedModels = false;
 
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        const detail = String(json?.error?.message ?? `HTTP ${res.status}`);
-        lastError = `Gemini ${model}: ${detail}`.slice(0, 280);
-        continue;
+  while (models.length) {
+    let sawModelLookupFailure = false;
+
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: args.temperature ?? 0.4,
+              ...(args.maxTokens ? { maxOutputTokens: args.maxTokens } : {})
+            }
+          }),
+          cache: "no-store"
+        });
+
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          const detail = String((payload as { error?: { message?: unknown } } | null)?.error?.message ?? `HTTP ${res.status}`);
+          if (/not found|not supported/i.test(detail)) sawModelLookupFailure = true;
+          lastError = `Gemini ${model}: ${detail}`.slice(0, 280);
+          continue;
+        }
+
+        const text = extractGeminiText(payload);
+        if (text) return { text, model, error: null };
+        lastError = `Gemini ${model} returned empty content.`;
+      } catch (error) {
+        lastError = `Gemini ${model}: ${trimError(error)}`;
       }
-
-      const text = String(
-        json?.candidates?.[0]?.content?.parts
-          ?.map((part: any) => String(part?.text ?? ""))
-          .join("\n") ?? ""
-      ).trim();
-
-      if (text) return { text, model, error: null };
-      lastError = `Gemini ${model} returned empty content.`;
-    } catch (error) {
-      lastError = `Gemini ${model}: ${trimError(error)}`;
     }
+
+    if (!refreshedModels && sawModelLookupFailure) {
+      refreshedModels = true;
+      models = await getGeminiModels(env.GEMINI_API_KEY, { forceRefresh: true });
+      continue;
+    }
+
+    break;
   }
 
   return { text: null, model: null, error: lastError };
