@@ -22,7 +22,8 @@
     "mobile:android:prepare": "npm install --no-save @capacitor/cli@8 @capacitor/core@8 @capacitor/android@8 @capacitor/assets",
     "mobile:android:add": "npx cap add android",
     "mobile:android:assets": "npx @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#0a0f2c' --splashBackgroundColor '#0a0f2c'",
-    "mobile:android:open": "npx cap open android"
+    "mobile:android:open": "npx cap open android",
+    "load:smoke": "node scripts/load-smoke.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.2",

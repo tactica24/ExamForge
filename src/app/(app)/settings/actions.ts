@@ -250,12 +250,23 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  const whatsappOptIn = formData.get("whatsapp_opt_in") === "on";
+  const whatsappTemplateRaw = String(formData.get("whatsapp_template") ?? "coach").trim().toLowerCase();
+  const whatsappTemplate = ["coach", "countdown", "streak"].includes(whatsappTemplateRaw)
+    ? whatsappTemplateRaw
+    : "coach";
+
   const primary = reminders[0] as { time: string; channel: string } | undefined;
   const { error } = await firebase.from("notification_prefs").upsert({
     user_id: user.id,
     reminder_time: primary?.time ?? "19:00",
     channels: primary ? [primary.channel] : ["in_app"],
-    reminders
+    reminders,
+    consents: {
+      whatsapp: whatsappOptIn,
+      updated_at: new Date().toISOString()
+    },
+    whatsapp_template: whatsappTemplate
   });
   if (error) return { ok: false, message: error.message };
 
@@ -280,3 +291,4 @@ export async function createParentLinkAction(_: unknown, formData: FormData) {
 
   redirect("/settings");
 }
+

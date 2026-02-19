@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenCheck, LogOut, Settings, Shield, CreditCard, User, Users } from "lucide-react";
+import { Activity, BookOpenCheck, LogOut, Settings, Shield, CreditCard, User, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -59,6 +59,11 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
                 <Users className="h-4 w-4" /> Users and roles
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/ops" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Ops and reliability
+              </Link>
+            </DropdownMenuItem>
           </>
         ) : (
           <>
@@ -96,3 +101,4 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
     </DropdownMenu>
   );
 }
+

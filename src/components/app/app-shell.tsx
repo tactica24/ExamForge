@@ -12,7 +12,8 @@ export function AppShell(props: {
     ? [
         { href: "/admin", label: "Overview" },
         { href: "/admin/exams", label: "Exams" },
-        { href: "/admin/users", label: "Users" }
+        { href: "/admin/users", label: "Users" },
+        { href: "/admin/ops", label: "Ops" }
       ]
     : [
         { href: "/dashboard", label: "Dashboard" },
@@ -64,3 +65,4 @@ export function AppShell(props: {
     </div>
   );
 }
+

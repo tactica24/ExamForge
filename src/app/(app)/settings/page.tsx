@@ -54,7 +54,8 @@ export default async function SettingsPage() {
   const userExamSubjects = userSubjectsRes.data ?? [];
 
   const channel = Array.isArray(prefs?.channels) ? String((prefs?.channels as any[])[0] ?? "in_app") : "in_app";
-  const remindersFromPrefs = Array.isArray((prefs as any)?.reminders) ? ((prefs as any).reminders as any[]) : [];
+  const prefsObj = (prefs as any) ?? {};
+  const remindersFromPrefs = Array.isArray(prefsObj?.reminders) ? (prefsObj.reminders as any[]) : [];
   const reminderDefaults = [
     { time: String(prefs?.reminder_time ?? "19:00"), channel, destination: profile?.phone ?? profile?.email ?? "" },
     { time: "08:00", channel: "in_app", destination: profile?.phone ?? profile?.email ?? "" },
@@ -69,6 +70,13 @@ export default async function SettingsPage() {
       destination: String(data?.destination ?? fallback.destination ?? "")
     };
   });
+
+  const consentRecord =
+    prefsObj?.consents && typeof prefsObj.consents === "object" ? (prefsObj.consents as Record<string, unknown>) : {};
+  const whatsappOptIn = Boolean(consentRecord.whatsapp);
+  const whatsappTemplate = ["coach", "countdown", "streak"].includes(String(prefsObj?.whatsapp_template ?? "").toLowerCase())
+    ? String(prefsObj.whatsapp_template).toLowerCase()
+    : "coach";
 
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
   const examOptions = exams.map((exam) => ({
@@ -101,7 +109,10 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <AvatarUploader name={profile?.display_name ?? profile?.name ?? user.email ?? "Learner"} avatarUrl={profile?.avatar_url ?? null} />
+            <AvatarUploader
+              name={profile?.display_name ?? profile?.name ?? user.email ?? "Learner"}
+              avatarUrl={profile?.avatar_url ?? null}
+            />
           </div>
           <AuthFormState action={updateProfileAction}>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -120,12 +131,7 @@ export default async function SettingsPage() {
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="avatar_url">Avatar URL (optional)</Label>
-                <Input
-                  id="avatar_url"
-                  name="avatar_url"
-                  defaultValue={profile?.avatar_url ?? ""}
-                  placeholder="https://..."
-                />
+                <Input id="avatar_url" name="avatar_url" defaultValue={profile?.avatar_url ?? ""} placeholder="https://..." />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
@@ -220,12 +226,7 @@ export default async function SettingsPage() {
           <AuthFormState action={addExamSubjectAction}>
             <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
             <div className="mt-4">
-              <SubmitButton
-                type="submit"
-                pendingText="Adding..."
-                className="w-full sm:w-auto"
-                disabled={!hasMoreExamSubjects}
-              >
+              <SubmitButton type="submit" pendingText="Adding..." className="w-full sm:w-auto" disabled={!hasMoreExamSubjects}>
                 Add subject
               </SubmitButton>
             </div>
@@ -276,6 +277,31 @@ export default async function SettingsPage() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-4 rounded-lg border bg-card p-3 space-y-3">
+              <div className="flex items-center gap-3">
+                <input
+                  id="whatsapp_opt_in"
+                  name="whatsapp_opt_in"
+                  type="checkbox"
+                  defaultChecked={whatsappOptIn}
+                  className="h-4 w-4 accent-black"
+                />
+                <Label htmlFor="whatsapp_opt_in">I consent to WhatsApp reminders</Label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp_template">WhatsApp reminder style</Label>
+                <NativeSelect id="whatsapp_template" name="whatsapp_template" defaultValue={whatsappTemplate}>
+                  <option value="coach">Coach style</option>
+                  <option value="countdown">Exam countdown</option>
+                  <option value="streak">Streak motivation</option>
+                </NativeSelect>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use E.164 format for WhatsApp destinations (example: +2348012345678) and enable consent before delivery.
+              </p>
+            </div>
+
             <div className="mt-4">
               <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto">
                 Save reminders

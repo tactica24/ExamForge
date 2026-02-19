@@ -2,12 +2,14 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
+import { enqueueSyllabusGenerationJobs } from "@/lib/ai/jobs";
 
 async function assertAdmin() {
   const firebase = await createFirebaseServerClient();
@@ -41,6 +43,22 @@ const UploadDocumentSchema = z.object({
   subject: z.string().trim().min(2).max(80)
 });
 
+const DeleteSyllabusSchema = z.object({
+  exam_id: z.string().uuid(),
+  subject: z.string().trim().min(2).max(80)
+});
+
+const RemoveExamSubjectSchema = z.object({
+  exam_id: z.string().uuid(),
+  subject: z.string().trim().min(2).max(80)
+});
+
+const DeleteExamSchema = z.object({
+  exam_id: z.string().uuid(),
+  exam_slug: z.string().trim().min(2).max(80),
+  confirm_slug: z.string().trim().min(2).max(80)
+});
+
 function extensionForSyllabus(fileName: string, mimeType: string) {
   const lower = String(fileName || "").toLowerCase();
   if (lower.endsWith(".pdf") || mimeType === "application/pdf") return "pdf";
@@ -66,6 +84,42 @@ function toStorageDownloadUrl(bucketName: string, path: string, token: string) {
 function normalizeSyllabusSources(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.map((entry) => String(entry).trim()).filter(Boolean).slice(0, 100);
+}
+
+function normalizeSubjects(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((subject) => String(subject).trim())
+    .filter(Boolean)
+    .slice(0, 60);
+}
+
+function toSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function chunk<T>(values: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < values.length; i += size) {
+    out.push(values.slice(i, i + size));
+  }
+  return out;
+}
+
+async function deleteByIn(admin: ReturnType<typeof createFirebaseAdminClient>, table: string, field: string, values: string[]) {
+  const unique = Array.from(new Set(values.map((value) => String(value).trim()).filter(Boolean)));
+  if (!unique.length) return;
+
+  for (const batch of chunk(unique, 30)) {
+    await admin.from(table).delete().in(field, batch);
+  }
 }
 
 export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: FormData) {
@@ -261,14 +315,6 @@ export async function generateSubjectSyllabusAiAction(_: unknown, formData: Form
   return { ok: true };
 }
 
-function normalizeSubjects(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((subject) => String(subject).trim())
-    .filter(Boolean)
-    .slice(0, 60);
-}
-
 export async function generateAllExamSyllabiAction(_: unknown, formData: FormData) {
   const parsed = GenerateAllSchema.safeParse({
     exam_id: formData.get("exam_id"),
@@ -283,7 +329,15 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
   }
 
   const firebase = await createFirebaseServerClient();
-  const { data: exam, error } = await firebase.from("exams").select("subjects").eq("id", parsed.data.exam_id).maybeSingle();
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+
+  const { data: exam, error } = await firebase
+    .from("exams")
+    .select("subjects")
+    .eq("id", parsed.data.exam_id)
+    .maybeSingle();
   if (error) return { ok: false, message: error.message };
 
   const subjects = normalizeSubjects(exam?.subjects);
@@ -292,30 +346,182 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
   }
 
   try {
-    const failed: string[] = [];
-    for (const subject of subjects) {
-      const ai = await regenerateSyllabusWithAiDetailed({
-        examId: parsed.data.exam_id,
-        examSlug: parsed.data.exam_slug,
-        subject
-      });
-
-      if (!ai.topics?.length) {
-        const note = ai.error ? `${subject} (${String(ai.error).slice(0, 90)})` : subject;
-        failed.push(note);
-      }
-    }
-
-    if (failed.length) {
-      return {
-        ok: false,
-        message: `AI generation failed for ${failed.length} subject(s): ${failed.slice(0, 6).join(", ")}.`
-      };
-    }
+    await enqueueSyllabusGenerationJobs({
+      examId: parsed.data.exam_id,
+      examSlug: parsed.data.exam_slug,
+      subjects,
+      createdBy: user?.id ?? null
+    });
   } catch (e: any) {
-    return { ok: false, message: e?.message ?? "Failed to generate syllabus for all subjects." };
+    return { ok: false, message: e?.message ?? "Failed to enqueue syllabus generation jobs." };
   }
 
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
   return { ok: true };
+}
+
+export async function deleteSyllabusAction(_: unknown, formData: FormData) {
+  const parsed = DeleteSyllabusSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    subject: formData.get("subject")
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid syllabus delete request." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  let admin;
+  try {
+    admin = createFirebaseAdminClient();
+  } catch {
+    return {
+      ok: false,
+      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+    };
+  }
+
+  const { error } = await admin
+    .from("syllabi")
+    .delete()
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+  return { ok: true };
+}
+
+export async function removeExamSubjectAction(_: unknown, formData: FormData) {
+  const parsed = RemoveExamSubjectSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    subject: formData.get("subject")
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid subject removal request." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  const firebase = await createFirebaseServerClient();
+  const { data: exam } = await firebase.from("exams").select("subjects").eq("id", parsed.data.exam_id).maybeSingle();
+  const subjects = normalizeSubjects(exam?.subjects);
+  const target = parsed.data.subject.trim().toLowerCase();
+
+  if (!subjects.some((subject) => subject.toLowerCase() === target)) {
+    return { ok: false, message: "Subject not found on this exam." };
+  }
+  if (subjects.length <= 1) {
+    return { ok: false, message: "An exam must keep at least one subject. Delete the exam instead." };
+  }
+
+  const nextSubjects = subjects.filter((subject) => subject.toLowerCase() !== target);
+
+  let admin;
+  try {
+    admin = createFirebaseAdminClient();
+  } catch {
+    return {
+      ok: false,
+      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+    };
+  }
+
+  const updateExam = await admin.from("exams").update({ subjects: nextSubjects }).eq("id", parsed.data.exam_id);
+  if (updateExam.error) return { ok: false, message: updateExam.error.message };
+
+  await admin.from("syllabi").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+  await admin.from("user_exam_subjects").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+
+  const { data: plans } = await admin
+    .from("user_plans")
+    .select("id")
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+  const planIds = (plans ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "plan_items", "plan_id", planIds);
+  await admin.from("user_plans").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+
+  const { data: quizzes } = await admin
+    .from("quizzes")
+    .select("id")
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+  const quizIds = (quizzes ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "quiz_questions", "quiz_id", quizIds);
+  await deleteByIn(admin, "user_quiz_results", "quiz_id", quizIds);
+  await admin.from("quizzes").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+
+  const { data: groups } = await admin
+    .from("groups")
+    .select("id")
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+  const groupIds = (groups ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "group_members", "group_id", groupIds);
+  await deleteByIn(admin, "group_messages", "group_id", groupIds);
+  await admin.from("groups").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+
+  revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+  revalidatePath("/admin/exams");
+  return { ok: true };
+}
+
+export async function deleteExamAction(_: unknown, formData: FormData) {
+  const parsed = DeleteExamSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    exam_slug: formData.get("exam_slug"),
+    confirm_slug: formData.get("confirm_slug")
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid exam delete request." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  if (toSlug(parsed.data.confirm_slug) !== toSlug(parsed.data.exam_slug)) {
+    return { ok: false, message: "Confirmation slug mismatch. Type the exact exam slug to delete." };
+  }
+
+  let admin;
+  try {
+    admin = createFirebaseAdminClient();
+  } catch {
+    return {
+      ok: false,
+      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+    };
+  }
+
+  await admin.from("syllabi").delete().eq("exam_id", parsed.data.exam_id);
+  await admin.from("user_exam_subjects").delete().eq("exam_id", parsed.data.exam_id);
+
+  const { data: plans } = await admin.from("user_plans").select("id").eq("exam_id", parsed.data.exam_id);
+  const planIds = (plans ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "plan_items", "plan_id", planIds);
+  await admin.from("user_plans").delete().eq("exam_id", parsed.data.exam_id);
+
+  const { data: quizzes } = await admin.from("quizzes").select("id").eq("exam_id", parsed.data.exam_id);
+  const quizIds = (quizzes ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "quiz_questions", "quiz_id", quizIds);
+  await deleteByIn(admin, "user_quiz_results", "quiz_id", quizIds);
+  await admin.from("quizzes").delete().eq("exam_id", parsed.data.exam_id);
+
+  const { data: groups } = await admin.from("groups").select("id").eq("exam_id", parsed.data.exam_id);
+  const groupIds = (groups ?? []).map((row: any) => String(row.id)).filter(Boolean);
+  await deleteByIn(admin, "group_members", "group_id", groupIds);
+  await deleteByIn(admin, "group_messages", "group_id", groupIds);
+  await admin.from("groups").delete().eq("exam_id", parsed.data.exam_id);
+
+  const removeExam = await admin.from("exams").delete().eq("id", parsed.data.exam_id);
+  if (removeExam.error) return { ok: false, message: removeExam.error.message };
+
+  revalidatePath("/admin/exams");
+  redirect("/admin/exams");
 }
