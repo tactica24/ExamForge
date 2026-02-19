@@ -43,12 +43,15 @@ function parseReminderList(pref: any, fallbackChannel: Channel, fallbackDestinat
       ];
 
   return raw
-    .map((item: any) => ({
+    .map((item: any): ReminderItem => ({
       time: String(item?.time ?? "").trim(),
       channel: String(item?.channel ?? fallbackChannel).trim() as Channel,
       destination: String(item?.destination ?? "").trim() || null
     }))
-    .filter((item) => /^\d{2}:\d{2}$/.test(item.time) && ["in_app", "sms", "whatsapp", "email"].includes(item.channel));
+    .filter(
+      (item: ReminderItem) =>
+        /^\d{2}:\d{2}$/.test(item.time) && ["in_app", "sms", "whatsapp", "email"].includes(item.channel)
+    );
 }
 
 function buildReminderMessage(args: { count: number; template: string; channel: Channel }) {
