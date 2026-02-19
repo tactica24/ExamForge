@@ -126,13 +126,16 @@ export async function POST(req: Request) {
     }),
     temperature: 0.35,
     validate: (parsed) => {
-      const items = Array.isArray(parsed?.answers) ? parsed.answers : [];
-      const answers = items
-        .map((item: any) => ({
-          id: String(item?.id ?? "").trim(),
-          text: String(item?.text ?? "").trim()
-        }))
-        .filter((item) => item.id && item.text && allowedIds.has(item.id));
+      const items: unknown[] = Array.isArray(parsed?.answers) ? (parsed.answers as unknown[]) : [];
+      const answers: Array<{ id: string; text: string }> = items
+        .map((item: unknown): { id: string; text: string } => {
+          const row = item as { id?: unknown; text?: unknown };
+          return {
+            id: String(row.id ?? "").trim(),
+            text: String(row.text ?? "").trim()
+          };
+        })
+        .filter((item: { id: string; text: string }) => item.id.length > 0 && item.text.length > 0 && allowedIds.has(item.id));
       return answers.length ? { answers } : null;
     }
   });
@@ -148,3 +151,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, answers });
 }
+
