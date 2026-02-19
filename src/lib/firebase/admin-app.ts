@@ -51,7 +51,7 @@ function getCredentialConfig() {
   const fallbackStorageBucket =
     process.env.FIREBASE_STORAGE_BUCKET ??
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
-    (fallbackProjectId ? `${fallbackProjectId}.appspot.com` : undefined);
+    (fallbackProjectId ? `${fallbackProjectId}.firebasestorage.app` : undefined);
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64) {
     const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64, "base64").toString("utf8");

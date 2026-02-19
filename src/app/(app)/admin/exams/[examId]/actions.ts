@@ -96,6 +96,7 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
 
   const bucket = getFirebaseAdminStorageBucket();
   let documentUrl: string | null = null;
+  let documentStorageError: string | null = null;
 
   if (bucket) {
     try {
@@ -121,10 +122,7 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
 
       documentUrl = toStorageDownloadUrl(bucket.name, storagePath, token);
     } catch (e: any) {
-      return {
-        ok: false,
-        message: `Syllabus file upload failed: ${e?.message ?? "storage_error"}`
-      };
+      documentStorageError = e?.message ? String(e.message).slice(0, 240) : "storage_error";
     }
   }
 
@@ -143,7 +141,8 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
         extraction_chars: parsedDoc.extractedText.length,
         document_uploaded_at: new Date().toISOString(),
         document_url: documentUrl ?? undefined,
-        document_storage: documentUrl ? "firebase_storage" : "not_configured"
+        document_storage: documentUrl ? "firebase_storage" : "not_configured",
+        document_storage_error: documentStorageError ?? undefined
       }
     });
 
