@@ -11,10 +11,12 @@ export async function GET(request: Request) {
 
   const env = getServerEnv();
   const hasOpenAiKey = Boolean(env.OPENAI_API_KEY);
+  const hasGroqKey = Boolean(env.GROQ_API_KEY);
+  const hasGeminiKey = Boolean(env.GEMINI_API_KEY);
+  const hasAnyAiKey = hasOpenAiKey || hasGroqKey || hasGeminiKey;
   const includeDiagnostics =
     process.env.NODE_ENV !== "production" ||
-    (env.APP_CRON_SECRET &&
-      request.headers.get("x-health-secret") === env.APP_CRON_SECRET);
+    (env.APP_CRON_SECRET && request.headers.get("x-health-secret") === env.APP_CRON_SECRET);
 
   if (!includeDiagnostics) {
     return NextResponse.json({
@@ -33,8 +35,10 @@ export async function GET(request: Request) {
       adminReady: isFirebaseAdminConfigured()
     },
     ai: {
-      openaiReady: hasOpenAiKey
+      ready: hasAnyAiKey,
+      openaiReady: hasOpenAiKey,
+      groqReady: hasGroqKey,
+      geminiReady: hasGeminiKey
     }
   });
 }
-

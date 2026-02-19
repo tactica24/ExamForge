@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getOpenAIClient } from "@/lib/ai/openai";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
+import { generateTextWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
@@ -67,15 +67,6 @@ export async function POST(req: Request) {
   const prefs = await getUserAiPreferences(user.id);
   const lang = languageInstruction(prefs.preferredLanguage);
 
-  const client = getOpenAIClient();
-  if (!client) {
-    return NextResponse.json({
-      ok: true,
-      answer:
-        "Compare your chosen option with the correct one, then identify the key rule or definition that makes the correct option true."
-    });
-  }
-
   let syllabusNote = "If a syllabus is available, keep the explanation aligned to it. Otherwise, respond generally.";
   if (examId && subject) {
     const { data: examRow } = await firebase.from("exams").select("slug").eq("id", examId).maybeSingle();
@@ -89,32 +80,31 @@ export async function POST(req: Request) {
     }
   }
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.4,
-    messages: [
-      {
-        role: "system",
-        content: [
-          "You are an exam prep coach.",
-          "Explain why the user's selected option is incorrect and why the correct option is correct.",
-          "Use 3 short bullets and then a 1-sentence memory tip.",
-          "Do not invent official marking schemes.",
-          syllabusNote,
-          lang
-        ]
-          .filter(Boolean)
-          .join("\n")
-      },
-      {
-        role: "user",
-        content: `Exam: ${exam || "Unknown"}\nSubject: ${subject || "Unknown"}\nQuestion: ${question}\nOptions: ${options
-          .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
-          .join("\n")}\nUser picked: ${String.fromCharCode(65 + user_index)}\nCorrect: ${String.fromCharCode(65 + correct_index)}`
-      }
+  const ai = await generateTextWithFallback({
+    system: [
+      "You are an exam prep coach.",
+      "Explain why the user's selected option is incorrect and why the correct option is correct.",
+      "Use 3 short bullets and then a 1-sentence memory tip.",
+      "Prioritize conceptual clarity and exam application.",
+      "Do not invent official marking schemes.",
+      syllabusNote,
+      lang
     ]
+      .filter(Boolean)
+      .join("\n"),
+    user: `Exam: ${exam || "Unknown"}\nSubject: ${subject || "Unknown"}\nQuestion: ${question}\nOptions: ${options
+      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
+      .join("\n")}\nUser picked: ${String.fromCharCode(65 + user_index)}\nCorrect: ${String.fromCharCode(65 + correct_index)}`,
+    temperature: 0.4
   });
 
-  const answer = completion.choices[0]?.message?.content ?? "Could not generate.";
-  return NextResponse.json({ ok: true, answer });
+  if (!ai.text) {
+    return NextResponse.json({
+      ok: true,
+      answer:
+        "Compare your chosen option with the correct one, then identify the key rule or definition that makes the correct option true."
+    });
+  }
+
+  return NextResponse.json({ ok: true, answer: ai.text });
 }

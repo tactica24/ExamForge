@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getOpenAIClient } from "@/lib/ai/openai";
 import { languageInstruction } from "@/lib/ai/language";
+import { generateJsonWithFallback } from "@/lib/ai/multi";
 
 export type GeneratedQuestion = {
   question: string;
@@ -29,6 +29,19 @@ export function fallbackQuestions(topic: string, subject: string, count: number)
   return qs;
 }
 
+function normalizeQuestions(raw: any): GeneratedQuestion[] {
+  const questions = Array.isArray(raw?.questions) ? raw.questions : [];
+  return questions
+    .filter((q: any) => typeof q?.question === "string" && Array.isArray(q?.options))
+    .map((q: any) => ({
+      question: String(q.question).slice(0, 500),
+      options: (q.options as any[]).slice(0, 4).map((o) => String(o).slice(0, 140)),
+      correct_index: Math.max(0, Math.min(3, Number(q.correct_index ?? 0))),
+      explanation: String(q.explanation ?? "").slice(0, 700)
+    }))
+    .filter((q: GeneratedQuestion) => q.options.length === 4);
+}
+
 export async function generateQuestions(args: {
   examName: string;
   subject: string;
@@ -37,9 +50,6 @@ export async function generateQuestions(args: {
   preferredLanguage?: string | null;
   syllabus?: string[];
 }): Promise<GeneratedQuestion[]> {
-  const client = getOpenAIClient();
-  if (!client) return fallbackQuestions(args.topic, args.subject, args.count);
-
   const lang = languageInstruction(args.preferredLanguage);
   const syllabusHint =
     args.syllabus && args.syllabus.length
@@ -47,7 +57,7 @@ export async function generateQuestions(args: {
       : "If no syllabus is provided, answer generally for the exam level.";
 
   const system = [
-    "You generate high-quality multiple-choice exam prep questions.",
+    "You generate high-quality objective exam prep questions.",
     "Output must be valid JSON only.",
     syllabusHint,
     lang
@@ -74,35 +84,23 @@ export async function generateQuestions(args: {
       "Options must be plausible and unique.",
       "correct_index must be 0..3.",
       "Use clear Nigerian/International English (no slang).",
-      "Include brief explanations."
+      "Include brief explanations.",
+      "Cover a spread of conceptual, application, and exam-style trap questions."
     ]
   };
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.6,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: `Generate questions as JSON:\n${JSON.stringify(user)}` }
-    ],
-    response_format: { type: "json_object" }
+  const response = await generateJsonWithFallback<any>({
+    system,
+    user: `Generate questions as JSON:\n${JSON.stringify(user)}`,
+    temperature: 0.55,
+    validate: (parsed) => {
+      const cleaned = normalizeQuestions(parsed);
+      if (!cleaned.length) return null;
+      return { questions: cleaned };
+    }
   });
 
-  const text = completion.choices[0]?.message?.content ?? "";
-  try {
-    const parsed = JSON.parse(text);
-    const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
-    const cleaned: GeneratedQuestion[] = questions
-      .filter((q: any) => typeof q?.question === "string" && Array.isArray(q?.options))
-      .map((q: any) => ({
-        question: String(q.question).slice(0, 500),
-        options: (q.options as any[]).slice(0, 4).map((o) => String(o).slice(0, 140)),
-        correct_index: Math.max(0, Math.min(3, Number(q.correct_index ?? 0))),
-        explanation: String(q.explanation ?? "").slice(0, 700)
-      }))
-      .filter((q: GeneratedQuestion) => q.options.length === 4);
-    return cleaned.length ? cleaned : fallbackQuestions(args.topic, args.subject, args.count);
-  } catch {
-    return fallbackQuestions(args.topic, args.subject, args.count);
-  }
+  const cleaned = response.value?.questions ?? [];
+  if (cleaned.length) return cleaned.slice(0, args.count);
+  return fallbackQuestions(args.topic, args.subject, args.count);
 }

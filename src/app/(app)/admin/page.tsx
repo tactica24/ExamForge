@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
+import { getServerEnv } from "@/lib/env";
 
 async function getAdminCount() {
   const auth = getFirebaseAdminAuth();
@@ -109,7 +110,11 @@ export default async function AdminHomePage() {
       process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
   );
   const firebaseAdminReady = isFirebaseAdminConfigured();
-  const openAiReady = Boolean(process.env.OPENAI_API_KEY);
+  const env = getServerEnv();
+  const openAiReady = Boolean(env.OPENAI_API_KEY);
+  const groqReady = Boolean(env.GROQ_API_KEY);
+  const geminiReady = Boolean(env.GEMINI_API_KEY);
+  const aiReady = openAiReady || groqReady || geminiReady;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -258,8 +263,20 @@ export default async function AdminHomePage() {
               <Badge variant={firebaseAdminReady ? "default" : "outline"}>{firebaseAdminReady ? "ready" : "missing"}</Badge>
             </div>
             <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
-              <span>OpenAI integration</span>
+              <span>AI providers</span>
+              <Badge variant={aiReady ? "default" : "outline"}>{aiReady ? "ready" : "missing"}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>OpenAI</span>
               <Badge variant={openAiReady ? "default" : "outline"}>{openAiReady ? "ready" : "missing"}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>Groq</span>
+              <Badge variant={groqReady ? "default" : "outline"}>{groqReady ? "ready" : "missing"}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>Gemini</span>
+              <Badge variant={geminiReady ? "default" : "outline"}>{geminiReady ? "ready" : "missing"}</Badge>
             </div>
             <div className="rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
               For detailed health JSON, call `/api/health` with `x-health-secret`.
@@ -318,3 +335,5 @@ export default async function AdminHomePage() {
     </div>
   );
 }
+
+

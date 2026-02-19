@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Query } from "firebase-admin/firestore";
 
 type FilterKind = "eq" | "in" | "gte" | "lte";
 type OrderSpec = { field: string; ascending: boolean };
@@ -64,6 +64,7 @@ const HAS_UPDATED_AT = new Set([
 ]);
 
 type InternalRow = Record<string, any> & { __docId: string };
+const FIRESTORE_IN_MAX_VALUES = 30;
 
 function asError(error: unknown): DbError {
   return { message: error instanceof Error ? error.message : "firebase_query_failed" };
@@ -169,9 +170,10 @@ function parseJoinFields(token: string): string[] {
 }
 
 async function loadRows(db: Firestore | null, table: string): Promise<InternalRow[]> {
-  if (!db) throw new Error("Firebase Firestore is not configured.");
+  return loadRowsWithQuery(db, table, {});
+}
 
-  const snapshot = await db.collection(table).get();
+function mapSnapshotToRows(snapshot: any, table: string): InternalRow[] {
   return snapshot.docs.map((doc: any) => {
     const data = doc.data() as Record<string, any>;
     return {
@@ -180,6 +182,136 @@ async function loadRows(db: Firestore | null, table: string): Promise<InternalRo
       ...data
     };
   });
+}
+
+function canApplyFilterInFirestore(filter: FilterSpec) {
+  if (!filter.field || filter.field.startsWith("groups.")) return false;
+  if (filter.kind === "in") {
+    return (
+      Array.isArray(filter.value) &&
+      filter.value.length > 0 &&
+      filter.value.length <= FIRESTORE_IN_MAX_VALUES
+    );
+  }
+  return true;
+}
+
+function canApplyOrderInFirestore(order: OrderSpec) {
+  return Boolean(order.field && !order.field.startsWith("groups."));
+}
+
+function applyFiltersToFirestoreQuery(query: Query, filters: FilterSpec[]) {
+  let next = query;
+  for (const filter of filters) {
+    if (!canApplyFilterInFirestore(filter)) {
+      throw new Error(`Unsupported firestore filter: ${filter.kind} on ${filter.field}`);
+    }
+
+    if (filter.kind === "eq") {
+      next = next.where(filter.field, "==", filter.value as any);
+      continue;
+    }
+    if (filter.kind === "in") {
+      next = next.where(filter.field, "in", filter.value as any[]);
+      continue;
+    }
+    if (filter.kind === "gte") {
+      next = next.where(filter.field, ">=", filter.value as any);
+      continue;
+    }
+    if (filter.kind === "lte") {
+      next = next.where(filter.field, "<=", filter.value as any);
+    }
+  }
+  return next;
+}
+
+function applyOrdersToFirestoreQuery(query: Query, orders: OrderSpec[]) {
+  let next = query;
+  for (const order of orders) {
+    if (!canApplyOrderInFirestore(order)) {
+      throw new Error(`Unsupported firestore order: ${order.field}`);
+    }
+    next = next.orderBy(order.field, order.ascending ? "asc" : "desc");
+  }
+  return next;
+}
+
+function applyInMemoryFilters(rows: InternalRow[], filters: FilterSpec[]) {
+  if (!filters.length) return rows;
+  return rows.filter((row) => filters.every((filter) => matchesFilter(row, filter)));
+}
+
+function applyInMemoryOrder(rows: InternalRow[], orders: OrderSpec[]) {
+  if (!orders.length) return rows;
+  for (const spec of orders) {
+    rows.sort((a, b) => {
+      const left = normalizeComparable(getByPath(a, spec.field));
+      const right = normalizeComparable(getByPath(b, spec.field));
+      if (left == null && right == null) return 0;
+      if (left == null) return spec.ascending ? -1 : 1;
+      if (right == null) return spec.ascending ? 1 : -1;
+      if (left === right) return 0;
+      if (left > right) return spec.ascending ? 1 : -1;
+      return spec.ascending ? -1 : 1;
+    });
+  }
+  return rows;
+}
+
+function applyInMemoryLimit(rows: InternalRow[], limitValue: number | null) {
+  if (limitValue == null) return rows;
+  return rows.slice(0, limitValue);
+}
+
+async function loadRowsWithQuery(
+  db: Firestore | null,
+  table: string,
+  args: {
+    filters?: FilterSpec[];
+    orders?: OrderSpec[];
+    limit?: number | null;
+  }
+): Promise<InternalRow[]> {
+  if (!db) throw new Error("Firebase Firestore is not configured.");
+
+  const filters = args.filters ?? [];
+  const orders = args.orders ?? [];
+  const limitValue = args.limit ?? null;
+
+  try {
+    let query: Query = db.collection(table);
+    query = applyFiltersToFirestoreQuery(query, filters);
+    query = applyOrdersToFirestoreQuery(query, orders);
+    if (limitValue != null) query = query.limit(limitValue);
+
+    const snapshot = await query.get();
+    return mapSnapshotToRows(snapshot, table);
+  } catch {
+    const snapshot = await db.collection(table).get();
+    let rows = mapSnapshotToRows(snapshot, table);
+    rows = applyInMemoryFilters(rows, filters);
+    rows = applyInMemoryOrder(rows, orders);
+    rows = applyInMemoryLimit(rows, limitValue);
+    return rows;
+  }
+}
+
+async function countRowsWithFilters(db: Firestore | null, table: string, filters: FilterSpec[]) {
+  if (!db) throw new Error("Firebase Firestore is not configured.");
+  try {
+    let query: Query = db.collection(table);
+    query = applyFiltersToFirestoreQuery(query, filters);
+    const aggregate = await (query as any).count().get();
+    const count = Number(aggregate?.data()?.count ?? 0);
+    if (Number.isFinite(count)) return count;
+  } catch {
+    // fall through
+  }
+
+  const snapshot = await db.collection(table).get();
+  const rows = mapSnapshotToRows(snapshot, table);
+  return applyInMemoryFilters(rows, filters).length;
 }
 
 async function attachGroupJoin(db: Firestore | null, rows: InternalRow[]): Promise<InternalRow[]> {
@@ -210,8 +342,25 @@ async function resolveDocIdByConflict(
   row: Record<string, any>,
   conflictFields: string[]
 ): Promise<string | null> {
+  if (!db) throw new Error("Firebase Firestore is not configured.");
+
+  const fields = conflictFields.filter((field) => field && row[field] !== undefined);
+  if (!fields.length) return null;
+
+  try {
+    let query: Query = db.collection(table);
+    for (const field of fields) {
+      query = query.where(field, "==", row[field]);
+    }
+
+    const snapshot = await query.limit(1).get();
+    if (!snapshot.empty) return snapshot.docs[0].id;
+  } catch {
+    // fall through to in-memory fallback
+  }
+
   const rows = await loadRows(db, table);
-  const found = rows.find((candidate) => conflictFields.every((field) => candidate[field] === row[field]));
+  const found = rows.find((candidate) => fields.every((field) => candidate[field] === row[field]));
   return found ? found.__docId : null;
 }
 
@@ -305,31 +454,33 @@ class SelectQuery implements PromiseLike<DbResponse<any[]>> {
         this.table === "group_members" &&
         (this.columns.includes("groups(") || this.columns.includes("groups!inner") || this.filters.some((f) => f.field.startsWith("groups.")));
 
-      let rows = await loadRows(this.db, this.table);
       if (needsGroupJoin) {
+        const rowFilters = this.filters.filter((filter) => !filter.field.startsWith("groups."));
+        const groupFilters = this.filters.filter((filter) => filter.field.startsWith("groups."));
+
+        let rows = await loadRowsWithQuery(this.db, this.table, { filters: rowFilters });
         rows = await attachGroupJoin(this.db, rows);
+        rows = applyInMemoryFilters(rows, groupFilters);
+        rows = applyInMemoryOrder(rows, this.orders);
+
+        const count = this.options.count === "exact" ? rows.length : undefined;
+        rows = applyInMemoryLimit(rows, this.limitValue);
+
+        if (this.options.head) {
+          return { data: null, error: null, count: count ?? rows.length };
+        }
+
+        const projected = this.project(rows);
+        return { data: projected, error: null, count };
       }
 
-      rows = rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
-
-      const count = this.options.count === "exact" ? rows.length : undefined;
-
-      for (const spec of this.orders) {
-        rows.sort((a, b) => {
-          const left = normalizeComparable(getByPath(a, spec.field));
-          const right = normalizeComparable(getByPath(b, spec.field));
-          if (left == null && right == null) return 0;
-          if (left == null) return spec.ascending ? -1 : 1;
-          if (right == null) return spec.ascending ? 1 : -1;
-          if (left === right) return 0;
-          if (left > right) return spec.ascending ? 1 : -1;
-          return spec.ascending ? -1 : 1;
-        });
-      }
-
-      if (this.limitValue != null) {
-        rows = rows.slice(0, this.limitValue);
-      }
+      const count =
+        this.options.count === "exact" ? await countRowsWithFilters(this.db, this.table, this.filters) : undefined;
+      const rows = await loadRowsWithQuery(this.db, this.table, {
+        filters: this.filters,
+        orders: this.orders,
+        limit: this.limitValue
+      });
 
       if (this.options.head) {
         return { data: null, error: null, count: count ?? rows.length };
@@ -513,8 +664,7 @@ class UpdateQuery implements PromiseLike<DbResponse<any[]>> {
     try {
       if (!this.db) throw new Error("Firebase Firestore is not configured.");
 
-      const rows = await loadRows(this.db, this.table);
-      const matched = rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
+      const matched = await loadRowsWithQuery(this.db, this.table, { filters: this.filters });
 
       const now = new Date().toISOString();
       const payload = stripUndefinedValues({
@@ -561,8 +711,7 @@ class DeleteQuery implements PromiseLike<DbResponse<{ count: number }>> {
     try {
       if (!this.db) throw new Error("Firebase Firestore is not configured.");
 
-      const rows = await loadRows(this.db, this.table);
-      const matched = rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
+      const matched = await loadRowsWithQuery(this.db, this.table, { filters: this.filters });
 
       await Promise.all(matched.map((row) => this.db!.collection(this.table).doc(row.__docId).delete()));
 

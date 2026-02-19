@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getOpenAIClient } from "@/lib/ai/openai";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
+import { generateTextWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
@@ -56,15 +56,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Invalid exam or subject value." }, { status: 400 });
   }
 
-  const client = getOpenAIClient();
-  if (!client) {
-    return NextResponse.json({
-      ok: true,
-      answer:
-        "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes."
-    });
-  }
-
   const prefs = await getUserAiPreferences(user.id);
   const lang = languageInstruction(prefs.preferredLanguage);
 
@@ -81,30 +72,28 @@ export async function POST(req: Request) {
     }
   }
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.5,
-    messages: [
-      {
-        role: "system",
-        content:
-          [
-            "You are ACE NAIJA Tutor.",
-            "Explain clearly, step-by-step, and include 1 short practice question with solution.",
-            "Be safe and avoid hallucinating official exam rules. If unsure, say so.",
-            syllabusNote,
-            lang
-          ]
-            .filter(Boolean)
-            .join("\n")
-      },
-      {
-        role: "user",
-        content: `Exam: ${exam || "Unknown"}\nSubject: ${subject || "Unknown"}\nUser: ${message}`
-      }
+  const ai = await generateTextWithFallback({
+    system: [
+      "You are ACE NAIJA Tutor.",
+      "Explain clearly, step-by-step, and include 1 short practice question with solution.",
+      "Optimize for deep understanding and exam pass confidence: define concepts, then apply them.",
+      "Be safe and avoid hallucinating official exam rules. If unsure, say so.",
+      syllabusNote,
+      lang
     ]
+      .filter(Boolean)
+      .join("\n"),
+    user: `Exam: ${exam || "Unknown"}\nSubject: ${subject || "Unknown"}\nUser: ${message}`,
+    temperature: 0.5
   });
 
-  const answer = completion.choices[0]?.message?.content ?? "Sorry, I could not generate a reply.";
-  return NextResponse.json({ ok: true, answer });
+  if (!ai.text) {
+    return NextResponse.json({
+      ok: true,
+      answer:
+        "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes."
+    });
+  }
+
+  return NextResponse.json({ ok: true, answer: ai.text });
 }

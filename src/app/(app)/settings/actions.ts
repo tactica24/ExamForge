@@ -1,10 +1,13 @@
 "use server";
 
+import { formatISO } from "date-fns";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { redirect } from "next/navigation";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
+import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
@@ -57,6 +60,90 @@ const AddExamSubjectSchema = z.object({
   subject: z.string().trim().min(2).max(120)
 });
 
+async function ensurePlanForSubject(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  userId: string;
+  examId: string;
+  examSlug: string;
+  subject: string;
+}) {
+  const { data: existingPlan } = await args.firebase
+    .from("user_plans")
+    .select("id")
+    .eq("user_id", args.userId)
+    .eq("exam_id", args.examId)
+    .eq("subject", args.subject)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingPlan?.id) return { ok: true as const, created: false as const };
+
+  const { data: templatePlan } = await args.firebase
+    .from("user_plans")
+    .select("mode,pace,start_date,target_date")
+    .eq("user_id", args.userId)
+    .eq("exam_id", args.examId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const mode = (templatePlan?.mode as "solo" | "group" | undefined) ?? "solo";
+  const pace = (templatePlan?.pace as "steady" | "intensive" | undefined) ?? "steady";
+  const startDate = templatePlan?.start_date ?? formatISO(new Date(), { representation: "date" });
+  const targetDate = templatePlan?.target_date ?? null;
+
+  const { data: plan, error: planErr } = await args.firebase
+    .from("user_plans")
+    .insert({
+      user_id: args.userId,
+      exam_id: args.examId,
+      subject: args.subject,
+      mode,
+      pace,
+      start_date: startDate,
+      target_date: targetDate
+    })
+    .select("id")
+    .single();
+
+  if (planErr || !plan?.id) {
+    return { ok: false as const, message: planErr?.message ?? "Could not create plan." };
+  }
+
+  const topics = await getTopicsForExamSubject({
+    examId: args.examId,
+    examSlug: args.examSlug,
+    subject: args.subject
+  });
+
+  const items = generatePlanItemsFromTopics({
+    topics,
+    pace,
+    startDate,
+    targetDate
+  });
+
+  if (!items.length) return { ok: true as const, created: true as const };
+
+  const { error: itemsErr } = await args.firebase.from("plan_items").insert(
+    items.map((item) => ({
+      plan_id: plan.id,
+      scheduled_for: item.scheduled_for,
+      day_index: item.day_index,
+      topic_path: item.topic_path,
+      title: item.title,
+      resource_links: item.resource_links,
+      status: "todo"
+    }))
+  );
+
+  if (itemsErr) {
+    return { ok: false as const, message: itemsErr.message };
+  }
+
+  return { ok: true as const, created: true as const };
+}
+
 export async function addExamSubjectAction(_: unknown, formData: FormData) {
   const selectionReady = String(formData.get("selection_ready") ?? "").trim();
   if (!selectionReady) {
@@ -101,7 +188,26 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   );
 
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: "Subject added successfully." };
+
+  const plan = await ensurePlanForSubject({
+    firebase,
+    userId: user.id,
+    examId,
+    examSlug: parsed.data.exam_slug,
+    subject: parsed.data.subject
+  });
+
+  if (!plan.ok) {
+    return {
+      ok: true,
+      message: `Subject added. Plan auto-generation failed: ${plan.message}`
+    };
+  }
+
+  return {
+    ok: true,
+    message: plan.created ? "Subject added and study plan generated." : "Subject added. Existing study plan kept."
+  };
 }
 
 const ReminderSchema = z.object({

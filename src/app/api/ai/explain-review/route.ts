@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getOpenAIClient } from "@/lib/ai/openai";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
+import { generateJsonWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
@@ -87,11 +87,6 @@ export async function POST(req: Request) {
   const prefs = await getUserAiPreferences(user.id);
   const lang = languageInstruction(prefs.preferredLanguage);
 
-  const client = getOpenAIClient();
-  if (!client) {
-    return NextResponse.json({ ok: true, answers: {} });
-  }
-
   let syllabusNote = "If a syllabus is available, keep explanations aligned to it.";
   if (examId && subject) {
     const { data: examRow } = await firebase.from("exams").select("slug").eq("id", examId).maybeSingle();
@@ -105,56 +100,50 @@ export async function POST(req: Request) {
     }
   }
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.35,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content: [
-          "You are an exam prep coach.",
-          "For each missed question, explain why the selected option is wrong and why the correct option is right.",
-          "Keep each explanation concise: 3 short bullets plus 1 memory tip.",
-          "Return valid JSON only in this shape: {\"answers\":[{\"id\":\"question-id\",\"text\":\"...\"}]}",
-          syllabusNote,
-          lang
-        ]
-          .filter(Boolean)
-          .join("\n")
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          exam: exam || "Unknown",
-          subject: subject || "Unknown",
-          questions: questions.map((q) => ({
-            id: q.id,
-            question: q.question,
-            options: q.options.map((option, idx) => `${String.fromCharCode(65 + idx)}. ${option}`),
-            user_pick: String.fromCharCode(65 + q.user_index),
-            correct: String.fromCharCode(65 + q.correct_index)
-          }))
-        })
-      }
+  const allowedIds = new Set(questions.map((q) => q.id));
+
+  const ai = await generateJsonWithFallback<{ answers: Array<{ id: string; text: string }> }>({
+    system: [
+      "You are an exam prep coach.",
+      "For each missed objective question, explain why the selected option is wrong and why the correct option is right.",
+      "Keep each explanation concise: 3 short bullets plus 1 memory tip.",
+      'Return valid JSON only in this shape: {"answers":[{"id":"question-id","text":"..."}]}.',
+      syllabusNote,
+      lang
     ]
+      .filter(Boolean)
+      .join("\n"),
+    user: JSON.stringify({
+      exam: exam || "Unknown",
+      subject: subject || "Unknown",
+      questions: questions.map((q) => ({
+        id: q.id,
+        question: q.question,
+        options: q.options.map((option, idx) => `${String.fromCharCode(65 + idx)}. ${option}`),
+        user_pick: String.fromCharCode(65 + q.user_index),
+        correct: String.fromCharCode(65 + q.correct_index)
+      }))
+    }),
+    temperature: 0.35,
+    validate: (parsed) => {
+      const items = Array.isArray(parsed?.answers) ? parsed.answers : [];
+      const answers = items
+        .map((item: any) => ({
+          id: String(item?.id ?? "").trim(),
+          text: String(item?.text ?? "").trim()
+        }))
+        .filter((item) => item.id && item.text && allowedIds.has(item.id));
+      return answers.length ? { answers } : null;
+    }
   });
 
-  const raw = completion.choices[0]?.message?.content ?? "";
-  const allowedIds = new Set(questions.map((q) => q.id));
-  const answers: Record<string, string> = {};
-
-  try {
-    const parsed = JSON.parse(raw);
-    const items = Array.isArray(parsed?.answers) ? parsed.answers : [];
-    for (const item of items) {
-      const id = String(item?.id ?? "").trim();
-      const text = String(item?.text ?? "").trim();
-      if (!id || !text || !allowedIds.has(id)) continue;
-      answers[id] = text.slice(0, 1200);
-    }
-  } catch {
+  if (!ai.value?.answers?.length) {
     return NextResponse.json({ ok: true, answers: {} });
+  }
+
+  const answers: Record<string, string> = {};
+  for (const item of ai.value.answers) {
+    answers[item.id] = item.text.slice(0, 1200);
   }
 
   return NextResponse.json({ ok: true, answers });

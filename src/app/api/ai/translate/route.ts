@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getOpenAIClient } from "@/lib/ai/openai";
 import { languageInstruction } from "@/lib/ai/language";
+import { generateTextWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -37,25 +37,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Invalid language value." }, { status: 400 });
   }
 
-  const client = getOpenAIClient();
-  if (!client) return NextResponse.json({ ok: true, text });
-
   const instruction = languageInstruction(language);
   if (!instruction) return NextResponse.json({ ok: true, text });
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.4,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You translate educational explanations faithfully. Keep math/technical terms accurate. Keep formatting readable."
-      },
-      { role: "user", content: `${instruction}\n\nTranslate/adapt this text:\n${text}` }
-    ]
+  const ai = await generateTextWithFallback({
+    system: "You translate educational explanations faithfully. Keep math/technical terms accurate. Keep formatting readable.",
+    user: `${instruction}\n\nTranslate/adapt this text:\n${text}`,
+    temperature: 0.4
   });
 
-  const out = completion.choices[0]?.message?.content ?? text;
+  const out = ai.text ?? text;
   return NextResponse.json({ ok: true, text: out });
 }

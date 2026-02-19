@@ -1,19 +1,19 @@
 import "server-only";
 
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getOpenAIClient } from "@/lib/ai/openai";
+import { generateJsonWithFallback } from "@/lib/ai/multi";
 import { getFallbackTopics, getGenericTopicsForSubject, type Topic } from "@/lib/syllabi/fallback";
 
 export type SyllabusTopic = Topic;
-type SyllabusSource = "ai_auto" | "ai_admin" | "seed_fallback" | "generic_fallback";
+type SyllabusSource = "ai_auto" | "ai_admin" | "seed_fallback" | "generic_fallback" | "document_fallback";
 export type SourceMeta = Record<string, unknown>;
 export type SyllabusAiResult = {
   topics: SyllabusTopic[] | null;
   model: string | null;
+  provider: string | null;
   error: string | null;
 };
 
-const AI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano"] as const;
 const FALLBACK_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
 
 async function persistTopics(args: {
@@ -56,38 +56,14 @@ function toIso(value: unknown): string | null {
   return date.toISOString();
 }
 
-function trimErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? "unknown_error");
-  return message.slice(0, 240);
-}
-
 function isFallbackSource(source: string) {
-  return source === "seed_fallback" || source === "generic_fallback";
+  return source === "seed_fallback" || source === "generic_fallback" || source === "document_fallback";
 }
 
 function shouldRetryFallbackUpgrade(sourceMeta: Record<string, unknown>) {
   const attemptedAt = toIso(sourceMeta.ai_retry_attempted_at);
   if (!attemptedAt) return true;
   return Date.now() - new Date(attemptedAt).getTime() >= FALLBACK_RETRY_WINDOW_MS;
-}
-
-function parseJsonObject(text: string): any | null {
-  const raw = String(text ?? "").trim();
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-
-    try {
-      return JSON.parse(raw.slice(start, end + 1));
-    } catch {
-      return null;
-    }
-  }
 }
 
 function normalizeSourceText(value: string | undefined) {
@@ -99,74 +75,145 @@ function normalizeSourceText(value: string | undefined) {
   return cleaned.slice(0, 28000);
 }
 
+function toTitleCase(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildTopicsFromDocumentText(subject: string, sourceText: string): SyllabusTopic[] {
+  const text = String(sourceText ?? "")
+    .replace(/\u0000/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return [];
+
+  const STOP = new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "that",
+    "this",
+    "these",
+    "those",
+    "into",
+    "over",
+    "under",
+    "about",
+    "through",
+    "during",
+    "shall",
+    "should",
+    "will",
+    "would",
+    "must",
+    "can",
+    "could",
+    "has",
+    "have",
+    "had",
+    "are",
+    "was",
+    "were",
+    "been",
+    "being",
+    "may",
+    "might",
+    "subject",
+    "exam",
+    "syllabus"
+  ]);
+
+  const sentences = text
+    .split(/(?<=[\.\!\?\:\;])\s+/g)
+    .map((line) => line.replace(/[^A-Za-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim())
+    .filter((line) => line.length >= 24);
+
+  const topics: SyllabusTopic[] = [];
+  const seen = new Set<string>();
+
+  for (const sentence of sentences) {
+    if (topics.length >= 12) break;
+    const words = sentence
+      .split(" ")
+      .map((word) => word.toLowerCase())
+      .filter((word) => word.length >= 3 && !STOP.has(word));
+    if (words.length < 4) continue;
+
+    const title = toTitleCase(words.slice(0, 6).join(" ")).slice(0, 120);
+    const key = title.toLowerCase();
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+
+    const subtopics: string[] = [];
+    if (words.length > 6) subtopics.push(toTitleCase(words.slice(6, 10).join(" ")).slice(0, 120));
+    if (words.length > 10) subtopics.push(toTitleCase(words.slice(10, 14).join(" ")).slice(0, 120));
+
+    topics.push({
+      title,
+      path: title,
+      subtopics: subtopics.filter((item) => item.length >= 2)
+    });
+  }
+
+  if (topics.length >= 4) return topics;
+
+  return getGenericTopicsForSubject(subject)
+    .slice(0, 10)
+    .map((topic) => ({
+      title: topic.title,
+      path: topic.path,
+      subtopics: topic.subtopics ?? []
+    }));
+}
+
 async function generateAiTopics(args: { examSlug: string; subject: string; sourceText?: string }): Promise<SyllabusAiResult> {
-  const client = getOpenAIClient();
-  if (!client) {
-    return { topics: null as SyllabusTopic[] | null, model: null as string | null, error: "OpenAI client unavailable." };
-  }
-
   const documentText = normalizeSourceText(args.sourceText);
-  let lastError = "No AI model returned valid topics.";
-  const textStrategies = documentText ? [documentText, null] : [null];
+  const system = [
+    "You generate exam syllabus topic trees.",
+    'Return valid JSON only in this format: {"topics":[{"title":"...","path":"...","subtopics":["...","..."]}]}',
+    "Keep it concise, practical, and suitable for objective-question preparation.",
+    "Create 8 to 12 topics with short subtopics.",
+    documentText
+      ? "When syllabus source text is provided, use it as the primary source and avoid inventing unrelated topics."
+      : "When source text is not provided, infer likely exam coverage for the subject."
+  ].join("\n");
 
-  for (const sourceText of textStrategies) {
-    for (const model of AI_MODELS) {
-      try {
-        const completion = await client.chat.completions.create({
-          model,
-          temperature: 0.35,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: [
-                "You generate exam syllabus topic trees.",
-                "Return valid JSON only in this format: {\"topics\":[{\"title\":\"...\",\"path\":\"...\",\"subtopics\":[\"...\",\"...\"]}]}",
-                "Keep it concise, practical, and suitable for objective-question preparation.",
-                "Create 8 to 12 topics with short subtopics.",
-                sourceText
-                  ? "When syllabus source text is provided, use it as the primary source and avoid inventing unrelated topics."
-                  : "When source text is not provided, infer likely exam coverage for the subject."
-              ].join("\n")
-            },
-            {
-              role: "user",
-              content: JSON.stringify({
-                exam: args.examSlug.toUpperCase(),
-                subject: args.subject,
-                source_text: sourceText ?? undefined
-              })
-            }
-          ]
-        });
+  const response = await generateJsonWithFallback<any>({
+    system,
+    user: JSON.stringify({
+      exam: args.examSlug.toUpperCase(),
+      subject: args.subject,
+      source_text: documentText ?? undefined
+    }),
+    temperature: 0.35,
+    validate: (parsed) => {
+      const raw = Array.isArray(parsed?.topics) ? parsed.topics : [];
+      const topics: SyllabusTopic[] = raw
+        .filter((item: any) => typeof item?.title === "string")
+        .map((item: any) => ({
+          title: String(item.title).slice(0, 120),
+          path: String(item.path ?? item.title).slice(0, 120),
+          subtopics: Array.isArray(item.subtopics)
+            ? item.subtopics.map((sub: any) => String(sub).slice(0, 120)).slice(0, 10)
+            : []
+        }))
+        .filter((item: SyllabusTopic) => item.title.length >= 2);
 
-        const text = completion.choices[0]?.message?.content ?? "";
-        const parsed = parseJsonObject(text);
-        const raw = Array.isArray(parsed?.topics) ? parsed.topics : [];
-
-        const topics: SyllabusTopic[] = raw
-          .filter((item: any) => typeof item?.title === "string")
-          .map((item: any) => ({
-            title: String(item.title).slice(0, 120),
-            path: String(item.path ?? item.title).slice(0, 120),
-            subtopics: Array.isArray(item.subtopics)
-              ? item.subtopics.map((sub: any) => String(sub).slice(0, 120)).slice(0, 10)
-              : []
-          }))
-          .filter((item: SyllabusTopic) => item.title.length >= 2);
-
-        if (topics.length) {
-          return { topics, model, error: null as string | null };
-        }
-
-        lastError = `Model ${model} returned invalid syllabus JSON${sourceText ? " (document mode)" : ""}.`;
-      } catch (error) {
-        lastError = `Model ${model} failed${sourceText ? " (document mode)" : ""}: ${trimErrorMessage(error)}`;
-      }
+      return topics.length ? { topics } : null;
     }
-  }
+  });
 
-  return { topics: null as SyllabusTopic[] | null, model: null as string | null, error: lastError };
+  return {
+    topics: response.value?.topics ?? null,
+    model: response.model,
+    provider: response.provider,
+    error: response.error
+  };
 }
 
 export async function regenerateSyllabusWithAiDetailed(args: {
@@ -181,21 +228,89 @@ export async function regenerateSyllabusWithAiDetailed(args: {
     subject: args.subject,
     sourceText: args.sourceText
   });
-  if (!ai.topics?.length) return ai;
 
+  if (ai.topics?.length) {
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: ai.topics,
+      source: "ai_admin",
+      sourceMeta: {
+        model: ai.model ?? undefined,
+        provider: ai.provider ?? undefined,
+        generated_by: "admin_action",
+        ...(args.sourceMeta ?? {})
+      }
+    });
+
+    return ai;
+  }
+
+  if (args.sourceText) {
+    const documentFallback = buildTopicsFromDocumentText(args.subject, args.sourceText);
+    if (documentFallback.length) {
+      await persistTopics({
+        examId: args.examId,
+        subject: args.subject,
+        topics: documentFallback,
+        source: "document_fallback",
+        sourceMeta: {
+          generated_by: "admin_action_fallback",
+          ai_error: ai.error ?? "AI generation failed.",
+          ...(args.sourceMeta ?? {})
+        }
+      });
+
+      return {
+        topics: documentFallback,
+        model: ai.model,
+        provider: ai.provider,
+        error: ai.error
+      };
+    }
+  }
+
+  const seedFallback = getFallbackTopics(args.examSlug, args.subject);
+  if (seedFallback?.length) {
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: seedFallback,
+      source: "seed_fallback",
+      sourceMeta: {
+        generated_by: "admin_action_fallback",
+        ai_error: ai.error ?? "AI generation failed.",
+        ...(args.sourceMeta ?? {})
+      }
+    });
+
+    return {
+      topics: seedFallback,
+      model: ai.model,
+      provider: ai.provider,
+      error: ai.error
+    };
+  }
+
+  const genericFallback = getGenericTopicsForSubject(args.subject);
   await persistTopics({
     examId: args.examId,
     subject: args.subject,
-    topics: ai.topics,
-    source: "ai_admin",
+    topics: genericFallback,
+    source: "generic_fallback",
     sourceMeta: {
-      model: ai.model ?? undefined,
-      generated_by: "admin_action",
+      generated_by: "admin_action_fallback",
+      ai_error: ai.error ?? "AI generation failed.",
       ...(args.sourceMeta ?? {})
     }
   });
 
-  return ai;
+  return {
+    topics: genericFallback,
+    model: ai.model,
+    provider: ai.provider,
+    error: ai.error
+  };
 }
 
 export async function regenerateSyllabusWithAi(args: {
@@ -230,7 +345,13 @@ async function markFallbackAiRetry(args: {
 
 function sourceFromMeta(sourceMeta: Record<string, unknown>): string {
   const source = String(sourceMeta.source ?? "");
-  if (source === "ai_auto" || source === "ai_admin" || source === "seed_fallback" || source === "generic_fallback") {
+  if (
+    source === "ai_auto" ||
+    source === "ai_admin" ||
+    source === "seed_fallback" ||
+    source === "generic_fallback" ||
+    source === "document_fallback"
+  ) {
     return source;
   }
   return "manual";
@@ -263,6 +384,7 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
           source: "ai_auto",
           sourceMeta: {
             model: ai.model ?? undefined,
+            provider: ai.provider ?? undefined,
             upgraded_from: source
           }
         });
@@ -289,7 +411,8 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
       topics: ai.topics,
       source: "ai_auto",
       sourceMeta: {
-        model: ai.model ?? undefined
+        model: ai.model ?? undefined,
+        provider: ai.provider ?? undefined
       }
     });
     return ai.topics;
