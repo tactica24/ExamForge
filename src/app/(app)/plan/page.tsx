@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { format, addDays } from "date-fns";
+import { addDays, differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,12 +29,18 @@ export default async function PlanPage() {
     .lte("scheduled_for", end)
     .order("scheduled_for", { ascending: true });
 
+  const targetDate = plan.target_date ? parseISO(plan.target_date) : null;
+  const daysToTarget =
+    targetDate && isValid(targetDate) ? differenceInCalendarDays(targetDate, new Date()) : null;
+
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Next 14 days | {plan.mode} mode | {plan.pace} pace
+          {plan.target_date ? ` | Exam date: ${plan.target_date}` : ""}
+          {daysToTarget != null ? ` | ${daysToTarget >= 0 ? `${daysToTarget} day(s) left` : "Exam date passed"}` : ""}
         </p>
       </div>
 

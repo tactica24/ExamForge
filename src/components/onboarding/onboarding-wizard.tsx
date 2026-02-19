@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { formatISO } from "date-fns";
+import { addDays, formatISO } from "date-fns";
 import type { Database } from "@/lib/firebase/database.types";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
@@ -77,6 +77,7 @@ export function OnboardingWizard(props: {
   }, [subjects, subject]);
 
   const defaultStart = formatISO(new Date(), { representation: "date" });
+  const defaultTarget = formatISO(addDays(new Date(), 90), { representation: "date" });
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
@@ -210,10 +211,20 @@ export function OnboardingWizard(props: {
                 </SelectContent>
               </Select>
               <input type="hidden" name="pace" value={pace} />
+              <p className="text-xs text-muted-foreground">
+                Steady = lighter daily load. Intensive = faster coverage toward your exam date.
+              </p>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="start_date">Start date</Label>
               <Input id="start_date" name="start_date" type="date" defaultValue={defaultStart} required />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="target_date">Exam date (target)</Label>
+              <Input id="target_date" name="target_date" type="date" defaultValue={defaultTarget} />
+              <p className="text-xs text-muted-foreground">
+                Optional but recommended. Your plan auto-adjusts so topics are completed before this date.
+              </p>
             </div>
           </div>
         </Card>

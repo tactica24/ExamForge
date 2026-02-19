@@ -112,6 +112,7 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground">
             {plan.mode === "group" ? "Group mode" : "Solo mode"} | {plan.pace} pace |{" "}
             <span className="font-medium text-foreground">{todayStr}</span>
+            {plan.target_date ? ` | Exam date ${plan.target_date}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

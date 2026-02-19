@@ -308,6 +308,9 @@ export default async function AdminHomePage() {
             <Link href="/admin/exams">Generate/manage syllabi</Link>
           </Button>
           <Button asChild variant="outline">
+            <Link href="/admin/exams">Upload syllabus documents</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/superadmin">Open superadmin route alias</Link>
           </Button>
         </CardContent>

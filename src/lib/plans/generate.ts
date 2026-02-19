@@ -1,4 +1,4 @@
-import { addDays, formatISO, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, formatISO, isValid, parseISO } from "date-fns";
 import type { Topic } from "@/lib/syllabi/fallback";
 
 export type Pace = "steady" | "intensive";
@@ -23,10 +23,21 @@ export function generatePlanItemsFromTopics(args: {
   topics: Topic[];
   pace: Pace;
   startDate: string; // YYYY-MM-DD
+  targetDate?: string | null; // YYYY-MM-DD
 }): GeneratedPlanItem[] {
-  const { topics, pace, startDate } = args;
-  const perDay = pace === "intensive" ? 2 : 1;
+  const { topics, pace, startDate, targetDate } = args;
+  const defaultPerDay = pace === "intensive" ? 2 : 1;
   const start = parseISO(startDate);
+  const target = targetDate ? parseISO(targetDate) : null;
+  const hasValidWindow = Boolean(target && isValid(target) && isValid(start) && target >= start);
+
+  let perDay = defaultPerDay;
+  if (hasValidWindow && target) {
+    const windowDays = Math.max(1, differenceInCalendarDays(target, start) + 1);
+    const requiredPerDay = Math.ceil(topics.length / windowDays);
+    perDay = Math.max(defaultPerDay, requiredPerDay);
+  }
+
   const items: GeneratedPlanItem[] = [];
 
   let dayIndex = 0;

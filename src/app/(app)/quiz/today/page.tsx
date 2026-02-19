@@ -32,13 +32,14 @@ export default async function QuizTodayPage() {
 
   if (!item) redirect("/plan");
 
-  const { data: exam } = await firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle();
+  const { data: exam } = await firebase.from("exams").select("name,slug").eq("id", plan.exam_id).maybeSingle();
   const examName = exam?.name ?? "Exam";
 
   const quizId = await getOrCreateDailyQuiz({
     userId: user.id,
     examId: plan.exam_id,
     examName,
+    examSlug: exam?.slug ?? undefined,
     subject: plan.subject,
     topicPath: item.topic_path,
     preferredLanguage: profile?.preferred_explanation_language ?? "en"

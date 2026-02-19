@@ -19,7 +19,11 @@ const OnboardingSchema = z.object({
   subject: z.string().min(2),
   mode: z.enum(["solo", "group"]),
   pace: z.enum(["steady", "intensive"]),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  target_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
 });
 
 export async function completeOnboardingAction(_: unknown, formData: FormData) {
@@ -34,11 +38,15 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     subject: formData.get("subject"),
     mode: formData.get("mode"),
     pace: formData.get("pace"),
-    start_date: formData.get("start_date")
+    start_date: formData.get("start_date"),
+    target_date: (formData.get("target_date") as string | null)?.trim() || undefined
   });
 
   if (!parsed.success) {
     return { ok: false, message: "Please complete all onboarding fields." };
+  }
+  if (parsed.data.target_date && parsed.data.target_date < parsed.data.start_date) {
+    return { ok: false, message: "Target exam date must be on or after your start date." };
   }
 
   const firebase = await createFirebaseServerClient();
@@ -91,7 +99,8 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       subject: parsed.data.subject,
       mode: parsed.data.mode,
       pace: parsed.data.pace,
-      start_date: parsed.data.start_date
+      start_date: parsed.data.start_date,
+      target_date: parsed.data.target_date ?? null
     })
     .select("*")
     .single();
@@ -106,7 +115,8 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   const items = generatePlanItemsFromTopics({
     topics,
     pace: parsed.data.pace,
-    startDate: parsed.data.start_date
+    startDate: parsed.data.start_date,
+    targetDate: parsed.data.target_date ?? null
   });
 
   if (items.length) {

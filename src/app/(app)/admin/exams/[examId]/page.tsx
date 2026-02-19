@@ -4,6 +4,7 @@ import { requireAdmin } from "@/app/(app)/admin/guard";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   generateAllExamSyllabiAction,
   generateSubjectSyllabusAiAction,
+  uploadSubjectSyllabusDocumentAction,
   upsertSyllabusAction
 } from "@/app/(app)/admin/exams/[examId]/actions";
 
@@ -32,6 +34,8 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
   const subjects = Array.isArray(exam.subjects) ? (exam.subjects as any[]).map((subject) => String(subject).trim()).filter(Boolean) : [];
   const firstSubject = subjects[0] ?? "English Language";
   const existing = syllabi?.find((item) => item.subject === firstSubject);
+  const coveredSubjects = new Set((syllabi ?? []).map((item) => String(item.subject)));
+  const coveragePercent = subjects.length ? Math.round((coveredSubjects.size / subjects.length) * 100) : 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -48,11 +52,60 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="lg:col-span-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-100/30">
+          <CardHeader>
+            <CardTitle className="text-base">Syllabus content pipeline</CardTitle>
+            <CardDescription>
+              Upload official syllabus files first, then let AI structure topic JSON for plans and objective questions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">
+                Coverage: {coveredSubjects.size}/{subjects.length || 0} subjects
+              </Badge>
+              <Badge variant="secondary">{coveragePercent}% complete</Badge>
+              <Badge variant="secondary">Preferred source: uploaded documents</Badge>
+            </div>
+
+            <AuthFormState action={uploadSubjectSyllabusDocumentAction} encType="multipart/form-data">
+              <input type="hidden" name="exam_id" value={examId} />
+              <input type="hidden" name="exam_slug" value={exam.slug} />
+
+              <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+                <div className="space-y-2">
+                  <Label htmlFor="upload_subject">Subject</Label>
+                  <NativeSelect id="upload_subject" name="subject" defaultValue={firstSubject} required>
+                    {subjects.length ? (
+                      subjects.map((subject) => (
+                        <option key={subject} value={subject}>
+                          {subject}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={firstSubject}>{firstSubject}</option>
+                    )}
+                  </NativeSelect>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="syllabus_file">Syllabus file (PDF, TXT, or MD)</Label>
+                  <Input id="syllabus_file" name="file" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" required />
+                </div>
+              </div>
+
+              <SubmitButton type="submit" pendingText="Uploading and structuring..." className="w-full sm:w-auto">
+                Upload and structure syllabus
+              </SubmitButton>
+            </AuthFormState>
+          </CardContent>
+        </Card>
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Generate syllabus with AI</CardTitle>
             <CardDescription>
-              Generates syllabus topics with OpenAI and stores the exact model/status metadata for each subject.
+              Use this when no file is available. It generates topics directly from exam + subject and stores model metadata.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
@@ -103,6 +156,8 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
                 const source = String(meta.source ?? "manual");
                 const model = meta.model ? String(meta.model) : null;
                 const aiError = meta.ai_error ? String(meta.ai_error) : meta.ai_retry_error ? String(meta.ai_retry_error) : null;
+                const documentUrl = meta.document_url ? String(meta.document_url) : null;
+                const documentName = meta.document_name ? String(meta.document_name) : null;
                 return (
                   <div key={entry.id} className="rounded-lg border bg-card px-3 py-2 text-sm">
                     <div className="font-medium">{entry.subject}</div>
@@ -111,6 +166,11 @@ export default async function AdminExamDetailPage(props: { params: Promise<{ exa
                       {model ? ` | Model: ${model}` : ""}
                       {" | "}Updated {new Date(entry.last_updated).toLocaleDateString()}
                     </div>
+                    {documentUrl ? (
+                      <a className="mt-1 block text-[11px] text-primary underline underline-offset-4" href={documentUrl} target="_blank" rel="noreferrer">
+                        Source document{documentName ? `: ${documentName}` : ""}
+                      </a>
+                    ) : null}
                     {aiError ? <div className="mt-1 text-[11px] text-amber-700">AI note: {aiError}</div> : null}
                   </div>
                 );
