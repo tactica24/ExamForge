@@ -10,6 +10,13 @@ import { ensureSeedExamExists } from "@/lib/seed/ensure";
 
 const OnboardingSchema = z.object({
   name: z.string().min(2).max(60),
+  phone: z
+    .string()
+    .trim()
+    .min(8)
+    .max(24)
+    .regex(/^\+?[0-9\s\-()]+$/)
+    .optional(),
   location: z.string().min(2).max(80).optional(),
   timezone: z.string().min(2).max(60).default("Africa/Lagos"),
   learning_style: z.string().min(2).max(30),
@@ -29,6 +36,7 @@ const OnboardingSchema = z.object({
 export async function completeOnboardingAction(_: unknown, formData: FormData) {
   const parsed = OnboardingSchema.safeParse({
     name: formData.get("name"),
+    phone: (formData.get("phone") as string | null)?.trim() || undefined,
     location: formData.get("location") || undefined,
     timezone: formData.get("timezone") || "Africa/Lagos",
     learning_style: formData.get("learning_style"),
@@ -43,7 +51,10 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { ok: false, message: "Please complete all onboarding fields." };
+    return {
+      ok: false,
+      message: "Please complete all onboarding fields. If phone is provided, use a valid format."
+    };
   }
   if (parsed.data.target_date && parsed.data.target_date < parsed.data.start_date) {
     return { ok: false, message: "Target exam date must be on or after your start date." };
@@ -59,7 +70,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   if (examId.startsWith("fallback-")) {
     try {
       examId = await ensureSeedExamExists({ slug: parsed.data.exam_slug });
-    } catch (e: any) {
+    } catch (_e: any) {
       return {
         ok: false,
         message:
@@ -71,7 +82,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   const { error: profileErr } = await firebase.from("profiles").upsert({
     user_id: user.id,
     email: user.email ?? null,
-    phone: user.phone ?? null,
+    phone: parsed.data.phone ?? user.phone ?? null,
     name: parsed.data.name,
     location: parsed.data.location ?? null,
     timezone: parsed.data.timezone,
@@ -147,4 +158,3 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
 
   redirect("/dashboard");
 }
-

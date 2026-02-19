@@ -21,7 +21,7 @@ export default async function MockExamStartPage(props: { searchParams: Promise<{
     <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Mock exam</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Timed CBT-style practice from your current plan.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Timed CBT-style practice from your current plan. One mock per subject is allowed every 7 days.</p>
       </div>
 
       <Card>

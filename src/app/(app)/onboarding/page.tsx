@@ -23,6 +23,12 @@ export default async function OnboardingPage() {
       ? metadata.name
       : "";
 
+  const initialPhone = typeof metadata.phone === "string"
+    ? metadata.phone
+    : typeof user.phone === "string"
+      ? user.phone
+      : "";
+
   const initialLocation = typeof metadata.location === "string" ? metadata.location : "";
 
   return (
@@ -30,6 +36,7 @@ export default async function OnboardingPage() {
       exams={exams}
       preferredExamSlugs={preferredExamSlugs}
       initialName={initialName}
+      initialPhone={initialPhone}
       initialLocation={initialLocation}
     />
   );

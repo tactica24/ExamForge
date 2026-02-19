@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, BrainCircuit, CheckCircle2, Trophy, Users2 } from "lucide-react";
+import { BarChart3, BrainCircuit, Building2, CheckCircle2, MessageCircleMore, Trophy, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,12 +16,19 @@ const proBenefits = [
   "Smart reminders and streak tracking"
 ];
 
+const enterpriseBenefits = [
+  "Custom onboarding for schools and cohorts",
+  "Dedicated admin support and priority issue resolution",
+  "Custom reporting, compliance, and rollout support",
+  "Integration planning for WhatsApp/SMS workflows"
+];
+
 export default function PricingPage() {
   return (
     <div className="min-h-dvh bg-gradient-to-b from-background via-background to-muted/20">
       <SiteHeader />
       <main className="container page-enter pb-16 pt-12">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <Badge variant="secondary" className="mb-4 rounded-full">
             Flexible plans
           </Badge>
@@ -30,7 +37,7 @@ export default function PricingPage() {
             Start free, upgrade to Pro when you want full practice volume, better analytics, and stronger accountability.
           </p>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
             <Card className="p-6">
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
@@ -71,6 +78,35 @@ export default function PricingPage() {
                   </Button>
                   <Button asChild variant="secondary" className="w-full">
                     <Link href="/dashboard">Open dashboard</Link>
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="relative overflow-hidden border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-card to-cyan-500/10 p-6">
+              <div className="absolute -left-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/20 blur-2xl" />
+              <div className="relative">
+                <Badge variant="outline" className="rounded-full border-emerald-500/40 text-emerald-700">
+                  Enterprise
+                </Badge>
+                <div className="mt-3 text-sm font-medium">Enterprise</div>
+                <div className="mt-2 text-4xl font-semibold tracking-tight">Custom</div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No fixed fee. Contact us for custom deployment, integrations, and institutional rollout.
+                </p>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  {enterpriseBenefits.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <Building2 className="mt-0.5 h-4 w-4 text-emerald-700" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 grid gap-2">
+                  <Button asChild variant="outline" className="w-full border-emerald-500/50 text-emerald-700 hover:bg-emerald-500/10">
+                    <a href="mailto:enterprise@examforge.app?subject=Enterprise%20Plan%20Inquiry">
+                      <MessageCircleMore className="mr-2 h-4 w-4" /> Contact us
+                    </a>
                   </Button>
                 </div>
               </div>

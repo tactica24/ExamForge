@@ -49,6 +49,7 @@ export function OnboardingWizard(props: {
   exams: ExamRow[];
   preferredExamSlugs?: string[];
   initialName?: string;
+  initialPhone?: string;
   initialLocation?: string;
 }) {
   const initialExam = React.useMemo(() => {
@@ -95,6 +96,10 @@ export function OnboardingWizard(props: {
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" placeholder="Your name" defaultValue={props.initialName ?? ""} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone (for reminders/WhatsApp)</Label>
+              <Input id="phone" name="phone" type="tel" placeholder="+234 801 234 5678" defaultValue={props.initialPhone ?? ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -236,4 +241,3 @@ export function OnboardingWizard(props: {
     </div>
   );
 }
-
