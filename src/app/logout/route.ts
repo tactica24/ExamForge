@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromRequest("route:logout", request),
     windowMs: 5 * 60 * 1000,
     max: 30

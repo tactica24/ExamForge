@@ -18,7 +18,7 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Blocked by origin policy." };
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromHeaders("action:otp:verify", headerStore),
     windowMs: 15 * 60 * 1000,
     max: 10

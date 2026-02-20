@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { paystackInitialize } from "@/lib/billing/paystack";
+import { PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO, paystackInitialize } from "@/lib/billing/paystack";
 import { getServerEnv } from "@/lib/env";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromRequest("api:billing:init", request),
     windowMs: 10 * 60 * 1000,
     max: 20
@@ -34,15 +34,21 @@ export async function POST(request: Request) {
 
   const callbackUrl = env.PAYSTACK_CALLBACK_URL ?? `${env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/billing/callback`;
 
-  const init = await paystackInitialize({
-    email,
-    amountKobo: 300000, // NGN 3,000 (adjust per tier/plan)
-    callbackUrl,
-    metadata: {
-      user_id: user.id,
-      tier: "pro"
-    }
-  });
+  try {
+    const init = await paystackInitialize({
+      email,
+      amountKobo: PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO,
+      callbackUrl,
+      metadata: {
+        user_id: user.id,
+        tier: "pro",
+        initiated_at: new Date().toISOString()
+      }
+    });
 
-  return NextResponse.json({ ok: true, url: init.authorization_url, reference: init.reference });
+    return NextResponse.json({ ok: true, url: init.authorization_url, reference: init.reference });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to initialize checkout.";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
+  }
 }

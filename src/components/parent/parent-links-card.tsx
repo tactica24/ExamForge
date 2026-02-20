@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export type ParentLink = { token: string; label: string | null; created_at: string };
+export type ParentLink = { token: string; label: string | null; created_at: string; revoked_at?: string | null };
 
 export function ParentLinksCard(props: { links: ParentLink[] }) {
+  const [links, setLinks] = React.useState<ParentLink[]>(props.links);
+  const [revoking, setRevoking] = React.useState<string | null>(null);
   const base = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
@@ -18,8 +20,8 @@ export function ParentLinksCard(props: { links: ParentLink[] }) {
         <CardDescription>Create a read-only link to share progress with a parent/guardian.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {props.links.length ? (
-          props.links.map((l) => {
+        {links.length ? (
+          links.map((l) => {
             const url = `${base}/p/${l.token}`;
             return (
               <div key={l.token} className="grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -31,6 +33,7 @@ export function ParentLinksCard(props: { links: ParentLink[] }) {
                   <Button
                     type="button"
                     variant="secondary"
+                    disabled={revoking === l.token}
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(url);
@@ -42,6 +45,34 @@ export function ParentLinksCard(props: { links: ParentLink[] }) {
                   >
                     Copy
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={revoking === l.token}
+                    onClick={async () => {
+                      try {
+                        setRevoking(l.token);
+                        const res = await fetch("/api/parent-links/revoke", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ token: l.token })
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) {
+                          throw new Error(json?.message ?? "Could not revoke link.");
+                        }
+
+                        setLinks((prev) => prev.filter((item) => item.token !== l.token));
+                        toast.success("Parent link revoked.");
+                      } catch (error: any) {
+                        toast.error(error?.message ?? "Could not revoke link.");
+                      } finally {
+                        setRevoking(null);
+                      }
+                    }}
+                  >
+                    Revoke
+                  </Button>
                 </div>
               </div>
             );
@@ -50,7 +81,7 @@ export function ParentLinksCard(props: { links: ParentLink[] }) {
           <div className="text-sm text-muted-foreground">No parent links yet.</div>
         )}
         <p className="text-xs text-muted-foreground">
-          Parent view uses a secure token. Revoke links in Firebase (MVP: revoke UI coming next).
+          Parent view uses a secure token. Revoke links any time from this page.
         </p>
       </CardContent>
     </Card>

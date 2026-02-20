@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "ace-naija-v1";
+const CACHE_NAME = "ace-naija-v2";
 const ASSET_CACHE = ["/", "/manifest.webmanifest", "/icon.svg"];
+const MAX_CACHE_ENTRIES = 200;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -28,16 +29,52 @@ function isCacheableRequest(request) {
   return true;
 }
 
+function shouldCacheResponse(response) {
+  return Boolean(response && response.ok && response.type === "basic");
+}
+
+async function trimCache(cache) {
+  const keys = await cache.keys();
+  const overflow = keys.length - MAX_CACHE_ENTRIES;
+  if (overflow <= 0) return;
+
+  for (let i = 0; i < overflow; i += 1) {
+    await cache.delete(keys[i]);
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (!isCacheableRequest(request)) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then(async (response) => {
+          if (shouldCacheResponse(response)) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, response.clone());
+            await trimCache(cache);
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached || Response.error();
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkFetch = fetch(request)
-        .then((response) => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned)).catch(() => {});
+        .then(async (response) => {
+          if (shouldCacheResponse(response)) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, response.clone());
+            await trimCache(cache);
+          }
           return response;
         })
         .catch(() => cached);

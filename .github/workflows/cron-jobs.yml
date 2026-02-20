@@ -7,6 +7,8 @@ on:
         description: "Public HTTPS URL for cron endpoints (overrides APP_WEB_URL)"
         required: false
         type: string
+  schedule:
+    - cron: "5 0 * * 1"
 
 jobs:
   run_crons:
@@ -48,29 +50,10 @@ jobs:
           curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
             "$APP_URL/api/health"
 
-      - name: Run reminders cron
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *'
-        env:
-          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
-        run: |
-          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
-            -H "x-cron-secret: $APP_CRON_SECRET" \
-            "$APP_URL/api/cron/reminders"
-
       - name: Run leaderboards cron
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
         env:
           APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
         run: |
           curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
             -H "x-cron-secret: $APP_CRON_SECRET" \
             "$APP_URL/api/cron/leaderboards"
-
-      - name: Run group nudges cron
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *'
-        env:
-          APP_CRON_SECRET: ${{ secrets.APP_CRON_SECRET }}
-        run: |
-          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
-            -H "x-cron-secret: $APP_CRON_SECRET" \
-            "$APP_URL/api/cron/group-nudges"

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { subDays } from "date-fns";
+import { startOfMonth, startOfWeek } from "date-fns";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getServerEnv } from "@/lib/env";
 
@@ -20,13 +20,13 @@ export async function GET(req: Request) {
 
   const admin = createFirebaseAdminClient();
   const now = new Date();
-  const since30 = subDays(now, 30).toISOString();
-  const since7 = subDays(now, 7).toISOString();
+  const sinceMonth = startOfMonth(now).toISOString();
+  const sinceWeek = startOfWeek(now, { weekStartsOn: 1 }).toISOString();
 
   const { data: events, error: evErr } = await admin
     .from("user_xp_events")
     .select("user_id,xp,created_at")
-    .gte("created_at", since30)
+    .gte("created_at", sinceMonth)
     .limit(100000);
   if (evErr) return NextResponse.json({ ok: false, message: evErr.message }, { status: 500 });
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   for (const e of events ?? []) {
     const uid = e.user_id;
     monthly.set(uid, (monthly.get(uid) ?? 0) + (e.xp ?? 0));
-    if (e.created_at >= since7) {
+    if (e.created_at >= sinceWeek) {
       weekly.set(uid, (weekly.get(uid) ?? 0) + (e.xp ?? 0));
     }
   }

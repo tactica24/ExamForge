@@ -29,6 +29,14 @@ const DeleteSchema = z.object({
   group_id: z.string().uuid()
 });
 
+function chunk<T>(items: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
 export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   const parsed = SendSchema.safeParse({
     group_id: formData.get("group_id"),
@@ -92,13 +100,23 @@ export async function joinSubjectGroupAction(_: unknown, formData: FormData) {
     .limit(10);
 
   let pickedGroupId: string | null = null;
+  const candidateIds = (groups ?? []).map((group) => String((group as any).id ?? "").trim()).filter(Boolean);
+  const groupMemberCounts = new Map<string, number>(candidateIds.map((id) => [id, 0]));
+
+  for (const batch of chunk(candidateIds, 30)) {
+    const { data: members } = await firebase.from("group_members").select("group_id").in("group_id", batch);
+    for (const member of members ?? []) {
+      const groupId = String((member as any).group_id ?? "").trim();
+      if (!groupId) continue;
+      groupMemberCounts.set(groupId, (groupMemberCounts.get(groupId) ?? 0) + 1);
+    }
+  }
+
   for (const group of groups ?? []) {
-    const { count } = await firebase
-      .from("group_members")
-      .select("*", { count: "exact", head: true })
-      .eq("group_id", group.id);
-    if ((count ?? 0) < 15) {
-      pickedGroupId = group.id;
+    const groupId = String((group as any).id ?? "").trim();
+    if (!groupId) continue;
+    if ((groupMemberCounts.get(groupId) ?? 0) < 15) {
+      pickedGroupId = groupId;
       break;
     }
   }

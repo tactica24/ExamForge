@@ -2,6 +2,14 @@ import "server-only";
 
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 
+function chunk<T>(items: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
 export async function matchOrCreateGroup(args: {
   userId: string;
   examId: string;
@@ -24,14 +32,26 @@ export async function matchOrCreateGroup(args: {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  let pickedGroupId: string | null = groups?.[0]?.id ?? null;
+  const candidateIds = (groups ?? []).map((group) => String((group as any).id ?? "").trim()).filter(Boolean);
+  const groupMemberCounts = new Map<string, number>(candidateIds.map((id) => [id, 0]));
 
-  if (pickedGroupId) {
-    const { count } = await firebase
-      .from("group_members")
-      .select("*", { count: "exact", head: true })
-      .eq("group_id", pickedGroupId);
-    if ((count ?? 0) >= 15) pickedGroupId = null;
+  for (const batch of chunk(candidateIds, 30)) {
+    const { data: members } = await firebase.from("group_members").select("group_id").in("group_id", batch);
+    for (const member of members ?? []) {
+      const groupId = String((member as any).group_id ?? "").trim();
+      if (!groupId) continue;
+      groupMemberCounts.set(groupId, (groupMemberCounts.get(groupId) ?? 0) + 1);
+    }
+  }
+
+  let pickedGroupId: string | null = null;
+  for (const group of groups ?? []) {
+    const groupId = String((group as any).id ?? "").trim();
+    if (!groupId) continue;
+    if ((groupMemberCounts.get(groupId) ?? 0) < 15) {
+      pickedGroupId = groupId;
+      break;
+    }
   }
 
   if (!pickedGroupId) {

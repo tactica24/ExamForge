@@ -36,8 +36,9 @@ export default async function SettingsPage() {
     firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
     firebase
       .from("parent_links")
-      .select("token,label,created_at")
+      .select("token,label,created_at,revoked_at")
       .eq("user_id", user.id)
+      .eq("revoked_at", null)
       .order("created_at", { ascending: false })
       .limit(5),
     firebase

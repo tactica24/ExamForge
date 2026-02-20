@@ -53,7 +53,7 @@ export async function signupAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Blocked by origin policy." };
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromHeaders("action:signup", headerStore),
     windowMs: 60 * 60 * 1000,
     max: 8

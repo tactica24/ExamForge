@@ -20,6 +20,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const EXTERNAL_POST_ALLOWED_PATHS = new Set(["/api/billing/paystack/webhook"]);
 
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -33,6 +34,10 @@ function methodRequiresOriginCheck(method: string) {
   return STATE_CHANGING_METHODS.has(method.toUpperCase());
 }
 
+function skipOriginCheck(pathname: string) {
+  return EXTERNAL_POST_ALLOWED_PATHS.has(pathname);
+}
+
 function makeOriginErrorResponse(request: NextRequest) {
   if (isApiPath(request.nextUrl.pathname)) {
     return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
@@ -44,7 +49,7 @@ export async function middleware(request: NextRequest) {
   const { nextUrl } = request;
   const pathname = nextUrl.pathname;
 
-  if (methodRequiresOriginCheck(request.method) && !hasTrustedOrigin(request.headers)) {
+  if (methodRequiresOriginCheck(request.method) && !skipOriginCheck(pathname) && !hasTrustedOrigin(request.headers)) {
     return makeOriginErrorResponse(request);
   }
 

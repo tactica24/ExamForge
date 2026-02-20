@@ -13,13 +13,26 @@ export async function POST(req: Request) {
   const items: Array<{ quizId: string; answers: number[] }> = Array.isArray(body?.items) ? body.items : [];
   if (!items.length) return NextResponse.json({ ok: true, synced: 0 });
 
+  const payload = items.slice(0, 50).map((item) => ({
+    quizId: String(item.quizId),
+    answers: Array.isArray(item.answers) ? item.answers : []
+  }));
+
+  const concurrency = 5;
   let synced = 0;
   const results: any[] = [];
 
-  for (const it of items.slice(0, 50)) {
-    const res = await submitQuiz({ userId: user.id, quizId: String(it.quizId), answers: Array.isArray(it.answers) ? it.answers : [] });
-    if (res.ok) synced += 1;
-    results.push({ quizId: it.quizId, ok: res.ok, duplicate: (res as any).duplicate ?? false });
+  for (let start = 0; start < payload.length; start += concurrency) {
+    const batch = payload.slice(start, start + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(async (item) => {
+        const res = await submitQuiz({ userId: user.id, quizId: item.quizId, answers: item.answers });
+        return { quizId: item.quizId, ok: res.ok, duplicate: (res as any).duplicate ?? false };
+      })
+    );
+
+    synced += batchResults.filter((entry) => entry.ok).length;
+    results.push(...batchResults);
   }
 
   return NextResponse.json({ ok: true, synced, results });

@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromRequest("api:ai:translate", req),
     windowMs: 10 * 60 * 1000,
     max: 80

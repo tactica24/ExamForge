@@ -1,3 +1,7 @@
+import "server-only";
+
+import { getFirebaseAdminDb } from "@/lib/firebase/admin-app";
+
 type RateLimitRecord = {
   count: number;
   resetAt: number;
@@ -45,7 +49,19 @@ function pruneStore(now: number, store: Map<string, RateLimitRecord>) {
   }
 }
 
-export function takeRateLimit(input: RateLimitInput): RateLimitResult {
+function toRateLimitResult(args: { input: RateLimitInput; record: RateLimitRecord; now: number }): RateLimitResult {
+  const retryAfterSec = Math.max(1, Math.ceil((args.record.resetAt - args.now) / 1000));
+  const remaining = Math.max(0, args.input.max - args.record.count);
+
+  return {
+    ok: args.record.count <= args.input.max,
+    limit: args.input.max,
+    remaining,
+    retryAfterSec
+  };
+}
+
+function takeRateLimitInMemory(input: RateLimitInput): RateLimitResult {
   const now = Date.now();
   const store = getStore();
   pruneStore(now, store);
@@ -58,14 +74,50 @@ export function takeRateLimit(input: RateLimitInput): RateLimitResult {
     : { count: 1, resetAt: now + input.windowMs };
 
   store.set(input.key, record);
-
-  const retryAfterSec = Math.max(1, Math.ceil((record.resetAt - now) / 1000));
-  const remaining = Math.max(0, input.max - record.count);
-
-  return {
-    ok: record.count <= input.max,
-    limit: input.max,
-    remaining,
-    retryAfterSec
-  };
+  return toRateLimitResult({ input, record, now });
 }
+
+async function takeRateLimitWithFirestore(input: RateLimitInput): Promise<RateLimitResult | null> {
+  const db = getFirebaseAdminDb();
+  if (!db) return null;
+
+  const now = Date.now();
+  const docRef = db.collection("rate_limits").doc(input.key);
+  let record: RateLimitRecord | null = null;
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const raw = snap.exists ? (snap.data() as Record<string, unknown>) : null;
+      const prevCount = Number(raw?.count ?? 0);
+      const prevResetAt = Number(raw?.resetAt ?? 0);
+      const inWindow = Number.isFinite(prevResetAt) && prevResetAt > now;
+
+      record = inWindow
+        ? { count: Math.max(0, prevCount) + 1, resetAt: prevResetAt }
+        : { count: 1, resetAt: now + input.windowMs };
+
+      tx.set(
+        docRef,
+        {
+          count: record.count,
+          resetAt: record.resetAt,
+          updated_at: new Date(now).toISOString()
+        },
+        { merge: true }
+      );
+    });
+  } catch {
+    return null;
+  }
+
+  if (!record) return null;
+  return toRateLimitResult({ input, record, now });
+}
+
+export async function takeRateLimit(input: RateLimitInput): Promise<RateLimitResult> {
+  const distributed = await takeRateLimitWithFirestore(input);
+  if (distributed) return distributed;
+  return takeRateLimitInMemory(input);
+}
+

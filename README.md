@@ -106,16 +106,29 @@ Expect: `ai.openaiReady=true`.
 - `Generate all subjects` to prebuild syllabus for the full exam
 4) Onboarding and quiz generation also call syllabus loading automatically. If AI is unavailable, stored fallback syllabus is used so planning still works.
 
-## Reminders / cron endpoints
+## Paystack live setup
+1) Set these env vars in Vercel (Production + Preview), then redeploy:
+   - `PAYSTACK_SECRET_KEY` (live secret key)
+   - `PAYSTACK_PUBLIC_KEY` (live public key)
+   - `PAYSTACK_CALLBACK_URL` (for example `https://<your-domain>/billing/callback`)
+2) In Paystack dashboard, set webhook URL to:
+   - `https://<your-domain>/api/billing/paystack/webhook`
+3) Keep `APP_CRON_SECRET` configured; webhook and callback now both activate Pro access after Paystack server-side verification.
+
+## Cron endpoints
+```bash
+curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/leaderboards
+```
+Optional/manual endpoints:
 ```bash
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/reminders
-curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/leaderboards
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/group-nudges
+curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/ai-jobs
 ```
 
 ## Deploy on Vercel
 - Deploy directly from GitHub on Vercel.
-- Keep scheduled tasks outside Vercel using the `Cron Jobs` GitHub workflow.
+- Weekly leaderboard recompute is scheduled via the `Cron Jobs` GitHub workflow.
 
 ## Android APK (GitHub Actions)
 This repo includes a workflow that builds a debug APK using Capacitor.

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
   }
 
-  const rate = takeRateLimit({
+  const rate = await takeRateLimit({
     key: buildRateLimitKeyFromRequest("api:profile:avatar", request),
     windowMs: 15 * 60 * 1000,
     max: 20

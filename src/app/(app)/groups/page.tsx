@@ -8,6 +8,14 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { listActiveExams } from "@/lib/exams/list";
 import { deleteGroupAction, joinSubjectGroupAction, leaveGroupAction } from "@/app/(app)/groups/actions";
 
+function chunk<T>(items: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
 export default async function GroupsPage() {
   const firebase = await createFirebaseServerClient();
   const {
@@ -30,11 +38,22 @@ export default async function GroupsPage() {
     ? await firebase.from("groups").select("*").in("exam_id", examIds)
     : { data: [] as any[] };
 
-  const groupMemberCounts = new Map<string, number>();
-  for (const g of [...groups, ...(allGroups ?? [])]) {
-    if (!g?.id || groupMemberCounts.has(g.id)) continue;
-    const { count } = await firebase.from("group_members").select("*", { count: "exact", head: true }).eq("group_id", g.id);
-    groupMemberCounts.set(g.id, count ?? 0);
+  const uniqueGroupIds = Array.from(
+    new Set(
+      [...groups, ...(allGroups ?? [])]
+        .map((group: any) => String(group?.id ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  const groupMemberCounts = new Map<string, number>(uniqueGroupIds.map((id) => [id, 0]));
+  for (const batch of chunk(uniqueGroupIds, 30)) {
+    const { data: members } = await firebase.from("group_members").select("group_id").in("group_id", batch);
+    for (const member of members ?? []) {
+      const groupId = String((member as any).group_id ?? "").trim();
+      if (!groupId) continue;
+      groupMemberCounts.set(groupId, (groupMemberCounts.get(groupId) ?? 0) + 1);
+    }
   }
 
   const membershipBySubject = new Set(groups.map((g: any) => `${g.exam_id}::${g.subject}`));

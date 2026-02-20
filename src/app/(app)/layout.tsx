@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { AppShell } from "@/components/app/app-shell";
+import { OfflineWarmCache } from "@/components/offline/offline-warm-cache";
+import { OfflineSync } from "@/components/offline/offline-sync";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +32,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       avatarUrl={profile?.avatar_url ?? null}
       isAdmin={isAdmin}
     >
+      <OfflineSync />
+      <OfflineWarmCache lowDataMode={Boolean(profile?.low_data_mode)} />
       {children}
     </AppShell>
   );

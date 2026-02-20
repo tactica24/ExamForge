@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { paystackVerify } from "@/lib/billing/paystack";
+import { activateProSubscriptionFromPaystack } from "@/lib/billing/paystack-activation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -34,25 +35,17 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   }
 
   try {
-    const data = await paystackVerify(reference);
-    const paid = data?.status === "success";
-    const metaUserId = data?.metadata?.user_id;
+    const verification = await paystackVerify(reference);
+    const activation = await activateProSubscriptionFromPaystack({
+      firebase,
+      verification,
+      source: "callback",
+      expectedUserId: user.id
+    });
 
-    if (!paid || metaUserId !== user.id) {
-      throw new Error("Payment not verified for this account.");
+    if (!activation.ok) {
+      throw new Error(activation.message);
     }
-
-    await firebase.from("subscriptions").upsert(
-      {
-        user_id: user.id,
-        provider: "paystack",
-        tier: "pro",
-        status: "active",
-        current_period_end: null
-      },
-      { onConflict: "user_id,provider" }
-    );
-    await firebase.from("profiles").update({ subscription_tier: "pro" }).eq("user_id", user.id);
 
     return (
       <Card className="mx-auto max-w-lg">
