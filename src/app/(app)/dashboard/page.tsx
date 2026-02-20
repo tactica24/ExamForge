@@ -10,6 +10,7 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
+import { getPlanItemResourceLinks } from "@/lib/plans/content";
 
 export default async function DashboardPage() {
   const firebase = await createFirebaseServerClient();
@@ -78,6 +79,7 @@ export default async function DashboardPage() {
         (todayItems.filter((item) => item.status === "done").length / Math.max(1, todayItems.length)) * 100
       )
     : 0;
+  const primaryTodayItem = todayItems?.[0] ?? null;
 
   const avgPercent = recentResults?.length
     ? Math.round(
@@ -120,7 +122,7 @@ export default async function DashboardPage() {
             <Link href="/plan">Open plan</Link>
           </Button>
           <Button asChild>
-            <Link href="/quiz/today">Take today&apos;s objective questions</Link>
+            <Link href={primaryTodayItem ? `/plan/${primaryTodayItem.id}` : "/plan"}>Study today&apos;s topic</Link>
           </Button>
         </div>
       </div>
@@ -175,19 +177,19 @@ export default async function DashboardPage() {
                       <div className="text-sm font-medium">{item.title}</div>
                       <div className="mt-1 text-xs text-muted-foreground">{item.topic_path}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {Array.isArray(item.resource_links)
-                          ? (item.resource_links as any[]).slice(0, 2).map((resource) => (
-                              <a
-                                key={resource.url}
-                                className="text-xs text-primary underline underline-offset-4"
-                                href={resource.url}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {resource.title}
-                              </a>
-                            ))
-                          : null}
+                        {getPlanItemResourceLinks(item.resource_links)
+                          .slice(0, 2)
+                          .map((resource) => (
+                            <a
+                              key={resource.url}
+                              className="text-xs text-primary underline underline-offset-4"
+                              href={resource.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {resource.title}
+                            </a>
+                          ))}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">

@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
-import { getOrCreateDailyQuiz } from "@/lib/quizzes/generate";
 
 export default async function QuizTodayPage() {
   const firebase = await createFirebaseServerClient();
@@ -13,12 +12,6 @@ export default async function QuizTodayPage() {
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");
-
-  const { data: profile } = await firebase
-    .from("profiles")
-    .select("preferred_explanation_language")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: item } = await firebase
@@ -31,19 +24,5 @@ export default async function QuizTodayPage() {
     .maybeSingle();
 
   if (!item) redirect("/plan");
-
-  const { data: exam } = await firebase.from("exams").select("name,slug").eq("id", plan.exam_id).maybeSingle();
-  const examName = exam?.name ?? "Exam";
-
-  const quizId = await getOrCreateDailyQuiz({
-    userId: user.id,
-    examId: plan.exam_id,
-    examName,
-    examSlug: exam?.slug ?? undefined,
-    subject: plan.subject,
-    topicPath: item.topic_path,
-    preferredLanguage: profile?.preferred_explanation_language ?? "en"
-  });
-
-  redirect(`/quiz/${quizId}`);
+  redirect(`/plan/${item.id}`);
 }
