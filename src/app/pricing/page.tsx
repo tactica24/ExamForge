@@ -92,7 +92,7 @@ export default function PricingPage() {
                 <div className="mt-3 text-sm font-medium">Enterprise</div>
                 <div className="mt-2 text-4xl font-semibold tracking-tight">Custom</div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  No fixed fee. Contact us for custom deployment, integrations, and institutional rollout.
+                  Contact us for custom deployment, integrations, and institutional rollout.
                 </p>
                 <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                   {enterpriseBenefits.map((item) => (

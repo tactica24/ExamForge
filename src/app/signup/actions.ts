@@ -123,9 +123,5 @@ export async function signupAction(_: unknown, formData: FormData) {
     );
   }
 
-  if (!data.session) {
-    redirect("/login?verify=1");
-  }
-
-  redirect("/onboarding");
+  redirect("/login?verify=1");
 }

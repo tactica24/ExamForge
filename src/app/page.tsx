@@ -119,7 +119,7 @@ export default function HomePage() {
           <Card className="p-6 sm:p-8">
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
               <Clock3 className="h-4 w-4" />
-              Why serious learners subscribe
+              Why learners subscribe
             </div>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
               {learnerBenefits.map((item) => (
@@ -137,7 +137,7 @@ export default function HomePage() {
               <Badge className="mb-3 rounded-full">Most popular</Badge>
               <h3 className="text-lg font-semibold">Pro membership</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Everything serious candidates need for disciplined, high-impact preparation.
+                Everything candidates need for disciplined, high-impact preparation.
               </p>
               <div className="mt-4 text-4xl font-semibold tracking-tight">
                 N3,000

@@ -9,6 +9,7 @@ import {
   setFirebaseSessionCookie
 } from "@/lib/firebase/session";
 import { FIREBASE_SESSION_COOKIE } from "@/lib/firebase/constants";
+import { getAppUrl } from "@/lib/app-url";
 import { getServerEnv } from "@/lib/env";
 
 type AuthPayload = {
@@ -54,6 +55,41 @@ async function callIdentityToolkit(endpoint: string, payload: Record<string, unk
   return json as Record<string, any>;
 }
 
+function getEmailVerificationContinueUrl() {
+  return `${getAppUrl()}/login?verified=1`;
+}
+
+async function lookupIdentityToolkitUser(idToken: string) {
+  const json = await callIdentityToolkit("accounts:lookup", { idToken });
+  const users = Array.isArray(json.users) ? json.users : [];
+  return (users[0] as Record<string, unknown> | undefined) ?? null;
+}
+
+async function sendVerificationEmail(idToken: string) {
+  try {
+    await callIdentityToolkit("accounts:sendOobCode", {
+      requestType: "VERIFY_EMAIL",
+      idToken,
+      continueUrl: getEmailVerificationContinueUrl()
+    });
+  } catch (error) {
+    const raw = (error instanceof Error ? error.message : "").toUpperCase();
+    const invalidContinueUrl =
+      raw.includes("INVALID_CONTINUE_URI") ||
+      raw.includes("UNAUTHORIZED_CONTINUE_URI") ||
+      raw.includes("MISSING_CONTINUE_URI");
+
+    if (!invalidContinueUrl) {
+      throw error;
+    }
+
+    await callIdentityToolkit("accounts:sendOobCode", {
+      requestType: "VERIFY_EMAIL",
+      idToken
+    });
+  }
+}
+
 export async function createFirebaseServerClient() {
   const cookieStore = await cookies();
   const dataClient = createFirebaseDataClient(getFirebaseAdminDb());
@@ -88,7 +124,31 @@ export async function createFirebaseServerClient() {
             returnSecureToken: true
           });
 
-          await setFirebaseSessionCookie(cookieStore, String(json.idToken));
+          const idToken = String(json.idToken);
+          const userRecord = await lookupIdentityToolkitUser(idToken);
+          const emailVerified = Boolean(userRecord?.emailVerified);
+
+          if (!emailVerified) {
+            try {
+              await sendVerificationEmail(idToken);
+              return {
+                data: { user: null },
+                error: {
+                  message:
+                    "Please verify your email before logging in. We sent a new verification link to your inbox."
+                }
+              };
+            } catch {
+              return {
+                data: { user: null },
+                error: {
+                  message: "Please verify your email before logging in."
+                }
+              };
+            }
+          }
+
+          await setFirebaseSessionCookie(cookieStore, idToken);
 
           const user: AuthPayload = {
             id: String(json.localId),
@@ -112,8 +172,7 @@ export async function createFirebaseServerClient() {
             password: args.password,
             returnSecureToken: true
           });
-
-          await setFirebaseSessionCookie(cookieStore, String(json.idToken));
+          await sendVerificationEmail(String(json.idToken));
 
           const user: AuthPayload = {
             id: String(json.localId),
@@ -124,9 +183,7 @@ export async function createFirebaseServerClient() {
           return {
             data: {
               user,
-              session: {
-                access_token: String(json.idToken)
-              }
+              session: null
             },
             error: null
           };

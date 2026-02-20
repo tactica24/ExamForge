@@ -7,10 +7,11 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
-export default async function LoginPage(props: { searchParams: Promise<{ next?: string; verify?: string }> }) {
+export default async function LoginPage(props: { searchParams: Promise<{ next?: string; verify?: string; verified?: string }> }) {
   const sp = await props.searchParams;
   const next = sp.next ?? "";
   const showVerifyHint = sp.verify === "1";
+  const showVerifiedHint = sp.verified === "1";
 
   return (
     <AuthCard
@@ -25,6 +26,11 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
         </div>
       }
     >
+      {showVerifiedHint ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+          Email confirmed. You can now log in.
+        </div>
+      ) : null}
       {showVerifyHint ? (
         <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
           Account created. Check your email and confirm your account, then log in.

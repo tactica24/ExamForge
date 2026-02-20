@@ -39,6 +39,9 @@ export async function loginAction(_: unknown, formData: FormData) {
   const { error } = await firebase.auth.signInWithPassword(parsed.data);
   if (error) {
     const message = error.message.toLowerCase();
+    if (message.includes("verify your email")) {
+      return { ok: false, message: error.message };
+    }
     if (message.includes("email not confirmed")) {
       return { ok: false, message: "Check your email and confirm your account before logging in." };
     }
