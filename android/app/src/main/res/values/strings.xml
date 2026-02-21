@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ACE NAIJA</string>
+    <string name="title_activity_main">ACE NAIJA</string>
+    <string name="package_name">com.acenaija.app</string>
+    <string name="custom_url_scheme">com.acenaija.app</string>
+</resources>
