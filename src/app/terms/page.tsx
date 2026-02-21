@@ -3,9 +3,9 @@ import { SiteFooter } from "@/components/site-footer";
 
 const prohibitedUses = [
   "Using the platform for exam malpractice, cheating services, or impersonation",
-  "Uploading unlawful, abusive, infringing, or harmful material",
+  "Uploading unlawful, abusive, deceptive, or harmful material",
   "Attempting unauthorized access, scraping, reverse engineering, or service disruption",
-  "Harassing users in groups, messages, or any collaboration channels",
+  "Harassing or targeting users in groups, messages, or any collaboration channels",
   "Sharing content in ways that violate intellectual property rights"
 ];
 
@@ -43,6 +43,10 @@ export default function TermsPage() {
 
           <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
             <h2 className="text-lg font-semibold tracking-tight">3) Acceptable use</h2>
+            <p className="text-sm text-muted-foreground">
+              You agree to use ACE NAIJA for legitimate study and preparation purposes only. You must not engage in any
+              activity that harms learners, undermines exam integrity, or attempts to compromise the service.
+            </p>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {prohibitedUses.map((item) => (
                 <li key={item}>{item}</li>

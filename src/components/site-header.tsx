@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-      <div className="container flex min-h-16 items-center justify-between py-3">
+      <div className="container flex min-h-16 flex-col items-start justify-between gap-3 py-3 sm:flex-row sm:items-center">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
             <Logo className="h-5 w-5 text-primary" />
@@ -27,9 +27,11 @@ export function SiteHeader() {
             Terms
           </Link>
         </nav>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button asChild variant="secondary" size="sm" className="hidden sm:inline-flex">
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <div className="hidden sm:flex">
+            <ThemeToggle />
+          </div>
+          <Button asChild variant="secondary" size="sm">
             <Link href="/login">Log in</Link>
           </Button>
           <Button asChild size="sm">
