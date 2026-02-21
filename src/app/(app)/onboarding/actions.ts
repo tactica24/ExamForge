@@ -7,6 +7,7 @@ import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { matchOrCreateGroup } from "@/lib/groups/match";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 const OnboardingSchema = z.object({
   name: z.string().min(2).max(60),
@@ -79,6 +80,14 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     }
   }
 
+  const { data: existingProfile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const proAccess = hasActiveProAccess(existingProfile);
+
   const { error: profileErr } = await firebase.from("profiles").upsert({
     user_id: user.id,
     email: user.email ?? null,
@@ -88,9 +97,35 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     timezone: parsed.data.timezone,
     learning_style: parsed.data.learning_style,
     level: parsed.data.level,
-    subscription_tier: "free"
+    subscription_tier: existingProfile?.subscription_tier ?? "free",
+    pro_until: existingProfile?.pro_until ?? null
   });
   if (profileErr) return { ok: false, message: profileErr.message };
+
+  const { data: existingSelection } = await firebase
+    .from("user_exam_subjects")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("exam_id", examId)
+    .eq("subject", parsed.data.subject)
+    .limit(1)
+    .maybeSingle();
+
+  if (!proAccess && !existingSelection?.id) {
+    const { count } = await firebase
+      .from("user_exam_subjects")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    if ((count ?? 0) >= 1) {
+      return {
+        ok: false,
+        message:
+          "Free plan supports 1 exam and 1 subject only. Upgrade to Pro to switch or add more from /pricing."
+      };
+    }
+  }
 
   await firebase.from("user_exam_subjects").upsert(
     {

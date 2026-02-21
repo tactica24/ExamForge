@@ -11,6 +11,7 @@ import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
 import { getPlanItemResourceLinks } from "@/lib/plans/content";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 export default async function DashboardPage() {
   const firebase = await createFirebaseServerClient();
@@ -24,9 +25,10 @@ export default async function DashboardPage() {
 
   const { data: profile } = await firebase
     .from("profiles")
-    .select("name,display_name,avatar_url")
+    .select("name,display_name,avatar_url,subscription_tier,pro_until")
     .eq("user_id", user.id)
     .maybeSingle();
+  const proAccess = hasActiveProAccess(profile);
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
@@ -280,8 +282,14 @@ export default async function DashboardPage() {
                           </Link>
                         </Button>
                         <Button asChild size="sm">
-                          <Link href={`/mock-exam?exam_id=${examId}&subject=${encodeURIComponent(subject)}`}>
-                            Mock exam
+                          <Link
+                            href={
+                              proAccess
+                                ? `/mock-exam?exam_id=${examId}&subject=${encodeURIComponent(subject)}`
+                                : "/pricing"
+                            }
+                          >
+                            {proAccess ? "Mock exam" : "Upgrade for mock"}
                           </Link>
                         </Button>
                       </div>

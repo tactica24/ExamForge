@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
@@ -164,6 +165,12 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  const { data: profile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   let examId = parsed.data.exam_id;
   if (examId.startsWith("fallback-")) {
     try {
@@ -173,6 +180,31 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
         ok: false,
         message:
           "Seed exam setup requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY."
+      };
+    }
+  }
+
+  const { data: existingSelection } = await firebase
+    .from("user_exam_subjects")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("exam_id", examId)
+    .eq("subject", parsed.data.subject)
+    .limit(1)
+    .maybeSingle();
+
+  if (!hasActiveProAccess(profile) && !existingSelection?.id) {
+    const { count } = await firebase
+      .from("user_exam_subjects")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    if ((count ?? 0) >= 1) {
+      return {
+        ok: false,
+        message:
+          "Free plan allows only 1 exam and 1 subject. Upgrade to Pro to add more from /pricing."
       };
     }
   }

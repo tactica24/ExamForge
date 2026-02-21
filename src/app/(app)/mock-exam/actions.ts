@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 const Schema = z.object({
   exam_id: z.string().min(3),
@@ -33,6 +34,19 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  const { data: profile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until,preferred_explanation_language")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!hasActiveProAccess(profile)) {
+    return {
+      ok: false,
+      message: "Mock exam is a Pro feature. Upgrade from /pricing to continue."
+    };
+  }
+
   const { data: latestMock } = await firebase
     .from("quizzes")
     .select("id,created_at")
@@ -61,12 +75,6 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     .select("name,slug")
     .eq("id", parsed.data.exam_id)
     .maybeSingle();
-  const { data: profile } = await firebase
-    .from("profiles")
-    .select("preferred_explanation_language")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   const quizId = await createQuizWithQuestions({
     userId: user.id,
     examId: parsed.data.exam_id,

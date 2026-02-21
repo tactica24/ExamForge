@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 const proBenefits = [
+  "Multiple exam and subject combinations",
   "Unlimited objective questions across subjects",
   "Weak-area practice mode",
   "Full mock exams with timer and review",
@@ -42,10 +43,10 @@ export default function PricingPage() {
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>Limited daily objective questions</li>
-                <li>Basic progress view</li>
-                <li>One active group</li>
-                <li>In-app reminders</li>
+                <li>Onboarding, study plan, objective questions, and explanations</li>
+                <li>One exam + one subject only</li>
+                <li>No full mock exams</li>
+                <li>Upgrade prompt when you try to add more</li>
               </ul>
               <div className="mt-6">
                 <Button asChild variant="secondary" className="w-full">

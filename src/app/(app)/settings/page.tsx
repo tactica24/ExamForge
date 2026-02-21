@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import {
@@ -19,6 +21,7 @@ import { ParentLinksCard } from "@/components/parent/parent-links-card";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 function toSubjects(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
@@ -95,6 +98,8 @@ export default async function SettingsPage() {
         : mergeUniqueSubjects(exam.subjects);
     return subjects.some((subject) => !existingSet.has(`${exam.id}::${subject}`));
   });
+  const proAccess = hasActiveProAccess(profile);
+  const freeSubjectLimitReached = !proAccess && userExamSubjects.filter((item) => item.is_active).length >= 1;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
@@ -224,14 +229,27 @@ export default async function SettingsPage() {
             )}
           </div>
 
-          <AuthFormState action={addExamSubjectAction}>
-            <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
-            <div className="mt-4">
-              <SubmitButton type="submit" pendingText="Adding..." className="w-full sm:w-auto" disabled={!hasMoreExamSubjects}>
-                Add subject
-              </SubmitButton>
+          {freeSubjectLimitReached ? (
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">
+                Free plan allows 1 exam and 1 subject only. Upgrade to Pro to add more exam-subject combinations.
+              </p>
+              <div className="mt-3">
+                <Button asChild size="sm">
+                  <Link href="/pricing">Upgrade to Pro</Link>
+                </Button>
+              </div>
             </div>
-          </AuthFormState>
+          ) : (
+            <AuthFormState action={addExamSubjectAction}>
+              <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
+              <div className="mt-4">
+                <SubmitButton type="submit" pendingText="Adding..." className="w-full sm:w-auto" disabled={!hasMoreExamSubjects}>
+                  Add subject
+                </SubmitButton>
+              </div>
+            </AuthFormState>
+          )}
         </CardContent>
       </Card>
 
