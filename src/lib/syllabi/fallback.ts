@@ -17,8 +17,7 @@ function normalizeSubject(value: string) {
 function resourcesFor(subject: string, title: string) {
   const query = encodeURIComponent(`${subject} ${title}`);
   return [
-    { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` },
-    { title: "Khan Academy (search)", url: `https://www.khanacademy.org/search?page_search_query=${query}` }
+    { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` }
   ];
 }
 
@@ -143,8 +142,7 @@ export function getGenericTopicsForSubject(subject: string): Topic[] {
       path: blueprint.title,
       subtopics: blueprint.subtopics,
       resources: [
-        { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` },
-        { title: "Khan Academy (search)", url: `https://www.khanacademy.org/search?page_search_query=${query}` }
+        { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` }
       ]
     };
   });

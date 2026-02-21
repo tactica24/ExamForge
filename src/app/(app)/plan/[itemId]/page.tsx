@@ -7,7 +7,13 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { generatePlanLesson } from "@/lib/plans/lesson";
-import { getPlanItemLesson, getPlanItemResourceLinks, withPlanItemLesson } from "@/lib/plans/content";
+import {
+  getPlanItemLesson,
+  getPlanItemProgress,
+  getPlanItemResourceLinks,
+  isPlanItemQuizCompleted,
+  withPlanItemLesson
+} from "@/lib/plans/content";
 import { createPlanTopicQuizAction, updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
 import type { Json } from "@/lib/firebase/database.types";
 
@@ -67,6 +73,22 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
     .maybeSingle();
   if (!plan) redirect("/plan");
 
+  const { data: orderedItems } = await firebase
+    .from("plan_items")
+    .select("id,scheduled_for,day_index,status,resource_links,created_at")
+    .eq("plan_id", plan.id)
+    .order("scheduled_for", { ascending: true })
+    .order("day_index", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  const ordered = orderedItems ?? [];
+  const idx = ordered.findIndex((row: any) => String(row?.id ?? "") === item.id);
+  const firstIncomplete = ordered.slice(0, Math.max(idx, 0)).find((row: any) => {
+    const completed = isPlanItemQuizCompleted(row?.resource_links) || row?.status === "done";
+    return !completed;
+  });
+  const locked = Boolean(firstIncomplete);
+
   const [{ data: exam }, { data: profile }, { data: syllabus }] = await Promise.all([
     firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle(),
     firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle(),
@@ -74,9 +96,10 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
   ]);
 
   const resources = getPlanItemResourceLinks(item.resource_links);
+  const progress = getPlanItemProgress(item.resource_links);
   let lesson = getPlanItemLesson(item.resource_links);
 
-  if (!lesson) {
+  if (!lesson && !locked) {
     lesson = await generatePlanLesson({
       examName: exam?.name ?? "Exam",
       subject: plan.subject,
@@ -103,20 +126,38 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
             <Badge variant={item.status === "done" ? "default" : item.status === "skipped" ? "secondary" : "outline"}>
               {item.status}
             </Badge>
-            <Badge variant={lesson.source === "ai" ? "secondary" : "outline"}>
-              {lesson.source === "ai" ? "AI lesson" : "Starter lesson"}
-            </Badge>
+            {locked ? (
+              <Badge variant="outline">Locked</Badge>
+            ) : lesson ? (
+              <Badge variant={lesson.source === "ai" ? "secondary" : "outline"}>
+                {lesson.source === "ai" ? "AI lesson" : "Starter lesson"}
+              </Badge>
+            ) : null}
           </div>
           <CardDescription>
             {exam?.name ?? "Exam"} | {plan.subject} | {item.scheduled_for}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm leading-relaxed text-muted-foreground">{lesson.overview}</p>
+          {locked ? (
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground">
+              Complete the previous topic and quiz to unlock this study guide.
+              {firstIncomplete ? (
+                <div className="mt-2">
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/plan/${String((firstIncomplete as any)?.id ?? "")}`}>Go to previous topic</Link>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : lesson ? (
+            <p className="text-sm leading-relaxed text-muted-foreground">{lesson.overview}</p>
+          ) : null}
         </CardContent>
       </Card>
 
-      <Card>
+      {!locked && lesson ? (
+        <Card>
         <CardHeader>
           <CardTitle className="text-base">Topic breakdown</CardTitle>
           <CardDescription>Read this first, then take the topic quiz.</CardDescription>
@@ -130,8 +171,10 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
           ))}
         </CardContent>
       </Card>
+      ) : null}
 
-      <Card>
+      {!locked && lesson ? (
+        <Card>
         <CardHeader>
           <CardTitle className="text-base">Worked examples</CardTitle>
         </CardHeader>
@@ -147,8 +190,10 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
           ))}
         </CardContent>
       </Card>
+      ) : null}
 
-      <Card>
+      {!locked && lesson ? (
+        <Card>
         <CardHeader>
           <CardTitle className="text-base">Mistakes to avoid</CardTitle>
         </CardHeader>
@@ -171,8 +216,9 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
           </div>
         </CardContent>
       </Card>
+      ) : null}
 
-      {resources.length ? (
+      {!locked && resources.length ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Extra resources</CardTitle>
@@ -199,23 +245,35 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
           <CardDescription>After reading, launch the quiz for this exact topic.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <AuthFormState action={createPlanTopicQuizAction}>
-            <input type="hidden" name="item_id" value={item.id} />
-            <SubmitButton type="submit" pendingText="Preparing quiz..." className="w-full sm:w-auto">
-              Take topic quiz
-            </SubmitButton>
-          </AuthFormState>
+          {!locked ? (
+            <>
+              <AuthFormState action={createPlanTopicQuizAction}>
+                <input type="hidden" name="item_id" value={item.id} />
+                <SubmitButton type="submit" pendingText="Preparing quiz..." className="w-full sm:w-auto">
+                  {progress.quiz.completed ? "Retry topic quiz" : "Take topic quiz"}
+                </SubmitButton>
+              </AuthFormState>
+              {progress.quiz.completed ? (
+                <p className="text-xs text-muted-foreground">
+                  Completed {progress.quiz.attempts} time{progress.quiz.attempts === 1 ? "" : "s"} - Last quiz{" "}
+                  {progress.quiz.completed_at ? new Date(progress.quiz.completed_at).toLocaleDateString() : "completed"}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">Finish the previous topic quiz to unlock this one.</div>
+          )}
 
           <AuthFormState action={updatePlanItemStatusAction}>
             <input type="hidden" name="item_id" value={item.id} />
             <div className="grid grid-cols-3 gap-2 sm:max-w-md">
-              <Button type="submit" name="status" value="done" variant="secondary" size="sm">
+              <Button type="submit" name="status" value="done" variant="secondary" size="sm" disabled={locked}>
                 Done
               </Button>
-              <Button type="submit" name="status" value="skipped" variant="outline" size="sm">
+              <Button type="submit" name="status" value="skipped" variant="outline" size="sm" disabled={locked}>
                 Skip
               </Button>
-              <Button type="submit" name="status" value="todo" variant="ghost" size="sm">
+              <Button type="submit" name="status" value="todo" variant="ghost" size="sm" disabled={locked}>
                 Reset
               </Button>
             </div>
@@ -225,3 +283,4 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
     </div>
   );
 }
+

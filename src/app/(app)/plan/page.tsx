@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
-import { getPlanItemLesson } from "@/lib/plans/content";
+import { getPlanItemLesson, isPlanItemQuizCompleted } from "@/lib/plans/content";
 
 export default async function PlanPage() {
   const firebase = await createFirebaseServerClient();
@@ -30,6 +30,22 @@ export default async function PlanPage() {
     .gte("scheduled_for", start)
     .lte("scheduled_for", end)
     .order("scheduled_for", { ascending: true });
+  const { data: orderedItems } = await firebase
+    .from("plan_items")
+    .select("id,scheduled_for,day_index,status,resource_links,created_at")
+    .eq("plan_id", plan.id)
+    .order("scheduled_for", { ascending: true })
+    .order("day_index", { ascending: true })
+    .order("created_at", { ascending: true });
+  const ordered = orderedItems ?? [];
+  let firstIncompleteId: string | null = null;
+  for (const row of ordered) {
+    const completed = isPlanItemQuizCompleted(row?.resource_links) || row?.status === "done";
+    if (!completed) {
+      firstIncompleteId = String(row?.id ?? "") || null;
+      break;
+    }
+  }
 
   const targetDate = plan.target_date ? parseISO(plan.target_date) : null;
   const daysToTarget =
@@ -55,6 +71,8 @@ export default async function PlanPage() {
           {items?.length ? (
             items.map((item) => {
               const hasLesson = Boolean(getPlanItemLesson(item.resource_links));
+              const isCompleted = isPlanItemQuizCompleted(item.resource_links) || item.status === "done";
+              const locked = Boolean(firstIncompleteId && firstIncompleteId !== String(item.id) && !isCompleted);
 
               return (
                 <div
@@ -67,26 +85,38 @@ export default async function PlanPage() {
                       <Badge variant={item.status === "done" ? "default" : item.status === "skipped" ? "secondary" : "outline"}>
                         {item.status}
                       </Badge>
-                      <Badge variant={hasLesson ? "secondary" : "outline"}>{hasLesson ? "guide ready" : "guide pending"}</Badge>
+                      {locked ? (
+                        <Badge variant="outline">locked</Badge>
+                      ) : (
+                        <Badge variant={hasLesson ? "secondary" : "outline"}>
+                          {hasLesson ? "guide ready" : "guide pending"}
+                        </Badge>
+                      )}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {item.scheduled_for} | {item.topic_path}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Button asChild size="sm" className="w-full sm:w-auto">
-                      <Link href={`/plan/${item.id}`}>{hasLesson ? "Review topic" : "Study topic"}</Link>
-                    </Button>
+                    {locked ? (
+                      <Button size="sm" className="w-full sm:w-auto" disabled>
+                        Study topic
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" className="w-full sm:w-auto">
+                        <Link href={`/plan/${item.id}`}>{hasLesson ? "Review topic" : "Study topic"}</Link>
+                      </Button>
+                    )}
                     <AuthFormState action={updatePlanItemStatusAction}>
                       <input type="hidden" name="item_id" value={item.id} />
                       <div className="grid grid-cols-3 gap-2">
-                        <Button type="submit" name="status" value="done" variant="secondary" size="sm">
+                        <Button type="submit" name="status" value="done" variant="secondary" size="sm" disabled={locked}>
                           Done
                         </Button>
-                        <Button type="submit" name="status" value="skipped" variant="outline" size="sm">
+                        <Button type="submit" name="status" value="skipped" variant="outline" size="sm" disabled={locked}>
                           Skip
                         </Button>
-                        <Button type="submit" name="status" value="todo" variant="ghost" size="sm">
+                        <Button type="submit" name="status" value="todo" variant="ghost" size="sm" disabled={locked}>
                           Reset
                         </Button>
                       </div>

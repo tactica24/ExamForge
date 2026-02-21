@@ -3,48 +3,48 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 45% 98%;
-  --foreground: 217 45% 13%;
+  --background: 35 38% 96%;
+  --foreground: 222 34% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 217 45% 13%;
+  --card-foreground: 222 34% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 217 45% 13%;
-  --primary: 198 78% 34%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 200 38% 94%;
-  --secondary-foreground: 217 45% 13%;
-  --muted: 203 32% 94%;
-  --muted-foreground: 216 20% 42%;
-  --accent: 188 42% 92%;
-  --accent-foreground: 217 45% 13%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 205 30% 87%;
-  --input: 205 30% 87%;
-  --ring: 198 78% 34%;
-  --radius: 12px;
+  --popover-foreground: 222 34% 12%;
+  --primary: 199 56% 30%;
+  --primary-foreground: 35 40% 98%;
+  --secondary: 35 30% 91%;
+  --secondary-foreground: 222 34% 12%;
+  --muted: 35 24% 93%;
+  --muted-foreground: 220 16% 44%;
+  --accent: 26 40% 92%;
+  --accent-foreground: 222 34% 12%;
+  --destructive: 0 72% 52%;
+  --destructive-foreground: 35 40% 98%;
+  --border: 220 14% 86%;
+  --input: 220 14% 86%;
+  --ring: 199 56% 30%;
+  --radius: 18px;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  --background: 220 23% 8%;
+  --foreground: 35 35% 96%;
+  --card: 220 23% 10%;
+  --card-foreground: 35 35% 96%;
+  --popover: 220 23% 10%;
+  --popover-foreground: 35 35% 96%;
+  --primary: 35 40% 96%;
+  --primary-foreground: 220 23% 10%;
+  --secondary: 220 18% 18%;
+  --secondary-foreground: 35 35% 96%;
+  --muted: 220 18% 18%;
+  --muted-foreground: 220 12% 70%;
+  --accent: 220 18% 16%;
+  --accent-foreground: 35 35% 96%;
+  --destructive: 0 60% 44%;
+  --destructive-foreground: 35 35% 96%;
+  --border: 220 18% 18%;
+  --input: 220 18% 18%;
+  --ring: 35 35% 80%;
 }
 
 html,
@@ -56,8 +56,9 @@ body {
   @apply text-foreground;
   font-family: var(--font-body), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(circle at 8% -10%, hsl(var(--primary) / 0.13) 0, transparent 30%),
-    radial-gradient(circle at 92% 0%, hsl(var(--primary) / 0.08) 0, transparent 24%),
+    radial-gradient(circle at 12% -10%, hsl(var(--primary) / 0.16) 0, transparent 38%),
+    radial-gradient(circle at 88% 8%, hsl(var(--primary) / 0.1) 0, transparent 32%),
+    radial-gradient(circle at 10% 70%, hsl(28 60% 90% / 0.6) 0, transparent 38%),
     hsl(var(--background));
 }
 
@@ -69,7 +70,7 @@ h5,
 h6,
 .font-display {
   font-family: var(--font-heading), var(--font-body), "Segoe UI", sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 
 a {

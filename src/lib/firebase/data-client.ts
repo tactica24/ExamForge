@@ -42,6 +42,8 @@ const HAS_ID_FIELD = new Set([
   "plan_items",
   "groups",
   "group_messages",
+  "tutor_threads",
+  "tutor_messages",
   "quizzes",
   "quiz_questions",
   "user_quiz_results",
@@ -60,7 +62,8 @@ const HAS_UPDATED_AT = new Set([
   "plan_items",
   "notification_prefs",
   "subscriptions",
-  "user_gamification"
+  "user_gamification",
+  "tutor_threads"
 ]);
 
 type InternalRow = Record<string, any> & { __docId: string };

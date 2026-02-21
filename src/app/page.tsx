@@ -48,56 +48,65 @@ const learnerBenefits = [
 export default function HomePage() {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/30">
-      <div className="pointer-events-none absolute -top-28 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 top-72 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -left-20 top-[38rem] h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 top-72 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-[38rem] h-60 w-60 rounded-full bg-amber-200/40 blur-3xl" />
       <SiteHeader />
       <main className="container page-enter pb-20 pt-12">
-        <section className="mx-auto max-w-5xl">
-          <Badge variant="secondary" className="mb-5 inline-flex gap-2 rounded-full px-3 py-1 text-sm">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Guaranteed structure. Higher score potential.
-          </Badge>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Ace JAMB, WAEC, NECO, IELTS, ICAN, and ACCA with a tailored learning pace.
-          </h1>
-          <p className="mt-5 max-w-3xl text-pretty text-lg text-muted-foreground">
-            ACE NAIJA turns each exam syllabus into a personalized daily plan, delivers focused objective questions,
-            and tracks weak areas in real time so you keep improving every week until exam day.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="gap-2">
-              <Link href="/signup">
-                Start learning now <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/pricing">See plans</Link>
-            </Button>
+        <section className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div>
+            <Badge variant="secondary" className="mb-5 inline-flex gap-2 rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Structured prep system
+            </Badge>
+            <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+              Professional exam preparation for WAEC, NECO, JAMB, IELTS, ICAN, and ACCA.
+            </h1>
+            <p className="mt-5 max-w-2xl text-pretty text-lg text-muted-foreground">
+              ACE NAIJA turns each syllabus into a guided learning path, delivers topic-specific objective questions,
+              and tracks weak areas daily so you improve steadily until exam day.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" className="gap-2">
+                <Link href="/signup">
+                  Start learning now <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/pricing">See plans</Link>
+              </Button>
+            </div>
           </div>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="p-5">
-              <GraduationCap className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-sm font-medium">Syllabus to Study Plan</div>
-              <p className="mt-1 text-sm text-muted-foreground">Daily tasks generated from your chosen exam and subjects.</p>
-            </Card>
-            <Card className="p-5">
-              <BrainCircuit className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-sm font-medium">Adaptive Objective Engine</div>
-              <p className="mt-1 text-sm text-muted-foreground">Topic-focused objective questions with weak-area reinforcement after each attempt.</p>
-            </Card>
-            <Card className="p-5">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-sm font-medium">Performance Monitoring</div>
-              <p className="mt-1 text-sm text-muted-foreground">Track growth by subject, topic, streak, and consistency trend.</p>
-            </Card>
-            <Card className="p-5">
-              <Users2 className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-sm font-medium">Learning Groups</div>
-              <p className="mt-1 text-sm text-muted-foreground">Join focused groups, compete with peers, and stay accountable.</p>
-            </Card>
-          </div>
+          <Card className="relative overflow-hidden border-primary/20 p-6 sm:p-8">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-primary/15 blur-2xl" />
+            <div className="relative space-y-5">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">What you get</div>
+              <div className="grid gap-4">
+                <div className="flex items-start gap-3">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm font-semibold">Syllabus to daily plan</div>
+                    <p className="text-sm text-muted-foreground">Clear topics, deadlines, and study rhythm.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <BrainCircuit className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm font-semibold">Topic questions + explanations</div>
+                    <p className="text-sm text-muted-foreground">Practice immediately after each lesson.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm font-semibold">Progress visibility</div>
+                    <p className="text-sm text-muted-foreground">Identify gaps and measure weekly gains.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
         </section>
 
         <section className="mx-auto mt-16 max-w-5xl">

@@ -10,7 +10,8 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
-import { getPlanItemResourceLinks } from "@/lib/plans/content";
+import { getPlanItemResourceLinks, isPlanItemQuizCompleted } from "@/lib/plans/content";
+import { CheckCircle2 } from "lucide-react";
 import { hasActiveProAccess } from "@/lib/billing/access";
 
 export default async function DashboardPage() {
@@ -176,7 +177,14 @@ export default async function DashboardPage() {
                 {todayItems.map((item) => (
                   <div key={item.id} className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium">{item.title}</div>
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Link href={`/plan/${item.id}`} className="hover:underline">
+                          {item.title}
+                        </Link>
+                        {isPlanItemQuizCompleted(item.resource_links) || item.status === "done" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        ) : null}
+                      </div>
                       <div className="mt-1 text-xs text-muted-foreground">{item.topic_path}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {getPlanItemResourceLinks(item.resource_links)

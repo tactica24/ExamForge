@@ -6,6 +6,8 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { updateGamificationAfterQuiz } from "@/lib/gamification/update-after-quiz";
 import { updateWeakAreasAfterQuiz } from "@/lib/personalization/weak-areas";
 import { syncProfilePublic } from "@/lib/profile/public";
+import { getPlanItemProgress, withPlanItemProgress } from "@/lib/plans/content";
+import type { Json } from "@/lib/firebase/database.types";
 
 const SubmitSchema = z.object({
   quiz_id: z.string().uuid(),
@@ -59,6 +61,37 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
     answers: args.answers
   });
   if (error) return { ok: false as const, message: error.message };
+
+  const meta = (quiz.meta ?? {}) as Record<string, any>;
+  const planItemId = String(meta.plan_item_id ?? "").trim();
+  if (planItemId) {
+    const { data: planItem } = await firebase
+      .from("plan_items")
+      .select("id,status,resource_links")
+      .eq("id", planItemId)
+      .maybeSingle();
+
+    if (planItem?.id) {
+      const progress = getPlanItemProgress(planItem.resource_links);
+      const nextProgress = {
+        quiz: {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          last_quiz_id: args.quizId,
+          attempts: Math.max(progress.quiz.attempts, Number(meta.plan_item_attempt ?? 0), 0)
+        }
+      };
+
+      const nextLinks = withPlanItemProgress(planItem.resource_links, nextProgress);
+      await firebase
+        .from("plan_items")
+        .update({
+          status: "done",
+          resource_links: nextLinks as Json
+        })
+        .eq("id", planItemId);
+    }
+  }
 
   await syncProfilePublic({ userId: args.userId }).catch(() => {});
 

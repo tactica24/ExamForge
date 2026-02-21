@@ -1,18 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Sora } from "next/font/google";
+import { Fraunces, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { getAppOrigin } from "@/lib/app-url";
 
-const bodyFont = Manrope({
+const bodyFont = Outfit({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "500", "600", "700", "800"]
+  weight: ["300", "400", "500", "600", "700", "800"]
 });
 
-const headingFont = Sora({
+const headingFont = Fraunces({
   subsets: ["latin"],
   variable: "--font-heading",
   weight: ["500", "600", "700", "800"]

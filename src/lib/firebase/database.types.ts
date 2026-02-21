@@ -159,6 +159,36 @@ export type GroupMessagesInsert = Partial<GroupMessagesRow> & {
 };
 export type GroupMessagesUpdate = Partial<GroupMessagesRow>;
 
+export type TutorThreadsRow = {
+  id: string;
+  user_id: string;
+  exam_id: string | null;
+  exam: string | null;
+  subject: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string | null;
+};
+export type TutorThreadsInsert = Partial<TutorThreadsRow> & { user_id: string; title: string };
+export type TutorThreadsUpdate = Partial<TutorThreadsRow>;
+
+export type TutorMessagesRow = {
+  id: string;
+  thread_id: string;
+  user_id: string;
+  role: "user" | "assistant" | string;
+  content: string;
+  created_at: string;
+};
+export type TutorMessagesInsert = Partial<TutorMessagesRow> & {
+  thread_id: string;
+  user_id: string;
+  role: "user" | "assistant";
+  content: string;
+};
+export type TutorMessagesUpdate = Partial<TutorMessagesRow>;
+
 export type QuizzesRow = {
   id: string;
   exam_id: string;
@@ -374,6 +404,8 @@ export type Database = {
       groups: TableDef<GroupsRow, GroupsInsert, GroupsUpdate>;
       group_members: TableDef<GroupMembersRow, GroupMembersInsert, GroupMembersUpdate>;
       group_messages: TableDef<GroupMessagesRow, GroupMessagesInsert, GroupMessagesUpdate>;
+      tutor_threads: TableDef<TutorThreadsRow, TutorThreadsInsert, TutorThreadsUpdate>;
+      tutor_messages: TableDef<TutorMessagesRow, TutorMessagesInsert, TutorMessagesUpdate>;
       quizzes: TableDef<QuizzesRow, QuizzesInsert, QuizzesUpdate>;
       quiz_questions: TableDef<QuizQuestionsRow, QuizQuestionsInsert, QuizQuestionsUpdate>;
       user_quiz_results: TableDef<UserQuizResultsRow, UserQuizResultsInsert, UserQuizResultsUpdate>;

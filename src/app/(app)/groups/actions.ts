@@ -12,8 +12,7 @@ const SendSchema = z.object({
 
 const JoinSchema = z.object({
   exam_id: z.string().min(3),
-  subject: z.string().min(2).max(120),
-  group_name: z.string().trim().max(40).optional()
+  subject: z.string().min(2).max(120)
 });
 
 const LeaveSchema = z.object({
@@ -66,8 +65,7 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
 export async function joinSubjectGroupAction(_: unknown, formData: FormData) {
   const parsed = JoinSchema.safeParse({
     exam_id: formData.get("exam_id"),
-    subject: formData.get("subject"),
-    group_name: (formData.get("group_name") as string | null) || undefined
+    subject: formData.get("subject")
   });
   if (!parsed.success) return { ok: false, message: "Select a valid subject group." };
 
@@ -130,7 +128,7 @@ export async function joinSubjectGroupAction(_: unknown, formData: FormData) {
         pace: "steady",
         level: profile?.level ?? "beginner",
         timezone: profile?.timezone ?? "Africa/Lagos",
-        name: parsed.data.group_name ?? `${parsed.data.subject} group`
+        name: `${parsed.data.subject} group`
       })
       .select("id")
       .single();
@@ -218,6 +216,9 @@ export async function deleteGroupAction(_: unknown, formData: FormData) {
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
+
+  const isAdmin = (user?.app_metadata as any)?.role === "admin";
+  if (!isAdmin) return { ok: false, message: "Only admins can delete groups." };
 
   const { data: membership } = await firebase
     .from("group_members")

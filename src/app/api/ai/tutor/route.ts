@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
   const subject = String(body?.subject ?? "").trim();
   const exam = String(body?.exam ?? "").trim();
   const examId = String(body?.exam_id ?? "").trim();
+  const threadIdRaw = String(body?.thread_id ?? "").trim();
 
   if (!message) return NextResponse.json({ ok: false, message: "Message required." }, { status: 400 });
   if (message.length > 2000) {
@@ -72,6 +74,41 @@ export async function POST(req: Request) {
     }
   }
 
+  let threadId = threadIdRaw;
+  if (threadId) {
+    const { data: existingThread } = await firebase
+      .from("tutor_threads")
+      .select("id,user_id")
+      .eq("id", threadId)
+      .maybeSingle();
+    if (!existingThread || existingThread.user_id !== user.id) {
+      threadId = "";
+    }
+  }
+
+  if (!threadId) {
+    threadId = randomUUID();
+    await firebase.from("tutor_threads").insert({
+      id: threadId,
+      user_id: user.id,
+      exam_id: examId || null,
+      exam: exam || null,
+      subject: subject || null,
+      title: message.slice(0, 80),
+      created_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString()
+    });
+  }
+
+  await firebase.from("tutor_messages").insert({
+    id: randomUUID(),
+    thread_id: threadId,
+    user_id: user.id,
+    role: "user",
+    content: message,
+    created_at: new Date().toISOString()
+  });
+
   const ai = await generateTextWithFallback({
     system: [
       "You are ACE NAIJA Tutor.",
@@ -87,13 +124,26 @@ export async function POST(req: Request) {
     temperature: 0.5
   });
 
-  if (!ai.text) {
-    return NextResponse.json({
-      ok: true,
-      answer:
-        "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes."
-    });
-  }
+  const answer =
+    ai.text ||
+    "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes.";
 
-  return NextResponse.json({ ok: true, answer: ai.text });
+  await firebase.from("tutor_messages").insert({
+    id: randomUUID(),
+    thread_id: threadId,
+    user_id: user.id,
+    role: "assistant",
+    content: answer,
+    created_at: new Date().toISOString()
+  });
+
+  await firebase
+    .from("tutor_threads")
+    .update({
+      updated_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString()
+    })
+    .eq("id", threadId);
+
+  return NextResponse.json({ ok: true, answer, thread_id: threadId });
 }

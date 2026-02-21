@@ -30,12 +30,13 @@ export default function PricingPage() {
       <SiteHeader />
       <main className="container page-enter pb-16 pt-12">
         <div className="mx-auto max-w-6xl">
-          <Badge variant="secondary" className="mb-4 rounded-full">
-            Flexible plans
+          <Badge variant="secondary" className="mb-4 rounded-full text-xs uppercase tracking-[0.2em]">
+            Pricing
           </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Simple pricing for focused exam prep</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Choose the plan that fits your prep style</h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Start free, upgrade to Pro when you want full practice volume, better analytics, and stronger accountability.
+            Start free to build your study routine. Upgrade to Pro when you want deeper practice, mock exams, and
+            stronger accountability.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">

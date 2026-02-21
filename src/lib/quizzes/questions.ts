@@ -49,11 +49,14 @@ export async function generateQuestions(args: {
   count: number;
   preferredLanguage?: string | null;
   syllabus?: string[];
+  strictSyllabus?: boolean;
 }): Promise<GeneratedQuestion[]> {
   const lang = languageInstruction(args.preferredLanguage);
   const syllabusHint =
     args.syllabus && args.syllabus.length
-      ? `Use only these syllabus topics/subtopics when possible:\n- ${args.syllabus.join("\n- ")}`
+      ? args.strictSyllabus
+        ? `Use only these topics/subtopics. Do not use any other topic:\n- ${args.syllabus.join("\n- ")}`
+        : `Use only these syllabus topics/subtopics when possible:\n- ${args.syllabus.join("\n- ")}`
       : "If no syllabus is provided, answer generally for the exam level.";
 
   const system = [

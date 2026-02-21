@@ -28,6 +28,17 @@ export type PlanLesson = {
   model: string | null;
 };
 
+export type PlanQuizProgress = {
+  completed: boolean;
+  completed_at: string | null;
+  last_quiz_id: string | null;
+  attempts: number;
+};
+
+export type PlanProgress = {
+  quiz: PlanQuizProgress;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -122,13 +133,55 @@ export function getPlanItemLesson(value: unknown): PlanLesson | null {
   return normalizePlanLesson(value.lesson);
 }
 
-export function withPlanItemLesson(resourceLinks: unknown, lesson: PlanLesson): Json {
+function normalizeQuizProgress(value: unknown): PlanQuizProgress {
+  if (!isRecord(value)) {
+    return { completed: false, completed_at: null, last_quiz_id: null, attempts: 0 };
+  }
+
+  const completed = Boolean(value.completed);
+  const completedAt = cleanText(value.completed_at, 40);
+  const lastQuizId = cleanText(value.last_quiz_id, 120);
+  const attempts = Math.max(0, Math.min(999, Number(value.attempts ?? 0)));
+
+  return {
+    completed,
+    completed_at: completedAt || null,
+    last_quiz_id: lastQuizId || null,
+    attempts: Number.isFinite(attempts) ? attempts : 0
+  };
+}
+
+export function getPlanItemProgress(value: unknown): PlanProgress {
+  if (!isRecord(value)) return { quiz: normalizeQuizProgress(null) };
+  return { quiz: normalizeQuizProgress((value as Record<string, unknown>).progress) };
+}
+
+export function isPlanItemQuizCompleted(value: unknown): boolean {
+  return getPlanItemProgress(value).quiz.completed;
+}
+
+export function withPlanItemProgress(resourceLinks: unknown, progress: PlanProgress): Json {
   const base = isRecord(resourceLinks) ? resourceLinks : {};
   const resources = getPlanItemResourceLinks(resourceLinks);
+  const lesson = getPlanItemLesson(resourceLinks);
 
   return {
     ...base,
     resources,
-    lesson
+    ...(lesson ? { lesson } : {}),
+    progress
+  } as Json;
+}
+
+export function withPlanItemLesson(resourceLinks: unknown, lesson: PlanLesson): Json {
+  const base = isRecord(resourceLinks) ? resourceLinks : {};
+  const resources = getPlanItemResourceLinks(resourceLinks);
+  const progress = getPlanItemProgress(resourceLinks);
+
+  return {
+    ...base,
+    resources,
+    lesson,
+    progress
   } as Json;
 }

@@ -14,7 +14,6 @@ export type GeneratedPlanItem = {
 function defaultResourcesFor(subject: string) {
   const q = encodeURIComponent(`${subject} basics`);
   return [
-    { title: "Khan Academy (search)", url: `https://www.khanacademy.org/search?page_search_query=${q}` },
     { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${q}` }
   ];
 }

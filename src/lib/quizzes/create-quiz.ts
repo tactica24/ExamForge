@@ -131,6 +131,7 @@ export async function createQuizWithQuestions(args: {
   questionCount: number;
   preferredLanguage?: string | null;
   meta?: Record<string, any>;
+  syllabusOverride?: string[];
 }) {
   const firebase = await createFirebaseServerClient();
   const cacheKey = buildCacheKey(args);
@@ -175,8 +176,8 @@ export async function createQuizWithQuestions(args: {
     examSlug = exam?.slug ?? undefined;
   }
 
-  let syllabus: string[] | undefined;
-  if (examSlug) {
+  let syllabus: string[] | undefined = args.syllabusOverride?.length ? args.syllabusOverride : undefined;
+  if (!syllabus && examSlug) {
     const topics = await getTopicsForExamSubject({ examId: args.examId, examSlug, subject: args.subject });
     if (topics.length) syllabus = flattenTopics(topics);
   }
@@ -187,7 +188,8 @@ export async function createQuizWithQuestions(args: {
     topic: args.topicPath,
     count: args.questionCount,
     preferredLanguage: args.preferredLanguage ?? null,
-    syllabus
+    syllabus,
+    strictSyllabus: Boolean(args.syllabusOverride?.length)
   });
 
   const { error: qErr } = await firebase.from("quiz_questions").insert(

@@ -9,6 +9,7 @@ import { ensureSeedExamExists } from "@/lib/seed/ensure";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { hasActiveProAccess } from "@/lib/billing/access";
+import { matchOrCreateGroup } from "@/lib/groups/match";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
@@ -68,6 +69,12 @@ async function ensurePlanForSubject(args: {
   examSlug: string;
   subject: string;
 }) {
+  const { data: profile } = await args.firebase
+    .from("profiles")
+    .select("level,timezone")
+    .eq("user_id", args.userId)
+    .maybeSingle();
+
   const { data: existingPlan } = await args.firebase
     .from("user_plans")
     .select("id")
@@ -140,6 +147,17 @@ async function ensurePlanForSubject(args: {
 
   if (itemsErr) {
     return { ok: false as const, message: itemsErr.message };
+  }
+
+  if (mode === "group") {
+    await matchOrCreateGroup({
+      userId: args.userId,
+      examId: args.examId,
+      subject: args.subject,
+      pace,
+      level: profile?.level ?? "beginner",
+      timezone: profile?.timezone ?? "Africa/Lagos"
+    }).catch(() => {});
   }
 
   return { ok: true as const, created: true as const };
