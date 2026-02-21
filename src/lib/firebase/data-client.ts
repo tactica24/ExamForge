@@ -44,6 +44,7 @@ const HAS_ID_FIELD = new Set([
   "group_messages",
   "tutor_threads",
   "tutor_messages",
+  "contact_requests",
   "quizzes",
   "quiz_questions",
   "user_quiz_results",

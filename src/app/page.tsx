@@ -3,9 +3,12 @@ import {
   ArrowRight,
   BarChart3,
   BrainCircuit,
+  BookOpen,
   CheckCircle2,
   Clock3,
+  ClipboardList,
   GraduationCap,
+  ScrollText,
   Sparkles,
   Users2
 } from "lucide-react";
@@ -15,23 +18,28 @@ import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SuccessStoriesSlider } from "@/components/marketing/success-stories-slider";
+import { ContactRevealCard } from "@/components/marketing/contact-reveal-card";
 
 const examTracks = [
   {
     exam: "WAEC and NECO",
+    icon: GraduationCap,
     detail: "Break each subject into daily targets, practice by objective, and revise weak topics before exam day."
   },
   {
     exam: "JAMB UTME",
+    icon: BookOpen,
     detail:
       "Train with timed objective-question sessions, track speed and accuracy, and focus on the topics that impact your score."
   },
   {
     exam: "IELTS",
+    icon: ScrollText,
     detail: "Build consistency with daily practice and instant explanations that sharpen understanding and retention."
   },
   {
     exam: "ACCA and ICAN",
+    icon: ClipboardList,
     detail: "Practice high-value concepts with structured mock sessions and performance tracking per paper area."
   }
 ];
@@ -115,21 +123,34 @@ export default function HomePage() {
             <Badge variant="outline" className="rounded-full">Syllabus-aligned</Badge>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {examTracks.map((item) => (
-              <Card key={item.exam} className="p-5">
-                <div className="text-sm font-semibold text-primary">{item.exam}</div>
-                <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
-              </Card>
-            ))}
+            {examTracks.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card key={item.exam} className="p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <div className="text-sm font-semibold text-primary">{item.exam}</div>
+                      <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
         <section className="mx-auto mt-16 grid max-w-5xl gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <Card className="p-6 sm:p-8">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-              <Clock3 className="h-4 w-4" />
-              Why learners subscribe
-            </div>
+          <Card className="relative overflow-hidden border-primary/20 p-6 sm:p-8">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-primary/10 blur-2xl" />
+            <div className="relative">
+              <Badge variant="secondary" className="rounded-full">Why learners subscribe</Badge>
+              <div className="mt-4 flex items-center gap-2 text-sm font-medium text-primary">
+                <Clock3 className="h-4 w-4" />
+                Progress you can feel weekly
+              </div>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
               {learnerBenefits.map((item) => (
                 <li key={item} className="flex items-start gap-2">
@@ -138,6 +159,7 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
+            </div>
           </Card>
 
           <Card className="relative overflow-hidden border-primary/20 bg-card p-6 sm:p-8">
@@ -177,7 +199,10 @@ export default function HomePage() {
               Learner wins
             </Badge>
           </div>
-          <SuccessStoriesSlider />
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+            <SuccessStoriesSlider />
+            <ContactRevealCard />
+          </div>
         </section>
       </main>
       <SiteFooter />

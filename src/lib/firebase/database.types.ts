@@ -189,6 +189,19 @@ export type TutorMessagesInsert = Partial<TutorMessagesRow> & {
 };
 export type TutorMessagesUpdate = Partial<TutorMessagesRow>;
 
+export type ContactRequestsRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  topic: string | null;
+  message: string;
+  source: string | null;
+  status: "new" | "handled" | string;
+  created_at: string;
+};
+export type ContactRequestsInsert = Partial<ContactRequestsRow> & { message: string };
+export type ContactRequestsUpdate = Partial<ContactRequestsRow>;
+
 export type QuizzesRow = {
   id: string;
   exam_id: string;
@@ -406,6 +419,7 @@ export type Database = {
       group_messages: TableDef<GroupMessagesRow, GroupMessagesInsert, GroupMessagesUpdate>;
       tutor_threads: TableDef<TutorThreadsRow, TutorThreadsInsert, TutorThreadsUpdate>;
       tutor_messages: TableDef<TutorMessagesRow, TutorMessagesInsert, TutorMessagesUpdate>;
+      contact_requests: TableDef<ContactRequestsRow, ContactRequestsInsert, ContactRequestsUpdate>;
       quizzes: TableDef<QuizzesRow, QuizzesInsert, QuizzesUpdate>;
       quiz_questions: TableDef<QuizQuestionsRow, QuizQuestionsInsert, QuizQuestionsUpdate>;
       user_quiz_results: TableDef<UserQuizResultsRow, UserQuizResultsInsert, UserQuizResultsUpdate>;
