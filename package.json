@@ -23,6 +23,11 @@
     "mobile:android:add": "npx cap add android",
     "mobile:android:assets": "npx @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#0a0f2c' --splashBackgroundColor '#0a0f2c'",
     "mobile:android:open": "npx cap open android",
+    "mobile:ios:sync": "npx cap sync ios",
+    "mobile:ios:prepare": "npm install --no-save @capacitor/cli@8 @capacitor/core@8 @capacitor/ios@8 @capacitor/assets",
+    "mobile:ios:add": "npx cap add ios",
+    "mobile:ios:assets": "npx @capacitor/assets generate --ios --assetPath assets --iconBackgroundColor '#0a0f2c' --splashBackgroundColor '#0a0f2c'",
+    "mobile:ios:open": "npx cap open ios",
     "load:smoke": "node scripts/load-smoke.mjs"
   },
   "dependencies": {
@@ -60,6 +65,7 @@
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.10",
