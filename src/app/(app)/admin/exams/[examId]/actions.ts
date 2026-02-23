@@ -9,7 +9,6 @@ import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
-import { enqueueSyllabusGenerationJobs } from "@/lib/ai/jobs";
 
 async function assertAdmin() {
   const firebase = await createFirebaseServerClient();
@@ -111,6 +110,50 @@ function chunk<T>(values: T[], size: number) {
     out.push(values.slice(i, i + size));
   }
   return out;
+}
+
+async function generateSubjectsNow(args: {
+  examId: string;
+  examSlug: string;
+  subjects: string[];
+}) {
+  const failures: string[] = [];
+  let generated = 0;
+
+  // Keep concurrency low to reduce provider rate-limit spikes for admin bulk runs.
+  const batches = chunk(args.subjects, 2);
+  for (const batch of batches) {
+    const settled = await Promise.allSettled(
+      batch.map(async (subject) => {
+        const result = await regenerateSyllabusWithAiDetailed({
+          examId: args.examId,
+          examSlug: args.examSlug,
+          subject,
+          sourceMeta: {
+            generated_by: "admin_generate_all"
+          }
+        });
+
+        if (!result.topics?.length) {
+          throw new Error(result.error ?? `No topics generated for ${subject}.`);
+        }
+
+        return subject;
+      })
+    );
+
+    settled.forEach((entry, idx) => {
+      const subject = batch[idx];
+      if (entry.status === "fulfilled") {
+        generated += 1;
+        return;
+      }
+
+      failures.push(`${subject}: ${String(entry.reason instanceof Error ? entry.reason.message : entry.reason ?? "failed").slice(0, 140)}`);
+    });
+  }
+
+  return { generated, failures };
 }
 
 async function deleteByIn(admin: ReturnType<typeof createFirebaseAdminClient>, table: string, field: string, values: string[]) {
@@ -329,9 +372,6 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
   }
 
   const firebase = await createFirebaseServerClient();
-  const {
-    data: { user }
-  } = await firebase.auth.getUser();
 
   const { data: exam, error } = await firebase
     .from("exams")
@@ -340,24 +380,42 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
     .maybeSingle();
   if (error) return { ok: false, message: error.message };
 
-  const subjects = normalizeSubjects(exam?.subjects);
-  if (!subjects.length) {
+  const allSubjects = normalizeSubjects(exam?.subjects);
+  if (!allSubjects.length) {
     return { ok: false, message: "No subjects configured for this exam." };
   }
 
-  try {
-    await enqueueSyllabusGenerationJobs({
-      examId: parsed.data.exam_id,
-      examSlug: parsed.data.exam_slug,
-      subjects,
-      createdBy: user?.id ?? null
-    });
-  } catch (e: any) {
-    return { ok: false, message: e?.message ?? "Failed to enqueue syllabus generation jobs." };
+  const { data: existing } = await firebase
+    .from("syllabi")
+    .select("subject")
+    .eq("exam_id", parsed.data.exam_id);
+
+  const existingSubjects = new Set((existing ?? []).map((row: any) => String(row.subject).trim().toLowerCase()));
+  const missingSubjects = allSubjects.filter((subject) => !existingSubjects.has(subject.toLowerCase()));
+
+  if (!missingSubjects.length) {
+    return {
+      ok: false,
+      message: "All configured subjects already have syllabi. Delete a subject syllabus first if you need regeneration."
+    };
+  }
+
+  const result = await generateSubjectsNow({
+    examId: parsed.data.exam_id,
+    examSlug: parsed.data.exam_slug,
+    subjects: missingSubjects
+  });
+
+  if (result.failures.length) {
+    revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+    return {
+      ok: false,
+      message: `Generated ${result.generated}/${missingSubjects.length} subjects. Failed: ${result.failures.slice(0, 3).join(" | ")}`
+    };
   }
 
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
-  return { ok: true };
+  redirect(`/admin/exams/${parsed.data.exam_id}`);
 }
 
 export async function deleteSyllabusAction(_: unknown, formData: FormData) {

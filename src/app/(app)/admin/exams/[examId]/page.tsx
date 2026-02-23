@@ -167,7 +167,7 @@ export default async function AdminExamDetailPage(props: {
           <CardHeader>
             <CardTitle className="text-base">Generate syllabus with AI</CardTitle>
             <CardDescription>
-              Use this when no file is available. Single subject runs now; Generate all is queued and processed asynchronously.
+              Use this when no file is available. Single subject generates immediately. Generate all runs all missing subjects in one go.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
@@ -197,10 +197,10 @@ export default async function AdminExamDetailPage(props: {
               <input type="hidden" name="exam_id" value={examId} />
               <input type="hidden" name="exam_slug" value={exam.slug} />
               <p className="rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground">
-                Queue generation jobs for all subjects configured under this exam.
+                Generate syllabi for all configured subjects that are still missing. This can take a short while for large exams.
               </p>
-              <SubmitButton type="submit" pendingText="Queueing..." className="w-full sm:w-auto">
-                Queue all subjects
+              <SubmitButton type="submit" pendingText="Generating all..." className="w-full sm:w-auto">
+                Generate all missing subjects
               </SubmitButton>
             </AuthFormState>
           </CardContent>

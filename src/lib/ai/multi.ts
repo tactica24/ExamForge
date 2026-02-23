@@ -35,25 +35,36 @@ export type AiJsonResult<T> = {
 };
 
 const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano"] as const;
-const GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] as const;
+const GROQ_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"] as const;
 const GEMINI_MODEL_PREFERENCES = [
-  "gemini-2.5-pro",
-  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
-  "gemini-2.0-flash",
+  "gemini-2.5-flash",
   "gemini-2.0-flash-lite",
+  "gemini-2.0-flash",
   "gemini-1.5-flash-latest",
-  "gemini-1.5-pro-latest",
   "gemini-1.5-flash",
-  "gemini-1.5-pro"
+  "gemini-1.5-pro-latest",
+  "gemini-1.5-pro",
+  "gemini-2.5-pro",
+  "gemini-2.0-pro-exp",
+  "gemini-1.5-pro-002",
+  "gemini-1.5-pro-001",
+  "gemini-1.5-flash-002",
+  "gemini-1.5-flash-001",
+  "gemini-1.5-flash-8b",
+  "gemini-1.5-flash-8b-latest",
+  "gemini-pro"
 ] as const;
 const GEMINI_MODELS_FALLBACK = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
   "gemini-1.5-flash-latest",
   "gemini-1.5-flash",
   "gemini-1.5-pro-latest",
-  "gemini-1.5-pro"
+  "gemini-1.5-pro",
+  "gemini-2.5-pro"
 ] as const;
 const GEMINI_MODELS_CACHE_TTL_MS = 10 * 60 * 1000;
 const GEMINI_MODELS_CACHE_KEY = "__aceNaijaGeminiModelsCache";
@@ -71,9 +82,9 @@ function trimError(error: unknown) {
 function providerOrder() {
   const env = getServerEnv();
   const providers: AiProvider[] = [];
-  if (env.OPENAI_API_KEY) providers.push("openai");
-  if (env.GROQ_API_KEY) providers.push("groq");
   if (env.GEMINI_API_KEY) providers.push("gemini");
+  if (env.GROQ_API_KEY) providers.push("groq");
+  if (env.OPENAI_API_KEY) providers.push("openai");
   return providers;
 }
 
