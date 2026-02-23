@@ -38,7 +38,7 @@ const examTracks = [
     detail: "Build consistency with daily practice and instant explanations that sharpen understanding and retention."
   },
   {
-    exam: "ACCA and ICAN",
+    exam: "GMAT and ICAN",
     icon: ClipboardList,
     detail: "Practice high-value concepts with structured mock sessions and performance tracking per paper area."
   }
@@ -68,7 +68,7 @@ export default function HomePage() {
               Structured prep system
             </Badge>
             <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-              Professional exam preparation for WAEC, NECO, JAMB, IELTS, ICAN, and ACCA.
+              Professional exam preparation for WAEC, NECO, JAMB, IELTS, ICAN, and GMAT.
             </h1>
             <p className="mt-5 max-w-2xl text-pretty text-lg text-muted-foreground">
               ACE NAIJA turns each syllabus into a guided learning path, delivers topic-specific objective questions,
