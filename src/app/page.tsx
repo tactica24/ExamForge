@@ -33,12 +33,12 @@ const examTracks = [
       "Train with timed objective-question sessions, track speed and accuracy, and focus on the topics that impact your score."
   },
   {
-    exam: "IELTS",
+    exam: "IELTS AND GMAT",
     icon: ScrollText,
     detail: "Build consistency with daily practice and instant explanations that sharpen understanding and retention."
   },
   {
-    exam: "GMAT and ICAN",
+    exam: "ICAN",
     icon: ClipboardList,
     detail: "Practice high-value concepts with structured mock sessions and performance tracking per paper area."
   }
@@ -68,7 +68,7 @@ export default function HomePage() {
               Structured prep system
             </Badge>
             <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-              Professional exam preparation for WAEC, NECO, JAMB, IELTS, ICAN, and GMAT.
+              Professional exam preparation for WAEC, NECO, JAMB, IELTS, GMAT, AND ICAN.
             </h1>
             <p className="mt-5 max-w-2xl text-pretty text-lg text-muted-foreground">
               ACE NAIJA turns each syllabus into a guided learning path, delivers topic-specific objective questions,
