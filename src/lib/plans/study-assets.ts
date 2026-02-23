@@ -68,6 +68,10 @@ function makeAudioNarration(lesson: PlanLesson): PlanAudioLesson {
     blocks.push(`Recap: ${lesson.recap.join(". ")}`);
   }
 
+  for (const visual of lesson.visual_aids.slice(0, 2)) {
+    blocks.push(`Visual aid: ${visual.title}. ${visual.explanation}`);
+  }
+
   return {
     narration: cleanText(blocks.join(" "), 9000),
     generated_at: new Date().toISOString(),
@@ -86,13 +90,14 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
   const exampleOne = lesson.examples[0];
   const exampleTwo = lesson.examples[1];
 
-  const slides = [
+  const baseSlides = [
     {
       slide_number: 1,
       title: `${args.topicTitle} (${args.subject})`,
       content: overviewPoints.length ? overviewPoints : ["Study this topic with an exam-first mindset."],
       visual_suggestions: "Title card, exam icon, simple progress timeline",
-      narration: cleanText(lesson.overview, 800)
+      narration: cleanText(lesson.overview, 800),
+      visual: lesson.visual_aids[0] ?? null
     },
     {
       slide_number: 2,
@@ -102,7 +107,8 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
       narration: cleanText(
         slideTwo.map((section) => `${section.heading}. ${section.explanation}`).join(" "),
         900
-      )
+      ),
+      visual: null
     },
     {
       slide_number: 3,
@@ -112,7 +118,8 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
       narration: cleanText(
         slideThree.map((section) => `${section.heading}. ${section.explanation}`).join(" "),
         900
-      )
+      ),
+      visual: null
     },
     {
       slide_number: 4,
@@ -123,7 +130,8 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
       visual_suggestions: "Step-by-step reveal animation with checkmarks",
       narration: exampleOne
         ? cleanText(`${exampleOne.question}. ${exampleOne.walkthrough}. Answer: ${exampleOne.answer}`, 900)
-        : "Use one worked example to connect rules to options."
+        : "Use one worked example to connect rules to options.",
+      visual: null
     },
     {
       slide_number: 5,
@@ -143,18 +151,33 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
           .filter(Boolean)
           .join(" "),
         900
-      )
+      ),
+      visual: null
     },
     {
       slide_number: 6,
       title: "Recap and action plan",
       content: lesson.recap.slice(0, 5),
       visual_suggestions: "Checklist with timeline icons",
-      narration: cleanText(lesson.recap.join(". "), 900)
+      narration: cleanText(lesson.recap.join(". "), 900),
+      visual: null
     }
-  ]
-    .map((slide) => ({
+  ];
+
+  const visualSlides = lesson.visual_aids.slice(0, 3).map((visual, index) => ({
+    slide_number: baseSlides.length + index + 1,
+    title: `Visual aid: ${visual.title}`,
+    content: [visual.explanation, ...visual.bullets.slice(0, 3)],
+    visual_suggestions: visual.prompt || `Use a ${visual.kind} to explain this idea clearly.`,
+    narration: cleanText([visual.explanation, ...visual.bullets].join(" "), 900),
+    visual
+  }));
+
+  const slides = [...baseSlides, ...visualSlides]
+    .slice(0, 10)
+    .map((slide, index) => ({
       ...slide,
+      slide_number: index + 1,
       content: slide.content.map((entry) => cleanText(entry, 260)).filter(Boolean).slice(0, 5)
     }))
     .filter((slide) => slide.content.length);

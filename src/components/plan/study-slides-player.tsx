@@ -9,6 +9,12 @@ function makeDeckDownloadHref(deck: PlanSlideDeck) {
   return `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
 }
 
+function graphBarWidth(value: number, maxAbs: number) {
+  const safeMax = Math.max(1, Math.abs(maxAbs));
+  const ratio = Math.abs(value) / safeMax;
+  return `${Math.max(8, Math.round(ratio * 100))}%`;
+}
+
 export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string }) {
   const [index, setIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
@@ -29,6 +35,8 @@ export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string
   }, [autoplay, total]);
 
   if (!current) return null;
+  const visual = current.visual;
+  const visualMax = visual?.points.length ? Math.max(1, ...visual.points.map((entry) => Math.abs(entry.value))) : 1;
 
   return (
     <div className="space-y-4">
@@ -46,6 +54,40 @@ export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string
           <p className="mt-4 text-xs text-muted-foreground">
             Visual cue: <span className="font-medium text-foreground">{current.visual_suggestions}</span>
           </p>
+        ) : null}
+
+        {visual ? (
+          <div className="mt-4 rounded-lg border border-border/70 bg-card/70 p-3">
+            <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              {visual.kind}
+            </div>
+            <div className="mt-1 text-sm font-medium">{visual.title}</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{visual.explanation}</p>
+
+            {visual.points.length ? (
+              <div className="mt-3 space-y-2">
+                {visual.points.map((point) => (
+                  <div key={`${visual.title}-${point.label}`} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{point.label}</span>
+                      <span>{point.value}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted/70">
+                      <div className="h-full rounded-full bg-primary/80" style={{ width: graphBarWidth(point.value, visualMax) }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {visual.bullets.length ? (
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-muted-foreground">
+                {visual.bullets.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

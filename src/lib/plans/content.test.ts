@@ -25,6 +25,21 @@ function makeLesson(): PlanLesson {
     ],
     common_mistakes: ["Ignoring context clues in nearby words."],
     recap: ["Read the full sentence before selecting an option."],
+    visual_aids: [
+      {
+        kind: "graph",
+        title: "Mastery chart",
+        explanation: "Shows confidence by subtopic.",
+        alt_text: "Bar chart for topic mastery by subtopic.",
+        prompt: "Create a simple bar chart for learner mastery.",
+        bullets: ["Lower bars indicate weak areas."],
+        points: [
+          { label: "Definition", value: 40 },
+          { label: "Application", value: 65 },
+          { label: "Exam traps", value: 52 }
+        ]
+      }
+    ],
     generated_at: "2026-02-20T00:00:00.000Z",
     source: "ai",
     provider: "openai",

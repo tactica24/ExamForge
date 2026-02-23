@@ -37,6 +37,12 @@ function safeFileName(value: string) {
     .slice(0, 80);
 }
 
+function graphBarWidth(value: number, maxAbs: number) {
+  const safeMax = Math.max(1, Math.abs(maxAbs));
+  const ratio = Math.abs(value) / safeMax;
+  return `${Math.max(8, Math.round(ratio * 100))}%`;
+}
+
 export default async function PlanTopicPage(props: {
   params: Promise<{ itemId: string }>;
   searchParams: Promise<{ format?: string }>;
@@ -225,6 +231,65 @@ export default async function PlanTopicPage(props: {
           ))}
         </CardContent>
       </Card>
+      ) : null}
+
+      {!locked && lesson && lesson.visual_aids.length && (selectedFormat === "text" || selectedFormat === null) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Diagrams, illustrations, and graphs</CardTitle>
+            <CardDescription>
+              Visual aids generated for better comprehension, especially for quantitative and science-heavy topics.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {lesson.visual_aids.map((visual, index) => {
+              const maxPoint = Math.max(1, ...visual.points.map((point) => Math.abs(point.value)));
+
+              return (
+                <div key={`${visual.kind}-${visual.title}-${index}`} className="rounded-xl border border-border/60 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{visual.kind}</Badge>
+                    <h3 className="text-sm font-semibold">{visual.title}</h3>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{visual.explanation}</p>
+
+                  {visual.points.length ? (
+                    <div className="mt-3 space-y-2">
+                      {visual.points.map((point) => (
+                        <div key={`${visual.title}-${point.label}`} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{point.label}</span>
+                            <span>{point.value}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-muted/60">
+                            <div className="h-full rounded-full bg-primary/80" style={{ width: graphBarWidth(point.value, maxPoint) }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {visual.bullets.length ? (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                      {visual.bullets.map((bullet) => (
+                        <li key={bullet}>{bullet}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {visual.prompt ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Visual prompt: <span className="font-medium text-foreground">{visual.prompt}</span>
+                    </p>
+                  ) : null}
+                  {visual.alt_text ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Alt text: {visual.alt_text}</p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       ) : null}
 
       {!locked && lesson && (selectedFormat === "text" || selectedFormat === null) ? (

@@ -16,12 +16,30 @@ export type PlanLessonExample = {
   answer: string;
 };
 
+export type PlanVisualAidKind = "diagram" | "graph" | "illustration";
+
+export type PlanVisualAidPoint = {
+  label: string;
+  value: number;
+};
+
+export type PlanVisualAid = {
+  kind: PlanVisualAidKind;
+  title: string;
+  explanation: string;
+  alt_text: string;
+  prompt: string;
+  bullets: string[];
+  points: PlanVisualAidPoint[];
+};
+
 export type PlanLesson = {
   overview: string;
   breakdown: PlanLessonSection[];
   examples: PlanLessonExample[];
   common_mistakes: string[];
   recap: string[];
+  visual_aids: PlanVisualAid[];
   generated_at: string;
   source: "ai" | "fallback";
   provider: string | null;
@@ -44,6 +62,7 @@ export type PlanSlide = {
   content: string[];
   visual_suggestions: string;
   narration: string;
+  visual: PlanVisualAid | null;
 };
 
 export type PlanSlideDeck = {
@@ -121,6 +140,53 @@ function normalizeExample(value: unknown): PlanLessonExample | null {
   return { question, walkthrough, answer };
 }
 
+function normalizeVisualKind(value: unknown): PlanVisualAidKind {
+  const kind = cleanText(value, 40).toLowerCase();
+  if (kind === "diagram" || kind === "graph") return kind;
+  return "illustration";
+}
+
+function normalizeVisualPoint(value: unknown): PlanVisualAidPoint | null {
+  if (!isRecord(value)) return null;
+  const label = cleanText(value.label, 80);
+  const rawValue = Number(value.value);
+  if (!label || !Number.isFinite(rawValue)) return null;
+
+  const clamped = Math.max(-9999, Math.min(9999, rawValue));
+  return {
+    label,
+    value: Number(clamped.toFixed(2))
+  };
+}
+
+function normalizeVisualAid(value: unknown): PlanVisualAid | null {
+  if (!isRecord(value)) return null;
+
+  const title = cleanText(value.title, 120);
+  const explanation = cleanText(value.explanation, 900);
+  const altText = cleanText(value.alt_text, 220);
+  const prompt = cleanText(value.prompt, 500);
+  const bullets = normalizeStringList(value.bullets, 6, 220);
+  const points = Array.isArray(value.points)
+    ? value.points.map((entry) => normalizeVisualPoint(entry)).filter(Boolean).slice(0, 8)
+    : [];
+
+  if (!title || !explanation) return null;
+
+  const kindBase = normalizeVisualKind(value.kind);
+  const kind = kindBase === "graph" && points.length < 2 ? "illustration" : kindBase;
+
+  return {
+    kind,
+    title,
+    explanation,
+    alt_text: altText,
+    prompt,
+    bullets,
+    points: points as PlanVisualAidPoint[]
+  };
+}
+
 function normalizeStudyFormat(value: unknown): PlanStudyFormat | null {
   const format = cleanText(value, 20).toLowerCase();
   if (format === "text" || format === "audio" || format === "slides") return format;
@@ -156,6 +222,7 @@ function normalizeSlide(value: unknown): PlanSlide | null {
     : [];
   const visualSuggestions = cleanText(value.visual_suggestions, 220);
   const narration = cleanText(value.narration, 1200);
+  const visual = normalizeVisualAid(value.visual);
 
   if (!title || !content.length || !Number.isFinite(slideNumber)) return null;
 
@@ -164,7 +231,8 @@ function normalizeSlide(value: unknown): PlanSlide | null {
     title,
     content,
     visual_suggestions: visualSuggestions,
-    narration
+    narration,
+    visual
   };
 }
 
@@ -224,6 +292,9 @@ export function normalizePlanLesson(value: unknown): PlanLesson | null {
     : [];
   const commonMistakes = normalizeStringList(value.common_mistakes, 8, 260);
   const recap = normalizeStringList(value.recap, 8, 260);
+  const visualAids = Array.isArray(value.visual_aids)
+    ? value.visual_aids.map((entry) => normalizeVisualAid(entry)).filter(Boolean).slice(0, 4)
+    : [];
   const source = value.source === "fallback" ? "fallback" : "ai";
   const providerText = cleanText(value.provider, 80);
   const modelText = cleanText(value.model, 120);
@@ -238,6 +309,7 @@ export function normalizePlanLesson(value: unknown): PlanLesson | null {
     examples: examples as PlanLessonExample[],
     common_mistakes: commonMistakes,
     recap,
+    visual_aids: visualAids as PlanVisualAid[],
     generated_at: normalizeIsoDate(value.generated_at),
     source,
     provider: providerText || null,
