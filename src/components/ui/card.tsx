@@ -5,7 +5,7 @@ function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/5 text-card-foreground shadow-[0_14px_38px_-26px_hsl(var(--foreground)/0.4)] transition-shadow hover:shadow-[0_20px_46px_-26px_hsl(var(--foreground)/0.45)]",
+        "relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/10 text-card-foreground ring-1 ring-white/35 shadow-[0_14px_38px_-26px_hsl(var(--foreground)/0.4)] transition-shadow hover:shadow-[0_20px_46px_-26px_hsl(var(--foreground)/0.45)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-primary/40 before:via-amber-300/40 before:to-cyan-300/40 dark:ring-white/5 dark:before:from-primary/45 dark:before:via-amber-400/30 dark:before:to-cyan-400/35",
         className
       )}
       {...props}

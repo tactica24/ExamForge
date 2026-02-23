@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-gradient-to-r from-background/90 via-background/85 to-primary/10 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-gradient-to-r from-background/92 via-background/86 to-cyan-200/22 backdrop-blur-md dark:to-cyan-900/22">
       <div className="container flex min-h-16 flex-col items-start justify-between gap-3 py-3 sm:flex-row sm:items-center">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">

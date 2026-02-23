@@ -9,19 +9,19 @@
   --card-foreground: 222 34% 12%;
   --popover: 36 44% 98%;
   --popover-foreground: 222 34% 12%;
-  --primary: 199 56% 30%;
+  --primary: 194 72% 34%;
   --primary-foreground: 35 40% 98%;
-  --secondary: 35 34% 89%;
+  --secondary: 34 40% 87%;
   --secondary-foreground: 222 34% 12%;
-  --muted: 36 30% 90%;
+  --muted: 36 33% 89%;
   --muted-foreground: 220 16% 44%;
-  --accent: 192 34% 90%;
+  --accent: 191 44% 88%;
   --accent-foreground: 222 34% 12%;
   --destructive: 0 72% 52%;
   --destructive-foreground: 35 40% 98%;
-  --border: 200 22% 82%;
-  --input: 200 22% 82%;
-  --ring: 199 56% 30%;
+  --border: 195 30% 80%;
+  --input: 195 30% 80%;
+  --ring: 194 72% 34%;
   --radius: 18px;
 }
 
@@ -32,19 +32,19 @@
   --card-foreground: 35 35% 96%;
   --popover: 218 25% 12%;
   --popover-foreground: 35 35% 96%;
-  --primary: 35 40% 96%;
+  --primary: 190 56% 78%;
   --primary-foreground: 218 26% 10%;
   --secondary: 217 20% 17%;
   --secondary-foreground: 35 35% 96%;
   --muted: 217 20% 17%;
   --muted-foreground: 220 12% 70%;
-  --accent: 206 22% 19%;
+  --accent: 204 30% 22%;
   --accent-foreground: 35 35% 96%;
   --destructive: 0 60% 44%;
   --destructive-foreground: 35 35% 96%;
-  --border: 216 18% 22%;
-  --input: 216 18% 22%;
-  --ring: 35 35% 80%;
+  --border: 205 24% 24%;
+  --input: 205 24% 24%;
+  --ring: 190 56% 78%;
 }
 
 html,
@@ -58,10 +58,11 @@ body {
   overflow-x: hidden;
   font-family: var(--font-body), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(circle at 9% -14%, hsl(var(--primary) / 0.22) 0, transparent 40%),
-    radial-gradient(circle at 88% 10%, hsl(190 70% 76% / 0.22) 0, transparent 36%),
-    radial-gradient(circle at 14% 74%, hsl(34 75% 78% / 0.34) 0, transparent 41%),
-    radial-gradient(circle at 88% 84%, hsl(199 58% 70% / 0.2) 0, transparent 35%),
+    radial-gradient(circle at 7% -12%, hsl(var(--primary) / 0.28) 0, transparent 42%),
+    radial-gradient(circle at 88% 6%, hsl(188 72% 72% / 0.26) 0, transparent 38%),
+    radial-gradient(circle at 12% 74%, hsl(33 82% 74% / 0.4) 0, transparent 44%),
+    radial-gradient(circle at 86% 86%, hsl(194 70% 66% / 0.24) 0, transparent 36%),
+    radial-gradient(circle at 52% 108%, hsl(20 76% 78% / 0.22) 0, transparent 40%),
     hsl(var(--background));
 }
 
@@ -72,14 +73,25 @@ body::before {
   pointer-events: none;
   z-index: -1;
   background:
-    linear-gradient(140deg, hsl(198 72% 94% / 0.24) 0%, transparent 44%),
-    linear-gradient(305deg, hsl(33 80% 90% / 0.26) 0%, transparent 46%);
+    linear-gradient(140deg, hsl(196 80% 92% / 0.28) 0%, transparent 48%),
+    linear-gradient(305deg, hsl(30 84% 88% / 0.3) 0%, transparent 50%);
 }
 
 .dark body::before {
   background:
-    linear-gradient(140deg, hsl(198 66% 28% / 0.3) 0%, transparent 46%),
-    linear-gradient(305deg, hsl(26 64% 24% / 0.25) 0%, transparent 48%);
+    linear-gradient(140deg, hsl(194 70% 34% / 0.32) 0%, transparent 48%),
+    linear-gradient(305deg, hsl(27 60% 30% / 0.28) 0%, transparent 50%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.2;
+  background-image: radial-gradient(hsl(var(--foreground) / 0.08) 0.6px, transparent 0.6px);
+  background-size: 3px 3px;
 }
 
 h1,

@@ -28,11 +28,11 @@ export function AppShell(props: {
   const brandLabel = props.isAdmin ? "ACE NAIJA Admin" : "ACE NAIJA";
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/40">
-      <div className="pointer-events-none absolute -left-36 -top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
-      <div className="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-700/25" />
-      <div className="pointer-events-none absolute left-1/4 top-[60%] h-64 w-64 rounded-full bg-amber-300/20 blur-3xl dark:bg-amber-700/15" />
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-gradient-to-r from-background/90 via-background/85 to-primary/10 backdrop-blur-md">
+    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/45">
+      <div className="pointer-events-none absolute -left-36 -top-24 h-72 w-72 rounded-full bg-primary/28 blur-3xl" />
+      <div className="pointer-events-none absolute -right-28 top-20 h-80 w-80 rounded-full bg-cyan-300/30 blur-3xl dark:bg-cyan-700/30" />
+      <div className="pointer-events-none absolute left-1/4 top-[60%] h-72 w-72 rounded-full bg-amber-300/26 blur-3xl dark:bg-amber-700/18" />
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-gradient-to-r from-background/92 via-background/86 to-cyan-200/22 backdrop-blur-md dark:to-cyan-900/22">
         <div className="container flex min-h-16 items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
