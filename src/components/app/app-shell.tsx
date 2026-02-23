@@ -28,10 +28,11 @@ export function AppShell(props: {
   const brandLabel = props.isAdmin ? "ACE NAIJA Admin" : "ACE NAIJA";
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/30">
-      <div className="pointer-events-none absolute -left-32 -top-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 top-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-background via-background to-muted/40">
+      <div className="pointer-events-none absolute -left-36 -top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-700/25" />
+      <div className="pointer-events-none absolute left-1/4 top-[60%] h-64 w-64 rounded-full bg-amber-300/20 blur-3xl dark:bg-amber-700/15" />
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-gradient-to-r from-background/90 via-background/85 to-primary/10 backdrop-blur-md">
         <div className="container flex min-h-16 items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

@@ -10,7 +10,7 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
-import { getPlanItemResourceLinks, isPlanItemQuizCompleted } from "@/lib/plans/content";
+import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
 import { hasActiveProAccess } from "@/lib/billing/access";
 
@@ -186,21 +186,6 @@ export default async function DashboardPage() {
                         ) : null}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">{item.topic_path}</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {getPlanItemResourceLinks(item.resource_links)
-                          .slice(0, 2)
-                          .map((resource) => (
-                            <a
-                              key={resource.url}
-                              className="text-xs text-primary underline underline-offset-4"
-                              href={resource.url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {resource.title}
-                            </a>
-                          ))}
-                      </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {item.status === "done" ? "Done" : item.status === "skipped" ? "Skipped" : "Todo"}

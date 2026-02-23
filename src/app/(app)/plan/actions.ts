@@ -4,7 +4,17 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
-import { getPlanItemProgress, isPlanItemQuizCompleted } from "@/lib/plans/content";
+import {
+  getPlanItemLesson,
+  getPlanItemLessonAssets,
+  getPlanItemProgress,
+  isPlanItemQuizCompleted,
+  withPlanItemLesson,
+  withPlanItemLessonAssets
+} from "@/lib/plans/content";
+import { ensureStudyAssetsForPlanTopic } from "@/lib/plans/study-assets";
+import { findTopicSubtopics } from "@/lib/plans/topic-subtopics";
+import type { Json } from "@/lib/firebase/database.types";
 
 const UpdateSchema = z.object({
   item_id: z.string().uuid(),
@@ -13,6 +23,11 @@ const UpdateSchema = z.object({
 
 const StartTopicQuizSchema = z.object({
   item_id: z.string().uuid()
+});
+
+const GenerateStudyFormatSchema = z.object({
+  item_id: z.string().uuid(),
+  format: z.enum(["text", "audio", "slides", "video", "ppt"])
 });
 
 type OwnedPlanTopic = {
@@ -185,4 +200,104 @@ export async function createPlanTopicQuizAction(_: unknown, formData: FormData) 
   }
 
   redirect(`/quiz/${quizId}`);
+}
+
+function normalizeRequestedFormat(value: string) {
+  if (value === "audio") return "audio" as const;
+  if (value === "slides" || value === "video" || value === "ppt") return "slides" as const;
+  return "text" as const;
+}
+
+export async function generatePlanTopicStudyFormatAction(_: unknown, formData: FormData) {
+  const parsed = GenerateStudyFormatSchema.safeParse({
+    item_id: formData.get("item_id"),
+    format: formData.get("format")
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid study format request." };
+
+  const firebase = await createFirebaseServerClient();
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+  if (!user) return { ok: false, message: "Not authenticated." };
+
+  const ownedTopic = await getOwnedPlanTopic({
+    firebase,
+    userId: user.id,
+    itemId: parsed.data.item_id
+  });
+  if (!ownedTopic) return { ok: false, message: "Topic not found." };
+
+  const lockState = await isPlanItemLocked({
+    firebase,
+    planId: ownedTopic.plan.id,
+    itemId: ownedTopic.item.id
+  });
+  if (lockState.locked) {
+    return {
+      ok: false,
+      message: "Complete the previous topic and quiz before opening this study format."
+    };
+  }
+
+  const requestedFormat = normalizeRequestedFormat(parsed.data.format);
+
+  const [{ data: latestItem }, { data: exam }, { data: profile }, { data: syllabus }] = await Promise.all([
+    firebase
+      .from("plan_items")
+      .select("resource_links,topic_path,title")
+      .eq("id", ownedTopic.item.id)
+      .maybeSingle(),
+    firebase.from("exams").select("name").eq("id", ownedTopic.plan.exam_id).maybeSingle(),
+    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle(),
+    firebase
+      .from("syllabi")
+      .select("topics")
+      .eq("exam_id", ownedTopic.plan.exam_id)
+      .eq("subject", ownedTopic.plan.subject)
+      .maybeSingle()
+  ]);
+
+  const sourceLinks = latestItem?.resource_links ?? ownedTopic.item.resource_links;
+  const lesson = getPlanItemLesson(sourceLinks);
+  const assets = getPlanItemLessonAssets(sourceLinks);
+
+  try {
+    const ensured = await ensureStudyAssetsForPlanTopic({
+      firebase,
+      examId: ownedTopic.plan.exam_id,
+      examName: exam?.name ?? "Exam",
+      subject: ownedTopic.plan.subject,
+      topicPath: latestItem?.topic_path ?? ownedTopic.item.topic_path,
+      topicTitle: latestItem?.title ?? ownedTopic.item.title,
+      preferredLanguage: profile?.preferred_explanation_language ?? "en",
+      requestedFormat,
+      existingLesson: lesson,
+      existingAssets: assets,
+      subtopics: findTopicSubtopics(
+        syllabus?.topics,
+        latestItem?.topic_path ?? ownedTopic.item.topic_path,
+        latestItem?.title ?? ownedTopic.item.title
+      )
+    });
+
+    const withLesson = withPlanItemLesson(sourceLinks, ensured.lesson);
+    const nextLinks = withPlanItemLessonAssets(withLesson, ensured.assets);
+
+    const { error } = await firebase
+      .from("plan_items")
+      .update({ resource_links: nextLinks as Json })
+      .eq("id", ownedTopic.item.id);
+
+    if (error) {
+      return { ok: false, message: "Could not store generated study format right now." };
+    }
+  } catch (_error: unknown) {
+    return {
+      ok: false,
+      message: "Could not generate this study format right now. Please try again."
+    };
+  }
+
+  redirect(`/plan/${ownedTopic.item.id}?format=${requestedFormat}`);
 }

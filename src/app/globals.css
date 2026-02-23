@@ -3,47 +3,47 @@
 @tailwind utilities;
 
 :root {
-  --background: 35 38% 96%;
+  --background: 36 42% 95%;
   --foreground: 222 34% 12%;
-  --card: 0 0% 100%;
+  --card: 36 44% 98%;
   --card-foreground: 222 34% 12%;
-  --popover: 0 0% 100%;
+  --popover: 36 44% 98%;
   --popover-foreground: 222 34% 12%;
   --primary: 199 56% 30%;
   --primary-foreground: 35 40% 98%;
-  --secondary: 35 30% 91%;
+  --secondary: 35 34% 89%;
   --secondary-foreground: 222 34% 12%;
-  --muted: 35 24% 93%;
+  --muted: 36 30% 90%;
   --muted-foreground: 220 16% 44%;
-  --accent: 26 40% 92%;
+  --accent: 192 34% 90%;
   --accent-foreground: 222 34% 12%;
   --destructive: 0 72% 52%;
   --destructive-foreground: 35 40% 98%;
-  --border: 220 14% 86%;
-  --input: 220 14% 86%;
+  --border: 200 22% 82%;
+  --input: 200 22% 82%;
   --ring: 199 56% 30%;
   --radius: 18px;
 }
 
 .dark {
-  --background: 220 23% 8%;
+  --background: 218 26% 10%;
   --foreground: 35 35% 96%;
-  --card: 220 23% 10%;
+  --card: 218 25% 12%;
   --card-foreground: 35 35% 96%;
-  --popover: 220 23% 10%;
+  --popover: 218 25% 12%;
   --popover-foreground: 35 35% 96%;
   --primary: 35 40% 96%;
-  --primary-foreground: 220 23% 10%;
-  --secondary: 220 18% 18%;
+  --primary-foreground: 218 26% 10%;
+  --secondary: 217 20% 17%;
   --secondary-foreground: 35 35% 96%;
-  --muted: 220 18% 18%;
+  --muted: 217 20% 17%;
   --muted-foreground: 220 12% 70%;
-  --accent: 220 18% 16%;
+  --accent: 206 22% 19%;
   --accent-foreground: 35 35% 96%;
   --destructive: 0 60% 44%;
   --destructive-foreground: 35 35% 96%;
-  --border: 220 18% 18%;
-  --input: 220 18% 18%;
+  --border: 216 18% 22%;
+  --input: 216 18% 22%;
   --ring: 35 35% 80%;
 }
 
@@ -54,12 +54,32 @@ body {
 
 body {
   @apply text-foreground;
+  position: relative;
+  overflow-x: hidden;
   font-family: var(--font-body), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(circle at 12% -10%, hsl(var(--primary) / 0.16) 0, transparent 38%),
-    radial-gradient(circle at 88% 8%, hsl(var(--primary) / 0.1) 0, transparent 32%),
-    radial-gradient(circle at 10% 70%, hsl(28 60% 90% / 0.6) 0, transparent 38%),
+    radial-gradient(circle at 9% -14%, hsl(var(--primary) / 0.22) 0, transparent 40%),
+    radial-gradient(circle at 88% 10%, hsl(190 70% 76% / 0.22) 0, transparent 36%),
+    radial-gradient(circle at 14% 74%, hsl(34 75% 78% / 0.34) 0, transparent 41%),
+    radial-gradient(circle at 88% 84%, hsl(199 58% 70% / 0.2) 0, transparent 35%),
     hsl(var(--background));
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(140deg, hsl(198 72% 94% / 0.24) 0%, transparent 44%),
+    linear-gradient(305deg, hsl(33 80% 90% / 0.26) 0%, transparent 46%);
+}
+
+.dark body::before {
+  background:
+    linear-gradient(140deg, hsl(198 66% 28% / 0.3) 0%, transparent 46%),
+    linear-gradient(305deg, hsl(26 64% 24% / 0.25) 0%, transparent 48%);
 }
 
 h1,

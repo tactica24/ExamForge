@@ -63,12 +63,7 @@ export async function updateWeakAreasAfterQuiz(args: {
       day_index: 9999,
       topic_path: args.topicPath,
       title: `Weak-area drill: ${args.topicPath}`,
-      resource_links: [
-        {
-          title: "Quick review (search)",
-          url: `https://www.google.com/search?q=${encodeURIComponent(args.topicPath + " " + args.subject)}`
-        }
-      ],
+      resource_links: [],
       status: "todo"
     });
   }

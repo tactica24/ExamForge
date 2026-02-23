@@ -28,6 +28,38 @@ export type PlanLesson = {
   model: string | null;
 };
 
+export type PlanStudyFormat = "text" | "audio" | "slides";
+
+export type PlanAudioLesson = {
+  narration: string;
+  generated_at: string;
+  source: "ai" | "derived";
+  provider: string | null;
+  model: string | null;
+};
+
+export type PlanSlide = {
+  slide_number: number;
+  title: string;
+  content: string[];
+  visual_suggestions: string;
+  narration: string;
+};
+
+export type PlanSlideDeck = {
+  slides: PlanSlide[];
+  generated_at: string;
+  source: "ai" | "derived";
+  provider: string | null;
+  model: string | null;
+};
+
+export type PlanLessonAssets = {
+  selected_format: PlanStudyFormat | null;
+  audio: PlanAudioLesson | null;
+  slides: PlanSlideDeck | null;
+};
+
 export type PlanQuizProgress = {
   completed: boolean;
   completed_at: string | null;
@@ -89,6 +121,91 @@ function normalizeExample(value: unknown): PlanLessonExample | null {
   return { question, walkthrough, answer };
 }
 
+function normalizeStudyFormat(value: unknown): PlanStudyFormat | null {
+  const format = cleanText(value, 20).toLowerCase();
+  if (format === "text" || format === "audio" || format === "slides") return format;
+  return null;
+}
+
+function normalizeAudioLesson(value: unknown): PlanAudioLesson | null {
+  if (!isRecord(value)) return null;
+
+  const narration = cleanText(value.narration, 9000);
+  if (!narration) return null;
+
+  const source = value.source === "ai" ? "ai" : "derived";
+  const providerText = cleanText(value.provider, 80);
+  const modelText = cleanText(value.model, 120);
+
+  return {
+    narration,
+    generated_at: normalizeIsoDate(value.generated_at),
+    source,
+    provider: providerText || null,
+    model: modelText || null
+  };
+}
+
+function normalizeSlide(value: unknown): PlanSlide | null {
+  if (!isRecord(value)) return null;
+
+  const slideNumber = Math.max(1, Math.min(40, Number(value.slide_number ?? 0)));
+  const title = cleanText(value.title, 120);
+  const content = Array.isArray(value.content)
+    ? value.content.map((item) => cleanText(item, 260)).filter(Boolean).slice(0, 6)
+    : [];
+  const visualSuggestions = cleanText(value.visual_suggestions, 220);
+  const narration = cleanText(value.narration, 1200);
+
+  if (!title || !content.length || !Number.isFinite(slideNumber)) return null;
+
+  return {
+    slide_number: slideNumber,
+    title,
+    content,
+    visual_suggestions: visualSuggestions,
+    narration
+  };
+}
+
+function normalizeSlideDeck(value: unknown): PlanSlideDeck | null {
+  if (!isRecord(value)) return null;
+
+  const slides = Array.isArray(value.slides)
+    ? value.slides.map((entry) => normalizeSlide(entry)).filter(Boolean).slice(0, 10)
+    : [];
+  if (!slides.length) return null;
+
+  const source = value.source === "ai" ? "ai" : "derived";
+  const providerText = cleanText(value.provider, 80);
+  const modelText = cleanText(value.model, 120);
+
+  return {
+    slides: slides as PlanSlide[],
+    generated_at: normalizeIsoDate(value.generated_at),
+    source,
+    provider: providerText || null,
+    model: modelText || null
+  };
+}
+
+function normalizeLessonAssets(value: unknown): PlanLessonAssets {
+  if (!isRecord(value)) {
+    return { selected_format: null, audio: null, slides: null };
+  }
+
+  const audio = normalizeAudioLesson(value.audio);
+  const slides = normalizeSlideDeck(value.slides);
+  const selected =
+    normalizeStudyFormat(value.selected_format) ?? (slides ? "slides" : audio ? "audio" : null);
+
+  return {
+    selected_format: selected,
+    audio,
+    slides
+  };
+}
+
 export function getPlanItemResourceLinks(value: unknown): PlanResourceLink[] {
   const raw = Array.isArray(value) ? value : isRecord(value) ? value.resources : [];
   if (!Array.isArray(raw)) return [];
@@ -131,6 +248,11 @@ export function normalizePlanLesson(value: unknown): PlanLesson | null {
 export function getPlanItemLesson(value: unknown): PlanLesson | null {
   if (!isRecord(value)) return null;
   return normalizePlanLesson(value.lesson);
+}
+
+export function getPlanItemLessonAssets(value: unknown): PlanLessonAssets {
+  if (!isRecord(value)) return normalizeLessonAssets(null);
+  return normalizeLessonAssets(value.assets);
 }
 
 function normalizeQuizProgress(value: unknown): PlanQuizProgress {
@@ -183,5 +305,20 @@ export function withPlanItemLesson(resourceLinks: unknown, lesson: PlanLesson): 
     resources,
     lesson,
     progress
+  } as Json;
+}
+
+export function withPlanItemLessonAssets(resourceLinks: unknown, assets: PlanLessonAssets): Json {
+  const base = isRecord(resourceLinks) ? resourceLinks : {};
+  const resources = getPlanItemResourceLinks(resourceLinks);
+  const lesson = getPlanItemLesson(resourceLinks);
+  const progress = getPlanItemProgress(resourceLinks);
+
+  return {
+    ...base,
+    resources,
+    ...(lesson ? { lesson } : {}),
+    progress,
+    assets: normalizeLessonAssets(assets)
   } as Json;
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border/70 bg-background/85 backdrop-blur-sm">
+    <footer className="border-t border-border/70 bg-gradient-to-r from-background/90 via-background/85 to-primary/10 backdrop-blur-sm">
       <div className="container flex flex-col gap-6 py-12 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
           (c) {new Date().getFullYear()} ACE NAIJA. Not affiliated with any exam body.

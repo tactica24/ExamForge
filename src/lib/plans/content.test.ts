@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  getPlanItemLessonAssets,
   getPlanItemLesson,
   getPlanItemResourceLinks,
   normalizePlanLesson,
+  type PlanLesson,
+  withPlanItemLessonAssets,
   withPlanItemLesson
 } from "@/lib/plans/content";
 
-function makeLesson() {
+function makeLesson(): PlanLesson {
   return {
     overview: "Lexis and structure helps you choose the right words and grammar for each sentence.",
     breakdown: [
@@ -26,23 +29,23 @@ function makeLesson() {
     source: "ai",
     provider: "openai",
     model: "gpt-4o-mini"
-  } as const;
+  };
 }
 
 describe("plan content helpers", () => {
   it("parses legacy array resource links", () => {
     const links = getPlanItemResourceLinks([
-      { title: "YouTube", url: "https://www.youtube.com/results?search_query=lexis" },
+      { title: "Lesson notes", url: "https://example.com/notes/lexis" },
       { title: "Invalid", url: "javascript:alert(1)" }
     ]);
 
     expect(links).toHaveLength(1);
-    expect(links[0]?.title).toBe("YouTube");
+    expect(links[0]?.title).toBe("Lesson notes");
   });
 
   it("extracts lesson from envelope payload", () => {
     const payload = {
-      resources: [{ title: "Khan Academy", url: "https://www.khanacademy.org" }],
+      resources: [{ title: "Lesson notes", url: "https://example.com/notes" }],
       lesson: makeLesson()
     };
 
@@ -53,13 +56,33 @@ describe("plan content helpers", () => {
 
   it("stores lesson while preserving resources", () => {
     const payload = withPlanItemLesson(
-      [{ title: "YouTube", url: "https://www.youtube.com/results?search_query=structure" }],
+      [{ title: "Lesson notes", url: "https://example.com/notes/structure" }],
       makeLesson()
     ) as any;
 
     expect(Array.isArray(payload.resources)).toBe(true);
     expect(payload.resources).toHaveLength(1);
     expect(payload.lesson.overview).toContain("Lexis and structure");
+  });
+
+  it("extracts and stores study assets in envelope payload", () => {
+    const base = withPlanItemLesson([], makeLesson());
+    const payload = withPlanItemLessonAssets(base, {
+      selected_format: "audio",
+      audio: {
+        narration: "Read this topic summary before the quiz.",
+        generated_at: "2026-02-20T00:00:00.000Z",
+        source: "derived",
+        provider: null,
+        model: null
+      },
+      slides: null
+    }) as any;
+
+    const assets = getPlanItemLessonAssets(payload);
+    expect(assets.selected_format).toBe("audio");
+    expect(assets.audio?.source).toBe("derived");
+    expect(assets.slides).toBeNull();
   });
 
   it("rejects incomplete lesson objects", () => {

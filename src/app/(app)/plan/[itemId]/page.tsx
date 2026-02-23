@@ -5,53 +5,43 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
+import { StudyAudioPlayer } from "@/components/plan/study-audio-player";
+import { StudySlidesPlayer } from "@/components/plan/study-slides-player";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { generatePlanLesson } from "@/lib/plans/lesson";
 import {
   getPlanItemLesson,
+  getPlanItemLessonAssets,
   getPlanItemProgress,
-  getPlanItemResourceLinks,
   isPlanItemQuizCompleted,
-  withPlanItemLesson
+  type PlanStudyFormat
 } from "@/lib/plans/content";
-import { createPlanTopicQuizAction, updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
-import type { Json } from "@/lib/firebase/database.types";
+import {
+  createPlanTopicQuizAction,
+  generatePlanTopicStudyFormatAction,
+  updatePlanItemStatusAction
+} from "@/app/(app)/plan/actions";
 
-function normalizeTopicKey(value: unknown) {
-  return String(value ?? "")
+function normalizeRequestedFormat(value: unknown): PlanStudyFormat | null {
+  const format = String(value ?? "").trim().toLowerCase();
+  if (format === "audio") return "audio";
+  if (format === "slides" || format === "video" || format === "ppt") return "slides";
+  if (format === "text") return "text";
+  return null;
+}
+
+function safeFileName(value: string) {
+  return String(value || "slides")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
-function findTopicSubtopics(topics: unknown, topicPath: string, title: string): string[] {
-  if (!Array.isArray(topics)) return [];
-  const targetPath = normalizeTopicKey(topicPath);
-  const targetTitle = normalizeTopicKey(title);
-
-  const match = topics.find((entry) => {
-    if (!entry || typeof entry !== "object") return false;
-    const row = entry as Record<string, unknown>;
-    const pathKey = normalizeTopicKey(row.path);
-    const titleKey = normalizeTopicKey(row.title);
-    return pathKey === targetPath || titleKey === targetPath || pathKey === targetTitle || titleKey === targetTitle;
-  });
-
-  if (!match || typeof match !== "object") return [];
-  const subtopics = (match as Record<string, unknown>).subtopics;
-  if (!Array.isArray(subtopics)) return [];
-
-  return subtopics
-    .map((entry) =>
-      String(entry ?? "")
-        .replace(/\s+/g, " ")
-        .trim()
-    )
-    .filter(Boolean)
-    .slice(0, 8);
-}
-
-export default async function PlanTopicPage(props: { params: Promise<{ itemId: string }> }) {
-  const { itemId } = await props.params;
+export default async function PlanTopicPage(props: {
+  params: Promise<{ itemId: string }>;
+  searchParams: Promise<{ format?: string }>;
+}) {
+  const [{ itemId }, sp] = await Promise.all([props.params, props.searchParams]);
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }
@@ -89,29 +79,18 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
   });
   const locked = Boolean(firstIncomplete);
 
-  const [{ data: exam }, { data: profile }, { data: syllabus }] = await Promise.all([
+  const [{ data: exam }, { data: profile }] = await Promise.all([
     firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle(),
-    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle(),
-    firebase.from("syllabi").select("topics").eq("exam_id", plan.exam_id).eq("subject", plan.subject).maybeSingle()
+    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
   ]);
 
-  const resources = getPlanItemResourceLinks(item.resource_links);
   const progress = getPlanItemProgress(item.resource_links);
-  let lesson = getPlanItemLesson(item.resource_links);
-
-  if (!lesson && !locked) {
-    lesson = await generatePlanLesson({
-      examName: exam?.name ?? "Exam",
-      subject: plan.subject,
-      topicPath: item.topic_path,
-      topicTitle: item.title,
-      subtopics: findTopicSubtopics(syllabus?.topics, item.topic_path, item.title),
-      preferredLanguage: profile?.preferred_explanation_language ?? "en"
-    });
-
-    const nextResourceLinks = withPlanItemLesson(item.resource_links, lesson);
-    await firebase.from("plan_items").update({ resource_links: nextResourceLinks as Json }).eq("id", item.id);
-  }
+  const lesson = getPlanItemLesson(item.resource_links);
+  const assets = getPlanItemLessonAssets(item.resource_links);
+  const selectedFormat = normalizeRequestedFormat(sp.format) ?? assets.selected_format ?? (lesson ? "text" : null);
+  const audioNarration = assets.audio?.narration ?? "";
+  const slideDeck = assets.slides;
+  const preferredLanguage = profile?.preferred_explanation_language ?? "en";
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
@@ -152,11 +131,86 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
             </div>
           ) : lesson ? (
             <p className="text-sm leading-relaxed text-muted-foreground">{lesson.overview}</p>
-          ) : null}
+          ) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Choose a study format below to generate this topic guide.
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {!locked && lesson ? (
+      {!locked ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Study format</CardTitle>
+            <CardDescription>Generate once and reuse across learners with the same exam topic and language.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={selectedFormat === "text" ? "default" : "outline"}>Text</Badge>
+              <Badge variant={selectedFormat === "audio" ? "default" : "outline"}>
+                Audio {assets.audio ? "ready" : "pending"}
+              </Badge>
+              <Badge variant={selectedFormat === "slides" ? "default" : "outline"}>
+                Video/PPT {assets.slides ? "ready" : "pending"}
+              </Badge>
+            </div>
+            <AuthFormState action={generatePlanTopicStudyFormatAction}>
+              <input type="hidden" name="item_id" value={item.id} />
+              <div className="flex flex-wrap gap-2">
+                <SubmitButton type="submit" name="format" value="text" pendingText="Generating..." size="sm">
+                  {lesson ? "Open text" : "Generate text"}
+                </SubmitButton>
+                <SubmitButton type="submit" name="format" value="audio" pendingText="Generating..." size="sm" variant="outline">
+                  {assets.audio ? "Open audio" : "Generate audio"}
+                </SubmitButton>
+                <SubmitButton type="submit" name="format" value="video" pendingText="Generating..." size="sm" variant="outline">
+                  {assets.slides ? "Open video/PPT" : "Generate video/PPT"}
+                </SubmitButton>
+              </div>
+            </AuthFormState>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!locked && selectedFormat === "audio" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Audio lesson</CardTitle>
+            <CardDescription>Play narration in-app. Text remains available for low-data reading.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {audioNarration ? (
+              <>
+                <StudyAudioPlayer text={audioNarration} language={preferredLanguage} />
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
+                  {audioNarration}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Generate audio to unlock narration for this topic.</p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!locked && selectedFormat === "slides" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Video/PPT slides</CardTitle>
+            <CardDescription>5-10 slide script with autoplay and deck download for reuse.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {slideDeck ? (
+              <StudySlidesPlayer deck={slideDeck} fileName={`${safeFileName(`${plan.subject}-${item.title}`)}-slides.json`} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Generate video/PPT to unlock your slide deck.</p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!locked && lesson && (selectedFormat === "text" || selectedFormat === null) ? (
         <Card>
         <CardHeader>
           <CardTitle className="text-base">Topic breakdown</CardTitle>
@@ -173,7 +227,7 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
       </Card>
       ) : null}
 
-      {!locked && lesson ? (
+      {!locked && lesson && (selectedFormat === "text" || selectedFormat === null) ? (
         <Card>
         <CardHeader>
           <CardTitle className="text-base">Worked examples</CardTitle>
@@ -192,7 +246,7 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
       </Card>
       ) : null}
 
-      {!locked && lesson ? (
+      {!locked && lesson && (selectedFormat === "text" || selectedFormat === null) ? (
         <Card>
         <CardHeader>
           <CardTitle className="text-base">Mistakes to avoid</CardTitle>
@@ -216,27 +270,6 @@ export default async function PlanTopicPage(props: { params: Promise<{ itemId: s
           </div>
         </CardContent>
       </Card>
-      ) : null}
-
-      {!locked && resources.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Extra resources</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {resources.map((resource) => (
-              <a
-                key={`${resource.title}-${resource.url}`}
-                href={resource.url}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs text-primary transition hover:bg-muted"
-              >
-                {resource.title}
-              </a>
-            ))}
-          </CardContent>
-        </Card>
       ) : null}
 
       <Card>

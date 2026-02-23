@@ -14,19 +14,11 @@ function normalizeSubject(value: string) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-function resourcesFor(subject: string, title: string) {
-  const query = encodeURIComponent(`${subject} ${title}`);
-  return [
-    { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` }
-  ];
-}
-
-function fromBlueprint(subject: string, blueprint: TopicBlueprint): Topic[] {
+function fromBlueprint(_subject: string, blueprint: TopicBlueprint): Topic[] {
   return blueprint.map((topic) => ({
     title: topic.title,
     path: topic.title,
-    subtopics: topic.subtopics,
-    resources: resourcesFor(subject, topic.title)
+    subtopics: topic.subtopics
   }));
 }
 
@@ -135,17 +127,11 @@ const genericTopicBlueprints = [
 
 export function getGenericTopicsForSubject(subject: string): Topic[] {
   const cleanSubject = String(subject || "Subject").trim();
-  return genericTopicBlueprints.map((blueprint) => {
-    const query = encodeURIComponent(`${cleanSubject} ${blueprint.title}`);
-    return {
-      title: `${cleanSubject}: ${blueprint.title}`,
-      path: blueprint.title,
-      subtopics: blueprint.subtopics,
-      resources: [
-        { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${query}` }
-      ]
-    };
-  });
+  return genericTopicBlueprints.map((blueprint) => ({
+    title: `${cleanSubject}: ${blueprint.title}`,
+    path: blueprint.title,
+    subtopics: blueprint.subtopics
+  }));
 }
 
 export function topicsToJson(topics: Topic[]): Json {

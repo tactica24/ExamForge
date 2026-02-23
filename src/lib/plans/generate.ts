@@ -11,13 +11,6 @@ export type GeneratedPlanItem = {
   resource_links: Array<{ title: string; url: string }>;
 };
 
-function defaultResourcesFor(subject: string) {
-  const q = encodeURIComponent(`${subject} basics`);
-  return [
-    { title: "YouTube (search)", url: `https://www.youtube.com/results?search_query=${q}` }
-  ];
-}
-
 export function generatePlanItemsFromTopics(args: {
   topics: Topic[];
   pace: Pace;
@@ -50,7 +43,7 @@ export function generatePlanItemsFromTopics(args: {
         day_index: dayIndex,
         topic_path: t.path,
         title: t.title,
-        resource_links: t.resources?.length ? t.resources : defaultResourcesFor(t.title)
+        resource_links: []
       });
     }
     dayIndex += 1;
