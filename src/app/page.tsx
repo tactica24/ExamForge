@@ -27,7 +27,7 @@ const examTracks = [
     detail: "Break each subject into daily targets, practice by objective, and revise weak topics before exam day."
   },
   {
-    exam: "JAMB UTME",
+    exam: "JAMB and UTME",
     icon: BookOpen,
     detail:
       "Train with timed objective-question sessions, track speed and accuracy, and focus on the topics that impact your score."

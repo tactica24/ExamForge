@@ -97,6 +97,9 @@ export default async function PlanTopicPage(props: {
   const audioNarration = assets.audio?.narration ?? "";
   const slideDeck = assets.slides;
   const preferredLanguage = profile?.preferred_explanation_language ?? "en";
+  const fileBase = safeFileName(`${plan.subject}-${item.title}`);
+  const audioDownloadUrl = `/api/plan/assets/download?item_id=${item.id}&format=audio`;
+  const pptDownloadUrl = `/api/plan/assets/download?item_id=${item.id}&format=ppt`;
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
@@ -149,7 +152,7 @@ export default async function PlanTopicPage(props: {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Study format</CardTitle>
-            <CardDescription>Generate once and reuse across learners with the same exam topic and language.</CardDescription>
+            <CardDescription>Choose text, audio, or video/PPT for this topic.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -183,12 +186,17 @@ export default async function PlanTopicPage(props: {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Audio lesson</CardTitle>
-            <CardDescription>Play narration in-app. Text remains available for low-data reading.</CardDescription>
+            <CardDescription>Play narration in-app or download the audio file.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {audioNarration ? (
               <>
-                <StudyAudioPlayer text={audioNarration} language={preferredLanguage} />
+                <StudyAudioPlayer
+                  text={audioNarration}
+                  language={preferredLanguage}
+                  downloadUrl={audioDownloadUrl}
+                  downloadFileName={`${fileBase}-audio.mp3`}
+                />
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
                   {audioNarration}
                 </div>
@@ -204,11 +212,15 @@ export default async function PlanTopicPage(props: {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Video/PPT slides</CardTitle>
-            <CardDescription>5-10 slide script with autoplay and deck download for reuse.</CardDescription>
+            <CardDescription>5-10 slide deck with in-app preview and PPT download.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {slideDeck ? (
-              <StudySlidesPlayer deck={slideDeck} fileName={`${safeFileName(`${plan.subject}-${item.title}`)}-slides.json`} />
+              <StudySlidesPlayer
+                deck={slideDeck}
+                downloadUrl={pptDownloadUrl}
+                downloadFileName={`${fileBase}-slides.pptx`}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">Generate video/PPT to unlock your slide deck.</p>
             )}

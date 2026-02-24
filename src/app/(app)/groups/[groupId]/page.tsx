@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { leaveGroupAction, renameGroupAction } from "@/app/(app)/groups/actions";
+import { describePace } from "@/lib/plans/pace";
 
 export default async function GroupPage(props: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await props.params;
@@ -34,13 +35,15 @@ export default async function GroupPage(props: { params: Promise<{ groupId: stri
     .order("created_at", { ascending: false })
     .limit(50);
 
+  const paceLabel = describePace(group.pace);
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{group.name ?? group.subject}</CardTitle>
           <CardDescription>
-            {group.pace} · {group.level} · {group.timezone}
+            {paceLabel} | {group.level} | {group.timezone}
           </CardDescription>
         </CardHeader>
         <CardContent>

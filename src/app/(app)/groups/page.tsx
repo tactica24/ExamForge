@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { leaveGroupAction } from "@/app/(app)/groups/actions";
+import { describePace } from "@/lib/plans/pace";
 
 function chunk<T>(items: T[], size: number) {
   const out: T[][] = [];
@@ -60,7 +61,7 @@ export default async function GroupsPage() {
             <Card key={g.id}>
               <CardHeader>
                 <CardTitle className="text-base">
-                  {g.name ?? g.subject} | {g.pace}
+                  {g.name ?? g.subject} | {describePace(g.pace)}
                 </CardTitle>
                 <CardDescription>
                   Level: {g.level} | TZ: {g.timezone} | {groupMemberCounts.get(g.id) ?? 0}/15 members

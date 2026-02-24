@@ -205,19 +205,22 @@ export function OnboardingWizard(props: {
               <input type="hidden" name="mode" value={mode} />
             </div>
             <div className="space-y-2">
-              <Label>Pace</Label>
+              <Label>Topics per day</Label>
               <Select value={pace} onValueChange={(value) => setPace(value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select pace" />
+                  <SelectValue placeholder="Select daily load" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="steady">Steady (1 topic/day)</SelectItem>
-                  <SelectItem value="intensive">Intensive (2 topics/day)</SelectItem>
+                  <SelectItem value="steady">1 topic/day</SelectItem>
+                  <SelectItem value="intensive">2 topics/day</SelectItem>
+                  <SelectItem value="topics_3">3 topics/day</SelectItem>
+                  <SelectItem value="topics_4">4 topics/day</SelectItem>
+                  <SelectItem value="topics_5">5 topics/day</SelectItem>
                 </SelectContent>
               </Select>
               <input type="hidden" name="pace" value={pace} />
               <p className="text-xs text-muted-foreground">
-                Steady = lighter daily load. Intensive = faster coverage toward your exam date.
+                Increase daily load if you want faster syllabus coverage.
               </p>
             </div>
             <div className="space-y-2 sm:col-span-2">

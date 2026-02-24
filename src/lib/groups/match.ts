@@ -14,7 +14,7 @@ export async function matchOrCreateGroup(args: {
   userId: string;
   examId: string;
   subject: string;
-  pace: "steady" | "intensive";
+  pace: string;
   level: string;
   timezone: string;
   groupName?: string;

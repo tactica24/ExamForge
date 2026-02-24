@@ -20,7 +20,12 @@ function canUseSpeechSynthesis() {
   return typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 }
 
-export function StudyAudioPlayer(props: { text: string; language: string }) {
+export function StudyAudioPlayer(props: {
+  text: string;
+  language: string;
+  downloadUrl?: string;
+  downloadFileName?: string;
+}) {
   const [status, setStatus] = useState<"idle" | "playing" | "paused" | "unsupported">("idle");
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const targetLang = useMemo(() => pickLanguage(props.language), [props.language]);
@@ -81,6 +86,13 @@ export function StudyAudioPlayer(props: { text: string; language: string }) {
         <Button type="button" size="sm" variant="ghost" onClick={stop} disabled={status === "idle"}>
           Stop
         </Button>
+        {props.downloadUrl ? (
+          <Button asChild type="button" size="sm" variant="outline">
+            <a href={props.downloadUrl} download={props.downloadFileName ?? "study-audio.mp3"}>
+              Download audio file
+            </a>
+          </Button>
+        ) : null}
       </div>
       {status === "unsupported" ? (
         <div className="text-xs text-muted-foreground">

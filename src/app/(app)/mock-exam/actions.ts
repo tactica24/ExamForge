@@ -17,8 +17,6 @@ const Schema = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium")
 });
 
-const MOCK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
-
 export async function startMockExamAction(_: unknown, formData: FormData) {
   const parsed = Schema.safeParse({
     exam_id: formData.get("exam_id"),
@@ -47,29 +45,6 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
       ok: false,
       message: "Mock exam is a Pro feature. Upgrade from /pricing to continue."
     };
-  }
-
-  const { data: latestMock } = await firebase
-    .from("quizzes")
-    .select("id,created_at")
-    .eq("created_by", user.id)
-    .eq("exam_id", parsed.data.exam_id)
-    .eq("subject", parsed.data.subject)
-    .eq("quiz_type", "mock")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (latestMock?.created_at) {
-    const lastStarted = new Date(latestMock.created_at).getTime();
-    const now = Date.now();
-    if (Number.isFinite(lastStarted) && now - lastStarted < MOCK_COOLDOWN_MS) {
-      const nextAvailable = new Date(lastStarted + MOCK_COOLDOWN_MS);
-      return {
-        ok: false,
-        message: `You can take one mock exam per subject every 7 days. Next available on ${nextAvailable.toLocaleDateString()}.`
-      };
-    }
   }
 
   const { data: exam } = await firebase
@@ -132,7 +107,6 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     meta: {
       duration_sec: parsed.data.duration_min * 60,
       question_count: parsed.data.question_count,
-      weekly_limit_days: 7,
       completed_topics: uniqueTopics
     }
   });

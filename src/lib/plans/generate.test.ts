@@ -33,6 +33,25 @@ describe("generatePlanItemsFromTopics", () => {
     expect(items[2]?.scheduled_for).toBe("2026-01-02");
   });
 
+  it("supports 5 topics per day for advanced pacing", () => {
+    const items = generatePlanItemsFromTopics({
+      pace: "topics_5",
+      startDate: "2026-01-01",
+      topics: [
+        { title: "A", path: "A" },
+        { title: "B", path: "B" },
+        { title: "C", path: "C" },
+        { title: "D", path: "D" },
+        { title: "E", path: "E" },
+        { title: "F", path: "F" }
+      ]
+    });
+    expect(items).toHaveLength(6);
+    expect(items[0]?.scheduled_for).toBe("2026-01-01");
+    expect(items[4]?.scheduled_for).toBe("2026-01-01");
+    expect(items[5]?.scheduled_for).toBe("2026-01-02");
+  });
+
   it("increases per-day workload to meet target date window", () => {
     const items = generatePlanItemsFromTopics({
       pace: "steady",

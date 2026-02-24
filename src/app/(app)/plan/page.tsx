@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { updatePlanItemStatusAction } from "@/app/(app)/plan/actions";
 import { getPlanItemLesson, isPlanItemQuizCompleted } from "@/lib/plans/content";
+import { describePace } from "@/lib/plans/pace";
 
 export default async function PlanPage() {
   const firebase = await createFirebaseServerClient();
@@ -50,13 +51,14 @@ export default async function PlanPage() {
   const targetDate = plan.target_date ? parseISO(plan.target_date) : null;
   const daysToTarget =
     targetDate && isValid(targetDate) ? differenceInCalendarDays(targetDate, new Date()) : null;
+  const paceLabel = describePace(plan.pace);
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Next 14 days | {plan.mode} mode | {plan.pace} pace
+          Next 14 days | {plan.mode} mode | {paceLabel}
           {plan.target_date ? ` | Exam date: ${plan.target_date}` : ""}
           {daysToTarget != null ? ` | ${daysToTarget >= 0 ? `${daysToTarget} day(s) left` : "Exam date passed"}` : ""}
         </p>

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { formatISO } from "date-fns";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
@@ -10,6 +11,8 @@ import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { hasActiveProAccess } from "@/lib/billing/access";
 import { matchOrCreateGroup } from "@/lib/groups/match";
+import { paceFromTopicsPerDay } from "@/lib/plans/pace";
+import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(60),
@@ -24,10 +27,67 @@ const ProfileSchema = z.object({
   timezone: z.string().min(2).max(60),
   learning_style: z.string().min(2).max(30),
   level: z.enum(["beginner", "intermediate", "advanced"]),
+  topics_per_day: z.coerce.number().int().min(1).max(5).default(1),
   preferred_explanation_language: z.enum(["en", "pidgin", "hausa", "yoruba", "igbo"]).default("en"),
   low_data_mode: z.coerce.boolean().default(false),
   leaderboard_anonymous: z.coerce.boolean().default(false)
 });
+
+async function realignPendingPlanItemsForPace(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  userId: string;
+  pace: string;
+}) {
+  const { data: plans } = await args.firebase
+    .from("user_plans")
+    .select("id,target_date")
+    .eq("user_id", args.userId);
+  if (!plans?.length) return;
+
+  const startDate = formatISO(new Date(), { representation: "date" });
+
+  for (const plan of plans) {
+    const { data: items } = await args.firebase
+      .from("plan_items")
+      .select("id,title,topic_path,status,resource_links,scheduled_for,day_index,created_at")
+      .eq("plan_id", plan.id)
+      .order("scheduled_for", { ascending: true })
+      .order("day_index", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    const pending = (items ?? []).filter(
+      (item: any) => item?.status === "todo" && !isPlanItemQuizCompleted(item?.resource_links)
+    );
+    if (!pending.length) continue;
+
+    const generated = generatePlanItemsFromTopics({
+      topics: pending.map((item: any) => ({
+        title: String(item?.title ?? item?.topic_path ?? "Topic"),
+        path: String(item?.topic_path ?? item?.title ?? "Topic")
+      })),
+      pace: args.pace,
+      startDate,
+      targetDate: plan.target_date ?? null
+    });
+
+    for (let index = 0; index < pending.length; index += 1) {
+      const item = pending[index];
+      const next = generated[index];
+      if (!next) continue;
+      if (item.scheduled_for === next.scheduled_for && Number(item.day_index ?? 0) === Number(next.day_index ?? 0)) {
+        continue;
+      }
+
+      await args.firebase
+        .from("plan_items")
+        .update({
+          scheduled_for: next.scheduled_for,
+          day_index: next.day_index
+        })
+        .eq("id", item.id);
+    }
+  }
+}
 
 export async function updateProfileAction(_: unknown, formData: FormData) {
   const parsed = ProfileSchema.safeParse({
@@ -38,6 +98,7 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
     timezone: formData.get("timezone"),
     learning_style: formData.get("learning_style"),
     level: formData.get("level"),
+    topics_per_day: formData.get("topics_per_day") ?? 1,
     preferred_explanation_language: formData.get("preferred_explanation_language") ?? "en",
     low_data_mode: formData.get("low_data_mode") === "on",
     leaderboard_anonymous: formData.get("leaderboard_anonymous") === "on"
@@ -50,8 +111,19 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { error } = await firebase.from("profiles").update(parsed.data).eq("user_id", user.id);
+  const { topics_per_day, ...profileUpdate } = parsed.data;
+  const { error } = await firebase.from("profiles").update(profileUpdate).eq("user_id", user.id);
   if (error) return { ok: false, message: error.message };
+
+  const pace = paceFromTopicsPerDay(topics_per_day);
+  const { error: paceError } = await firebase.from("user_plans").update({ pace }).eq("user_id", user.id);
+  if (paceError) return { ok: false, message: paceError.message };
+  await realignPendingPlanItemsForPace({
+    firebase,
+    userId: user.id,
+    pace
+  });
+
   await syncProfilePublic({ userId: user.id }).catch(() => {});
   return { ok: true };
 }
@@ -96,7 +168,7 @@ async function ensurePlanForSubject(args: {
     .maybeSingle();
 
   const mode = (templatePlan?.mode as "solo" | "group" | undefined) ?? "solo";
-  const pace = (templatePlan?.pace as "steady" | "intensive" | undefined) ?? "steady";
+  const pace = (templatePlan?.pace as string | undefined) ?? "steady";
   const startDate = templatePlan?.start_date ?? formatISO(new Date(), { representation: "date" });
   const targetDate = templatePlan?.target_date ?? null;
 
@@ -332,12 +404,20 @@ export async function createParentLinkAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data, error } = await firebase
-    .from("parent_links")
-    .insert({ user_id: user.id, label })
-    .select("token")
-    .single();
-  if (error) return { ok: false, message: error.message };
+  let inserted = false;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = randomBytes(18).toString("base64url");
+    const { error } = await firebase.from("parent_links").insert({
+      token,
+      user_id: user.id,
+      label
+    });
+    if (!error) {
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) return { ok: false, message: "Could not create parent link right now. Please try again." };
 
   redirect("/settings");
 }

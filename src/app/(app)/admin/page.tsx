@@ -13,7 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AuthFormState } from "@/components/auth/auth-form-state";
+import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
+import { recomputeLeaderboardAction } from "@/app/(app)/admin/actions";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
 import { getServerEnv } from "@/lib/env";
@@ -58,6 +61,7 @@ export default async function AdminHomePage() {
     recentProfilesRes,
     failedNotificationsRes,
     flaggedMessagesRes,
+    leaderboardSnapshotRes,
     adminCount
   ] = await Promise.all([
     firebase.from("profiles").select("user_id", { head: true, count: "exact" }),
@@ -86,6 +90,13 @@ export default async function AdminHomePage() {
       .eq("flagged", true)
       .order("created_at", { ascending: false })
       .limit(5),
+    firebase
+      .from("leaderboard_entries")
+      .select("computed_at")
+      .eq("period", "weekly")
+      .order("computed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     getAdminCount()
   ]);
 
@@ -103,6 +114,9 @@ export default async function AdminHomePage() {
   const recentProfiles = recentProfilesRes.data ?? [];
   const failedNotificationsList = failedNotificationsRes.data ?? [];
   const flaggedMessagesList = flaggedMessagesRes.data ?? [];
+  const lastLeaderboardComputedAt = leaderboardSnapshotRes.data?.computed_at
+    ? new Date(leaderboardSnapshotRes.data.computed_at).toLocaleString()
+    : "Not computed yet";
 
   const firebaseWebReady = Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
@@ -114,6 +128,9 @@ export default async function AdminHomePage() {
   const openAiReady = Boolean(env.OPENAI_API_KEY);
   const groqReady = Boolean(env.GROQ_API_KEY);
   const geminiReady = Boolean(env.GEMINI_API_KEY);
+  const twilioReady = Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER);
+  const resendReady = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
+  const cronReady = Boolean(env.APP_CRON_SECRET);
   const aiReady = openAiReady || groqReady || geminiReady;
 
   return (
@@ -278,6 +295,18 @@ export default async function AdminHomePage() {
               <span>Gemini</span>
               <Badge variant={geminiReady ? "default" : "outline"}>{geminiReady ? "ready" : "missing"}</Badge>
             </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>Twilio (SMS/WhatsApp)</span>
+              <Badge variant={twilioReady ? "default" : "outline"}>{twilioReady ? "ready" : "missing"}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>Resend (email)</span>
+              <Badge variant={resendReady ? "default" : "outline"}>{resendReady ? "ready" : "missing"}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+              <span>Cron secret</span>
+              <Badge variant={cronReady ? "default" : "outline"}>{cronReady ? "ready" : "missing"}</Badge>
+            </div>
             <div className="rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
               For detailed health JSON, call `/api/health` with `x-health-secret`.
             </div>
@@ -315,7 +344,14 @@ export default async function AdminHomePage() {
           <CardTitle className="text-base">Admin quick actions</CardTitle>
           <CardDescription>Most-used workflows for support and content operations.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="space-y-3">
+          <div className="text-xs text-muted-foreground">Weekly leaderboard last computed: {lastLeaderboardComputedAt}</div>
+          <AuthFormState action={recomputeLeaderboardAction}>
+            <SubmitButton type="submit" pendingText="Refreshing..." size="sm" className="w-full sm:w-auto">
+              Recompute leaderboard now
+            </SubmitButton>
+          </AuthFormState>
+          <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link href="/admin/users">
               <Wrench className="mr-2 h-4 w-4" /> Resolve user issue
@@ -330,6 +366,7 @@ export default async function AdminHomePage() {
           <Button asChild variant="outline">
             <Link href="/superadmin">Open superadmin route alias</Link>
           </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

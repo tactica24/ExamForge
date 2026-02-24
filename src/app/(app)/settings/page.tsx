@@ -22,6 +22,7 @@ import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 import { hasActiveProAccess } from "@/lib/billing/access";
+import { parseTopicsPerDay } from "@/lib/plans/pace";
 
 function toSubjects(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
@@ -34,7 +35,7 @@ export default async function SettingsPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams] = await Promise.all([
+  const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams, latestPlanRes] = await Promise.all([
     firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
     firebase
@@ -49,13 +50,21 @@ export default async function SettingsPage() {
       .select("exam_id,subject,is_active,created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    listActiveExams()
+    listActiveExams(),
+    firebase
+      .from("user_plans")
+      .select("pace")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
   ]);
 
   const profile = profileRes.data;
   const prefs = prefsRes.data;
   const parentLinks = parentLinksRes.data ?? [];
   const userExamSubjects = userSubjectsRes.data ?? [];
+  const topicsPerDayDefault = parseTopicsPerDay(latestPlanRes.data?.pace ?? "steady", 1);
 
   const channel = Array.isArray(prefs?.channels) ? String((prefs?.channels as any[])[0] ?? "in_app") : "in_app";
   const prefsObj = (prefs as any) ?? {};
@@ -163,6 +172,17 @@ export default async function SettingsPage() {
                   <option value="intermediate">Intermediate</option>
                   <option value="advanced">Advanced</option>
                 </NativeSelect>
+              </div>
+              <div className="space-y-2">
+                <Label>Topics per day</Label>
+                <NativeSelect name="topics_per_day" defaultValue={String(topicsPerDayDefault)}>
+                  <option value="1">1 topic/day</option>
+                  <option value="2">2 topics/day</option>
+                  <option value="3">3 topics/day</option>
+                  <option value="4">4 topics/day</option>
+                  <option value="5">5 topics/day</option>
+                </NativeSelect>
+                <p className="text-xs text-muted-foreground">Applies to new and existing study plans.</p>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Preferred explanation language (AI only)</Label>

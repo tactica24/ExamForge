@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { PlanSlideDeck } from "@/lib/plans/content";
-
-function makeDeckDownloadHref(deck: PlanSlideDeck) {
-  const json = JSON.stringify(deck, null, 2);
-  return `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
-}
 
 function graphBarWidth(value: number, maxAbs: number) {
   const safeMax = Math.max(1, Math.abs(maxAbs));
@@ -15,7 +10,11 @@ function graphBarWidth(value: number, maxAbs: number) {
   return `${Math.max(8, Math.round(ratio * 100))}%`;
 }
 
-export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string }) {
+export function StudySlidesPlayer(props: {
+  deck: PlanSlideDeck;
+  downloadUrl?: string;
+  downloadFileName?: string;
+}) {
   const [index, setIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
   const slides = props.deck.slides;
@@ -23,7 +22,6 @@ export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string
 
   const safeIndex = Math.max(0, Math.min(index, total - 1));
   const current = slides[safeIndex];
-  const downloadHref = useMemo(() => makeDeckDownloadHref(props.deck), [props.deck]);
 
   useEffect(() => {
     if (!autoplay || total <= 1) return undefined;
@@ -113,11 +111,13 @@ export function StudySlidesPlayer(props: { deck: PlanSlideDeck; fileName: string
         <Button type="button" size="sm" onClick={() => setAutoplay((prev) => !prev)} disabled={total <= 1}>
           {autoplay ? "Stop autoplay" : "Autoplay"}
         </Button>
-        <Button asChild type="button" size="sm" variant="ghost">
-          <a href={downloadHref} download={props.fileName}>
-            Download deck JSON
-          </a>
-        </Button>
+        {props.downloadUrl ? (
+          <Button asChild type="button" size="sm" variant="ghost">
+            <a href={props.downloadUrl} download={props.downloadFileName ?? "study-slides.pptx"}>
+              Download PPT
+            </a>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

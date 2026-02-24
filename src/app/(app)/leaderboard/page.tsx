@@ -30,14 +30,33 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
     .eq("period", period)
     .order("rank", { ascending: true })
     .limit(50);
+  let rows = entries ?? [];
+  let usingFallback = false;
 
-  const userIds = (entries ?? []).map((e) => e.user_id);
+  if (!rows.length) {
+    const { data: fallbackRows } = await firebase
+      .from("user_gamification")
+      .select("user_id,total_xp")
+      .order("total_xp", { ascending: false })
+      .limit(50);
+    if (fallbackRows?.length) {
+      rows = fallbackRows.map((row: any, index: number) => ({
+        user_id: String(row?.user_id ?? ""),
+        score: Number(row?.total_xp ?? 0),
+        rank: index + 1,
+        computed_at: null
+      }));
+      usingFallback = true;
+    }
+  }
+
+  const userIds = rows.map((e) => e.user_id);
   const { data: pubs } = userIds.length
     ? await firebase.from("profile_public").select("user_id,display_name,anonymous").in("user_id", userIds)
     : { data: [] as any[] };
   const byId = new Map((pubs ?? []).map((p) => [p.user_id, p]));
 
-  const mine = entries?.find((e) => e.user_id === user.id);
+  const mine = rows.find((e) => e.user_id === user.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
@@ -62,7 +81,11 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{displayPeriod(period)} top 50</CardTitle>
-          <CardDescription>Ranks update regularly based on completed objective questions.</CardDescription>
+          <CardDescription>
+            {usingFallback
+              ? "Showing all-time XP fallback because the scheduled leaderboard has not been computed yet."
+              : "Ranks update regularly based on completed objective questions."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {mine ? (
@@ -72,9 +95,9 @@ export default async function LeaderboardPage(props: { searchParams: Promise<{ p
             </div>
           ) : null}
           <Separator />
-          {entries?.length ? (
+          {rows.length ? (
             <div className="space-y-2">
-              {entries.map((e) => {
+              {rows.map((e) => {
                 const p = byId.get(e.user_id);
                 const name = p?.anonymous ? "Anonymous" : p?.display_name ?? `Learner-${e.user_id.slice(0, 6)}`;
                 return (

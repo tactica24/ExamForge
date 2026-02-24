@@ -1,7 +1,8 @@
 import { addDays, differenceInCalendarDays, formatISO, isValid, parseISO } from "date-fns";
 import type { Topic } from "@/lib/syllabi/fallback";
+import { parseTopicsPerDay } from "@/lib/plans/pace";
 
-export type Pace = "steady" | "intensive";
+export type Pace = "steady" | "intensive" | string;
 
 export type GeneratedPlanItem = {
   scheduled_for: string; // YYYY-MM-DD
@@ -18,7 +19,7 @@ export function generatePlanItemsFromTopics(args: {
   targetDate?: string | null; // YYYY-MM-DD
 }): GeneratedPlanItem[] {
   const { topics, pace, startDate, targetDate } = args;
-  const defaultPerDay = pace === "intensive" ? 2 : 1;
+  const defaultPerDay = parseTopicsPerDay(pace, 1);
   const start = parseISO(startDate);
   const target = targetDate ? parseISO(targetDate) : null;
   const hasValidWindow = Boolean(target && isValid(target) && isValid(start) && target >= start);

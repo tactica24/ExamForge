@@ -13,6 +13,7 @@ import { listActiveExams } from "@/lib/exams/list";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
 import { hasActiveProAccess } from "@/lib/billing/access";
+import { describePace } from "@/lib/plans/pace";
 
 export default async function DashboardPage() {
   const firebase = await createFirebaseServerClient();
@@ -101,6 +102,7 @@ export default async function DashboardPage() {
       : [];
 
   const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Learner");
+  const paceLabel = describePace(plan.pace);
   const avatarFallback =
     displayName
       .split(" ")
@@ -115,7 +117,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.mode === "group" ? "Group mode" : "Solo mode"} | {plan.pace} pace |{" "}
+            {plan.mode === "group" ? "Group mode" : "Solo mode"} | {paceLabel} |{" "}
             <span className="font-medium text-foreground">{todayStr}</span>
             {plan.target_date ? ` | Exam date ${plan.target_date}` : ""}
           </p>

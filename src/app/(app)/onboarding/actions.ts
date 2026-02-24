@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
@@ -8,6 +9,7 @@ import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { matchOrCreateGroup } from "@/lib/groups/match";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
 import { hasActiveProAccess } from "@/lib/billing/access";
+import { claimReferralForUser } from "@/lib/referrals/claim";
 
 const OnboardingSchema = z.object({
   name: z.string().min(2).max(60),
@@ -26,7 +28,7 @@ const OnboardingSchema = z.object({
   exam_slug: z.string().min(2),
   subject: z.string().min(2),
   mode: z.enum(["solo", "group"]),
-  pace: z.enum(["steady", "intensive"]),
+  pace: z.enum(["steady", "intensive", "topics_3", "topics_4", "topics_5"]),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   target_date: z
     .string()
@@ -188,6 +190,21 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       pace: parsed.data.pace,
       level: parsed.data.level,
       timezone: parsed.data.timezone
+    });
+  }
+
+  const cookieStore = await cookies();
+  const referralCode = cookieStore.get("ref_code")?.value ?? null;
+  if (referralCode) {
+    await claimReferralForUser({
+      firebase,
+      userId: user.id,
+      code: referralCode,
+      bonusDays: 3
+    }).catch(() => {});
+    cookieStore.set("ref_code", "", {
+      path: "/",
+      maxAge: 0
     });
   }
 
