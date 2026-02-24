@@ -1,6 +1,6 @@
 "use client";
 
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, getRedirectResult, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getFirebaseBrowserAuth, getFirebaseBrowserDb } from "@/lib/firebase/browser";
 
@@ -9,6 +9,59 @@ type GroupMessagePayload = {
 };
 
 type GroupMessageHandler = (payload: GroupMessagePayload) => void;
+const OAUTH_REDIRECT_TARGET_KEY = "oauth_redirect_target";
+
+function getFirebaseErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return "";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
+}
+
+function shouldFallbackToRedirect(error: unknown) {
+  const code = getFirebaseErrorCode(error);
+  return (
+    code === "auth/popup-blocked" ||
+    code === "auth/popup-closed-by-user" ||
+    code === "auth/cancelled-popup-request" ||
+    code === "auth/operation-not-supported-in-this-environment"
+  );
+}
+
+function formatOAuthError(error: unknown) {
+  const code = getFirebaseErrorCode(error);
+  const message = error instanceof Error ? error.message : "";
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled in Firebase Authentication.";
+  }
+  if (code === "auth/unauthorized-domain") {
+    return "This domain is not in Firebase authorized domains.";
+  }
+  if (code === "auth/popup-blocked") {
+    return "Popup was blocked. Retrying with redirect flow.";
+  }
+  if (code === "auth/popup-closed-by-user") {
+    return "Popup was closed before sign-in completed.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Network error while contacting Firebase.";
+  }
+  return message || "Google sign-in failed.";
+}
+
+async function establishSessionFromIdToken(idToken: string) {
+  const res = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken })
+  });
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    return { error: { message: payload?.message ?? "Failed to create session." } };
+  }
+
+  return { error: null as { message: string } | null };
+}
 
 class FirebaseRealtimeChannel {
   private handler: GroupMessageHandler | null = null;
@@ -68,35 +121,62 @@ export function createFirebaseBrowserClient() {
   return {
     auth: {
       async signInWithOAuth(args: { provider: "google"; options?: { redirectTo?: string } }) {
+        const auth = getFirebaseBrowserAuth();
+        const redirectTarget = args.options?.redirectTo || `${window.location.origin}/onboarding`;
+
         try {
           if (args.provider !== "google") {
             return { error: { message: "Only Google OAuth is currently supported." } };
           }
 
-          const auth = getFirebaseBrowserAuth();
           const provider = new GoogleAuthProvider();
           const cred = await signInWithPopup(auth, provider);
           const idToken = await cred.user.getIdToken();
+          const session = await establishSessionFromIdToken(idToken);
+          if (session.error) return session;
 
-          const res = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken })
-          });
-
-          if (!res.ok) {
-            const payload = await res.json().catch(() => null);
-            return { error: { message: payload?.message ?? "Failed to create session." } };
-          }
-
-          if (args.options?.redirectTo) {
-            window.location.assign(args.options.redirectTo);
+          if (redirectTarget) {
+            window.location.assign(redirectTarget);
           }
 
           return { error: null };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "OAuth failed.";
-          return { error: { message } };
+          if (shouldFallbackToRedirect(error)) {
+            try {
+              window.sessionStorage.setItem(OAUTH_REDIRECT_TARGET_KEY, redirectTarget);
+            } catch {
+              // ignore storage failures
+            }
+            const provider = new GoogleAuthProvider();
+            await signInWithRedirect(auth, provider);
+            return { error: null };
+          }
+
+          return { error: { message: formatOAuthError(error) } };
+        }
+      },
+      async completeOAuthRedirect() {
+        try {
+          const auth = getFirebaseBrowserAuth();
+          const cred = await getRedirectResult(auth);
+          if (!cred?.user) return { handled: false, error: null as { message: string } | null };
+
+          const idToken = await cred.user.getIdToken();
+          const session = await establishSessionFromIdToken(idToken);
+          if (session.error) return { handled: true, error: session.error };
+
+          let redirectTo = `${window.location.origin}/onboarding`;
+          try {
+            const stored = window.sessionStorage.getItem(OAUTH_REDIRECT_TARGET_KEY);
+            if (stored) redirectTo = stored;
+            window.sessionStorage.removeItem(OAUTH_REDIRECT_TARGET_KEY);
+          } catch {
+            // ignore storage failures
+          }
+
+          return { handled: true, redirectTo, error: null as { message: string } | null };
+        } catch (error) {
+          return { handled: true, error: { message: formatOAuthError(error) } };
         }
       }
     },

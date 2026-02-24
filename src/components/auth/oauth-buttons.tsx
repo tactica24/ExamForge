@@ -6,6 +6,29 @@ import { createFirebaseBrowserClient } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 
 export function OAuthButtons() {
+  React.useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const firebase = createFirebaseBrowserClient();
+      const result = await firebase.auth.completeOAuthRedirect();
+      if (!mounted || !result?.handled) return;
+
+      if (result.error) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      if (result.redirectTo) {
+        window.location.assign(result.redirectTo);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   async function start(provider: "google") {
     try {
       const firebase = createFirebaseBrowserClient();
@@ -18,7 +41,7 @@ export function OAuthButtons() {
       });
       if (error) throw error;
     } catch (e: any) {
-      toast.error(e?.message ?? "OAuth failed.");
+      toast.error(e?.message ?? "Google sign-in failed.");
     }
   }
 
