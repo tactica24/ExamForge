@@ -183,7 +183,7 @@ export async function createPlanTopicQuizAction(_: unknown, formData: FormData) 
       examName: exam?.name ?? "Exam",
       examSlug: exam?.slug ?? undefined,
       subject: ownedTopic.plan.subject,
-      topicPath: ownedTopic.item.topic_path || ownedTopic.item.title,
+      topicPath: ownedTopic.item.title || ownedTopic.item.topic_path,
       quizType: "extra",
       difficulty: "medium",
       questionCount: 10,

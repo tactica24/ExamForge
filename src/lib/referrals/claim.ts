@@ -21,6 +21,17 @@ function normalizePhone(value: string | null | undefined) {
   return phone || null;
 }
 
+function normalizeOwnerKind(value: unknown) {
+  return String(value ?? "").trim().toLowerCase() === "campaign" ? "campaign" : "user";
+}
+
+function normalizeCampaignId(value: unknown) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
 function isConflictMessage(value: unknown) {
   const message = String(value ?? "").toLowerCase();
   return message.includes("duplicate") || message.includes("already exists") || message.includes("unique");
@@ -127,14 +138,22 @@ export async function claimReferralForUser(args: {
 
   const { data: inviterCode } = await args.firebase
     .from("referral_codes")
-    .select("user_id,code")
+    .select("user_id,code,owner_kind,is_active,campaign_external_id")
     .eq("code", code)
     .maybeSingle();
   if (!inviterCode?.user_id) {
     return { applied: false as const, reason: "invalid_code" };
   }
 
-  if (inviterCode.user_id === args.userId) {
+  const ownerKind = normalizeOwnerKind((inviterCode as any).owner_kind);
+  const isActive = (inviterCode as any).is_active !== false;
+  const campaignExternalId = normalizeCampaignId((inviterCode as any).campaign_external_id) || null;
+
+  if (!isActive) {
+    return { applied: false as const, reason: "inactive_code" };
+  }
+
+  if (ownerKind === "user" && inviterCode.user_id === args.userId) {
     return { applied: false as const, reason: "self_referral" };
   }
 
@@ -160,7 +179,9 @@ export async function claimReferralForUser(args: {
   const { error: insertError } = await args.firebase.from("referrals").insert({
     inviter_user_id: inviterCode.user_id,
     invitee_user_id: args.userId,
-    code
+    code,
+    owner_kind: ownerKind,
+    campaign_external_id: campaignExternalId
   });
 
   if (insertError) {
@@ -170,21 +191,30 @@ export async function claimReferralForUser(args: {
     return { applied: false as const, reason: "insert_failed", message: insertError.message };
   }
 
-  await Promise.allSettled([
+  const rewardTasks = [
     extendProAccess({
       firebase: args.firebase,
       userId: args.userId,
       bonusDays
-    }),
-    extendProAccess({
-      firebase: args.firebase,
-      userId: inviterCode.user_id,
-      bonusDays
     })
-  ]);
+  ];
+
+  if (ownerKind === "user") {
+    rewardTasks.push(
+      extendProAccess({
+        firebase: args.firebase,
+        userId: inviterCode.user_id,
+        bonusDays
+      })
+    );
+  }
+
+  await Promise.allSettled(rewardTasks);
 
   return {
     applied: true as const,
-    inviterUserId: inviterCode.user_id
+    inviterUserId: ownerKind === "user" ? inviterCode.user_id : null,
+    ownerKind,
+    campaignExternalId
   };
 }

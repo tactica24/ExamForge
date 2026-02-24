@@ -21,6 +21,9 @@ export async function GET() {
   // Try a few times in case of rare collisions.
   for (let i = 0; i < 5; i++) {
     const code = makeCode();
+    const { data: conflict } = await firebase.from("referral_codes").select("code").eq("code", code).maybeSingle();
+    if (conflict?.code) continue;
+
     const { error } = await firebase.from("referral_codes").insert({ user_id: user.id, code });
     if (!error) return NextResponse.json({ ok: true, code });
   }

@@ -198,11 +198,13 @@ export function buildStudyAssetCacheKey(args: {
   topicTitle: string;
   preferredLanguage: string | null | undefined;
 }) {
-  const topicKey = normalizeKeyPart(args.topicPath) || normalizeKeyPart(args.topicTitle) || "topic";
+  const pathKey = normalizeKeyPart(args.topicPath) || "topic";
+  const titleKey = normalizeKeyPart(args.topicTitle) || "topic";
   return [
     normalizeKeyPart(args.examId),
     normalizeKeyPart(args.subject),
-    topicKey,
+    `path:${pathKey}`,
+    `title:${titleKey}`,
     normalizeKeyPart(args.preferredLanguage || "en")
   ]
     .filter(Boolean)
@@ -248,7 +250,10 @@ async function upsertSharedStudyAsset(args: {
       subject: args.subject,
       topic_path: args.topicPath,
       topic_title: args.topicTitle,
-      topic_key: normalizeKeyPart(args.topicPath) || normalizeKeyPart(args.topicTitle) || "topic",
+      topic_key: [
+        normalizeKeyPart(args.topicPath) || "topic",
+        normalizeKeyPart(args.topicTitle) || "topic"
+      ].join("::"),
       preferred_language: args.preferredLanguage,
       lesson: args.lesson,
       assets: {

@@ -115,55 +115,70 @@ function fallbackLesson(args: {
   const subtopics = Array.isArray(args.subtopics)
     ? args.subtopics.map((item) => normalizeText(item, 100)).filter(Boolean).slice(0, 8)
     : [];
-  const focusLine = args.subtopics?.length
-    ? `Focus areas: ${args.subtopics.slice(0, 4).join(", ")}.`
-    : `Focus on definitions, application patterns, and exam traps in ${title}.`;
+  const activeFocus = subtopics.slice(0, 2);
+  const focusLine = activeFocus.length
+    ? `Today we focus deeply on ${activeFocus.join(" and ")} within ${title}.`
+    : `Today we focus deeply on the core building blocks of ${title}.`;
+
+  const focusBreakdown = activeFocus.flatMap((subtopic, index) => [
+    {
+      heading: `${index + 1}) ${subtopic}: meaning and intuition`,
+      explanation: `${subtopic} is a foundational part of ${title} in ${subject}. Start by defining it in plain language, then restate the rule as you would explain it to a classmate. For objective questions, exam setters often hide this idea in unfamiliar wording, so train yourself to map question language back to the core definition before touching options. Build intuition by asking what changes and what stays constant when you apply the rule in different examples.`
+    },
+    {
+      heading: `${index + 1}) ${subtopic}: exam application steps`,
+      explanation: `Use a repeatable step-by-step approach for ${subtopic}: identify the tested rule, translate values or terms correctly, run the operation, and verify units/conditions. Under time pressure, most mistakes come from skipping one of these steps, not from difficult arithmetic or vocabulary. Practice one timed mini-set where you say each step out loud, then review where your reasoning broke. This method turns ${subtopic} from memorization into a dependable exam process.`
+    }
+  ]);
 
   return {
-    overview: `${title} is a key part of ${subject}. ${focusLine} Build speed by identifying the rule each question is testing before selecting an option.`,
+    overview: `${title} is a high-impact area in ${subject}. ${focusLine} The goal is not to skim definitions, but to master how each idea behaves in real exam stems, including traps that look correct at first glance. Move from concept -> method -> timed practice -> error review. If you can explain the logic behind each step without looking at notes, your retention and speed both increase.`,
     breakdown: [
       {
-        heading: "1) What this topic means",
-        explanation: `${title} covers the core language and structure rules exam setters repeatedly test. Your first goal is to recognize the concept being tested in each question stem.`
+        heading: "Topic map and why this matters",
+        explanation: `Before solving questions, map the lesson into small parts: definition, rule, worked example, and common trap. This prevents overload and helps you connect each subtopic to the exact style of objective question where it appears. In exam prep, breadth without depth causes repeated errors, so focus on mastery of a narrow set per session. Your aim is to understand why an option is right or wrong, not just memorize final answers.`
       },
+      ...focusBreakdown,
       {
-        heading: "2) Core rules to master",
-        explanation: `List the high-frequency rules, then attach one simple example to each rule. During revision, explain each rule in your own words and check that your explanation still gives the correct answer.`
-      },
-      {
-        heading: "3) How it appears in objective questions",
-        explanation: `Questions often hide the tested rule with distractors that are close to correct. Compare every option against the same rule, not against your first impression.`
-      },
-      {
-        heading: "4) Exam strategy for speed and accuracy",
-        explanation: `Use a two-pass method: answer direct questions first, then return to tricky items. Eliminate clearly wrong choices early so you can focus on the strongest two options.`
+        heading: "Integration and exam strategy",
+        explanation: `After studying each focus subtopic, combine them in mixed questions and watch how setters blend concepts in one stem. Use elimination only after you test options against the governing rule. For difficult items, mark and return after quick wins, then solve with a strict checklist to avoid careless misses. End the session by summarizing one rule you mastered and one trap you will avoid next time.`
       }
     ],
     examples: [
       {
-        question: `Example: In a ${subject} objective item on ${title}, two options look correct. How do you decide quickly?`,
+        question: `Example 1: In a ${subject} question on ${title}, two options look correct. What should you do first?`,
         walkthrough:
-          "Identify the exact rule being tested, then test each remaining option against that rule step-by-step. Reject any option that breaks the rule even once.",
+          "Identify the exact rule being tested, then test each remaining option against that rule step-by-step. Rewrite key values/terms from the stem, apply the rule carefully, and reject any option that breaks the rule even once.",
         answer: "Choose the option that stays fully consistent with the tested rule."
       },
       {
-        question: `Example: You keep missing ${title} questions under time pressure. What should you change?`,
+        question: `Example 2: You keep missing ${title} questions under time pressure. What should you change?`,
         walkthrough:
-          "Create a short checklist for this topic and apply it to every question. Practice timed sets and review only the rule-based reason for each mistake.",
+          "Create a short checklist for this topic and apply it to every question: identify rule, execute method, verify constraints, then select. Practice timed sets and review only the rule-based reason for each mistake.",
         answer: "Use a fixed checklist and timed review loop for this topic."
+      },
+      {
+        question: `Example 3: A question combines two subtopics from ${title}. How do you avoid confusion?`,
+        walkthrough:
+          "Split the problem into parts and label which rule belongs to each subtopic. Solve the first part fully before moving to the second, then recombine results and verify that the final option satisfies both rules.",
+        answer: "Decompose the question and apply one subtopic rule at a time."
       }
     ],
     common_mistakes: [
       "Picking the first option that sounds familiar without testing the rule.",
       "Confusing related concepts because definitions were memorized without examples.",
+      "Combining multiple subtopics mentally without writing intermediate steps.",
       "Rushing difficult items instead of skipping and returning with fresh attention.",
-      "Ignoring why wrong options are wrong, which causes repeated errors."
+      "Ignoring why wrong options are wrong, which causes repeated errors.",
+      "Reviewing score only, without tracking the exact reasoning mistake."
     ],
     recap: [
       `Define ${title} clearly in one sentence before solving questions.`,
       "Match each question to a rule before reading options deeply.",
+      "If multiple subtopics appear, solve one rule-layer at a time.",
       "Eliminate weak options early and compare the final two carefully.",
-      "After each practice set, log one rule you got wrong and one fix."
+      "After each practice set, log one rule you got wrong and one fix.",
+      "Reattempt missed questions 24 hours later without checking notes first."
     ],
     visual_aids: fallbackVisualAids({ subject, title, subtopics }),
     generated_at: new Date().toISOString(),
@@ -189,12 +204,15 @@ export async function generatePlanLesson(args: {
   const language = languageInstruction(args.preferredLanguage);
   const requiresRichVisuals = subjectNeedsCharts(args.subject, title);
   const system = [
-    "You are an exam tutor creating deep study notes before a topic quiz.",
+    "You are an expert tutor creating deep study notes before a topic quiz.",
     "Return valid JSON only.",
     "Use this shape exactly:",
     '{"lesson":{"overview":"string","breakdown":[{"heading":"string","explanation":"string"}],"examples":[{"question":"string","walkthrough":"string","answer":"string"}],"common_mistakes":["string"],"recap":["string"],"visual_aids":[{"kind":"diagram|graph|illustration","title":"string","explanation":"string","alt_text":"string","prompt":"string","bullets":["string"],"points":[{"label":"string","value":42}]}]}}',
-    "Keep explanations practical and exam-focused.",
-    "Use clear, direct language with concrete examples.",
+    "Teach for comprehension, not speed-writing. Explanations must be elaborate, practical, and exam-focused.",
+    "Each breakdown explanation should be detailed enough to feel like a mini-lesson, not a short note.",
+    subtopics.length
+      ? `Primary focus subtopics for this session: ${subtopics.join(", ")}. Give dedicated breakdown coverage to each.`
+      : "If subtopics are missing, infer likely subtopic blocks and teach them clearly.",
     requiresRichVisuals
       ? "This topic is visual-heavy. Include at least 2 visual_aids with at least 1 graph."
       : "Include at least 1 useful visual_aid. Use graph only when it improves understanding.",
@@ -210,14 +228,15 @@ export async function generatePlanLesson(args: {
     topic_path: args.topicPath,
     subtopics,
     constraints: [
-      "overview: 3-5 sentences",
-      "breakdown: 4-6 sections with precise headings",
-      "examples: exactly 2 worked examples",
-      "common_mistakes: 4-6 points",
-      "recap: 4-6 action points",
+      "overview: 5-7 sentences with context, importance, and learning outcome",
+      "breakdown: 5-8 sections with precise headings; each explanation should be 4-7 sentences",
+      "examples: exactly 3 worked examples with clear step-by-step walkthroughs",
+      "common_mistakes: 5-8 points",
+      "recap: 6-8 action points",
       requiresRichVisuals
         ? "visual_aids: 2-3 entries, one must be graph with 3-6 points"
         : "visual_aids: 1-2 entries with concise bullets",
+      "Avoid one-line explanations. Be explicit, instructional, and exam-useful.",
       "No markdown in JSON values"
     ]
   };
@@ -226,7 +245,7 @@ export async function generatePlanLesson(args: {
     system,
     user: `Create topic lesson JSON:\n${JSON.stringify(request)}`,
     temperature: 0.45,
-    maxTokens: 1500,
+    maxTokens: 2400,
     validate: (parsed) => {
       const lesson = normalizeLessonDraft(parsed?.lesson ?? parsed);
       if (!lesson) return null;

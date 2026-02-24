@@ -23,7 +23,8 @@ function shouldFallbackToRedirect(error: unknown) {
     code === "auth/popup-blocked" ||
     code === "auth/popup-closed-by-user" ||
     code === "auth/cancelled-popup-request" ||
-    code === "auth/operation-not-supported-in-this-environment"
+    code === "auth/operation-not-supported-in-this-environment" ||
+    code === "auth/internal-error"
   );
 }
 
@@ -44,6 +45,9 @@ function formatOAuthError(error: unknown) {
   }
   if (code === "auth/network-request-failed") {
     return "Network error while contacting Firebase.";
+  }
+  if (code === "auth/internal-error") {
+    return "Google sign-in returned an internal Firebase error. Check Firebase OAuth client settings and authorized domains.";
   }
   return message || "Google sign-in failed.";
 }

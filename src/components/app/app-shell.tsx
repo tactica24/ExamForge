@@ -13,6 +13,7 @@ export function AppShell(props: {
         { href: "/admin", label: "Overview" },
         { href: "/admin/exams", label: "Exams" },
         { href: "/admin/users", label: "Users" },
+        { href: "/admin/referrals", label: "Referrals" },
         { href: "/admin/ops", label: "Ops" }
       ]
     : [
