@@ -1,7 +1,7 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
-import googleTTS from "google-tts-api";
+import { getAllAudioUrls } from "google-tts-api";
 import PptxGenJS from "pptxgenjs";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
@@ -34,13 +34,11 @@ async function makeAudioBuffer(args: { text: string; language: string }) {
   const text = String(args.text ?? "").replace(/\s+/g, " ").trim().slice(0, 5400);
   if (!text) return null;
 
-  const chunks = googleTTS
-    .getAllAudioUrls(text, {
-      lang: args.language,
-      slow: false,
-      host: "https://translate.google.com"
-    })
-    .slice(0, 35);
+  const chunks = getAllAudioUrls(text, {
+    lang: args.language,
+    slow: false,
+    host: "https://translate.google.com"
+  }).slice(0, 35);
 
   if (!chunks.length) return null;
 

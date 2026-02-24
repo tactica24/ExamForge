@@ -104,7 +104,7 @@ export async function createCampaignReferralCodeAction(_: unknown, formData: For
 
   const manualCodeRaw = String(parsed.data.code ?? "").trim();
   const requestedCode = manualCodeRaw ? normalizeCode(manualCodeRaw) : null;
-  if (manualCodeRaw && requestedCode.length < 6) {
+  if (requestedCode && requestedCode.length < 6) {
     return { ok: false, message: "Custom code must be at least 6 characters after cleanup." };
   }
 
