@@ -38,10 +38,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install app deps for APK build
-        run: |
-          npm install --omit=dev
-          npm run mobile:android:prepare
+      - name: Install Capacitor toolchain only
+        run: npm run mobile:android:prepare
 
       - name: Resolve mobile app URL
         id: app_url
