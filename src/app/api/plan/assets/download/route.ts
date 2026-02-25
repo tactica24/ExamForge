@@ -1,11 +1,12 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
-import { getAllAudioUrls } from "google-tts-api";
 import PptxGenJS from "pptxgenjs";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getPlanItemLessonAssets } from "@/lib/plans/content";
+import { buildRateLimitKeyFromRequest } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -30,21 +31,64 @@ function mapLanguageForTts(value: string | null | undefined) {
   return "en";
 }
 
+const GOOGLE_TTS_CHUNK_MAX = 180;
+
+function splitTextForTts(text: string, maxLen = GOOGLE_TTS_CHUNK_MAX) {
+  const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+
+  const words = normalized.split(" ");
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if (!word) continue;
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= maxLen) {
+      current = next;
+      continue;
+    }
+
+    if (current) chunks.push(current);
+    if (word.length <= maxLen) {
+      current = word;
+      continue;
+    }
+
+    let offset = 0;
+    while (offset < word.length) {
+      const piece = word.slice(offset, offset + maxLen);
+      if (piece) chunks.push(piece);
+      offset += maxLen;
+    }
+    current = "";
+  }
+
+  if (current) chunks.push(current);
+  return chunks.slice(0, 35);
+}
+
+function buildGoogleTtsUrl(args: { text: string; language: string }) {
+  const params = new URLSearchParams({
+    ie: "UTF-8",
+    client: "tw-ob",
+    tl: args.language,
+    q: args.text
+  });
+  return `https://translate.google.com/translate_tts?${params.toString()}`;
+}
+
 async function makeAudioBuffer(args: { text: string; language: string }) {
   const text = String(args.text ?? "").replace(/\s+/g, " ").trim().slice(0, 5400);
   if (!text) return null;
 
-  const chunks = getAllAudioUrls(text, {
-    lang: args.language,
-    slow: false,
-    host: "https://translate.google.com"
-  }).slice(0, 35);
+  const chunks = splitTextForTts(text);
 
   if (!chunks.length) return null;
 
   const buffers: Buffer[] = [];
   for (const chunk of chunks) {
-    const res = await fetch(chunk.url, {
+    const res = await fetch(buildGoogleTtsUrl({ text: chunk, language: args.language }), {
       cache: "no-store",
       headers: {
         "User-Agent": "Mozilla/5.0"
@@ -224,6 +268,18 @@ async function makePptBuffer(args: {
 }
 
 export async function GET(req: Request) {
+  const rate = await takeRateLimit({
+    key: buildRateLimitKeyFromRequest("api:plan:assets:download", req),
+    windowMs: 15 * 60 * 1000,
+    max: 40
+  });
+  if (!rate.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Too many asset download attempts. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    );
+  }
+
   const url = new URL(req.url);
   const parsed = QuerySchema.safeParse({
     item_id: url.searchParams.get("item_id"),

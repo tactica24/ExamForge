@@ -37,10 +37,13 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
 
   const { data: quiz, error: quizErr } = await firebase
     .from("quizzes")
-    .select("id,exam_id,subject,topic_path,quiz_type,meta")
+    .select("id,created_by,exam_id,subject,topic_path,quiz_type,meta")
     .eq("id", args.quizId)
     .maybeSingle();
   if (quizErr || !quiz) return { ok: false as const, message: quizErr?.message ?? "Quiz not found." };
+  if (String(quiz.created_by ?? "") !== args.userId) {
+    return { ok: false as const, message: "Quiz not found." };
+  }
 
   const { data: qs, error: qErr } = await firebase
     .from("quiz_questions")
@@ -67,11 +70,22 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   if (planItemId) {
     const { data: planItem } = await firebase
       .from("plan_items")
-      .select("id,status,resource_links")
+      .select("id,plan_id,status,resource_links")
       .eq("id", planItemId)
       .maybeSingle();
 
     if (planItem?.id) {
+      const { data: ownedPlan } = await firebase
+        .from("user_plans")
+        .select("id")
+        .eq("id", planItem.plan_id)
+        .eq("user_id", args.userId)
+        .maybeSingle();
+
+      if (!ownedPlan) {
+        return { ok: false as const, message: "Quiz not found." };
+      }
+
       const progress = getPlanItemProgress(planItem.resource_links);
       const nextProgress = {
         quiz: {

@@ -11,6 +11,20 @@ type GroupMessagePayload = {
 type GroupMessageHandler = (payload: GroupMessagePayload) => void;
 const OAUTH_REDIRECT_TARGET_KEY = "oauth_redirect_target";
 
+function toSafeRedirectTarget(raw: string | undefined, fallback: string) {
+  try {
+    const candidate = String(raw ?? "").trim();
+    if (!candidate) return fallback;
+
+    const parsed = new URL(candidate, window.location.origin);
+    if (parsed.origin !== window.location.origin) return fallback;
+    if (!parsed.pathname.startsWith("/")) return fallback;
+    return `${parsed.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
 function getFirebaseErrorCode(error: unknown) {
   if (!error || typeof error !== "object") return "";
   const code = (error as { code?: unknown }).code;
@@ -126,7 +140,8 @@ export function createFirebaseBrowserClient() {
     auth: {
       async signInWithOAuth(args: { provider: "google"; options?: { redirectTo?: string } }) {
         const auth = getFirebaseBrowserAuth();
-        const redirectTarget = args.options?.redirectTo || `${window.location.origin}/onboarding`;
+        const fallbackTarget = `${window.location.origin}/onboarding`;
+        const redirectTarget = toSafeRedirectTarget(args.options?.redirectTo, fallbackTarget);
 
         try {
           if (args.provider !== "google") {
@@ -169,10 +184,11 @@ export function createFirebaseBrowserClient() {
           const session = await establishSessionFromIdToken(idToken);
           if (session.error) return { handled: true, error: session.error };
 
-          let redirectTo = `${window.location.origin}/onboarding`;
+          const fallbackTarget = `${window.location.origin}/onboarding`;
+          let redirectTo = fallbackTarget;
           try {
             const stored = window.sessionStorage.getItem(OAUTH_REDIRECT_TARGET_KEY);
-            if (stored) redirectTo = stored;
+            if (stored) redirectTo = toSafeRedirectTarget(stored, fallbackTarget);
             window.sessionStorage.removeItem(OAUTH_REDIRECT_TARGET_KEY);
           } catch {
             // ignore storage failures

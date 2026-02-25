@@ -69,6 +69,7 @@ const HAS_UPDATED_AT = new Set([
 
 type InternalRow = Record<string, any> & { __docId: string };
 const FIRESTORE_IN_MAX_VALUES = 30;
+const ALLOW_IN_MEMORY_FIRESTORE_FALLBACK = process.env.ALLOW_FIRESTORE_IN_MEMORY_FALLBACK === "1";
 
 function asError(error: unknown): DbError {
   return { message: error instanceof Error ? error.message : "firebase_query_failed" };
@@ -291,7 +292,9 @@ async function loadRowsWithQuery(
 
     const snapshot = await query.get();
     return mapSnapshotToRows(snapshot, table);
-  } catch {
+  } catch (error) {
+    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
+
     const snapshot = await db.collection(table).get();
     let rows = mapSnapshotToRows(snapshot, table);
     rows = applyInMemoryFilters(rows, filters);
@@ -309,8 +312,8 @@ async function countRowsWithFilters(db: Firestore | null, table: string, filters
     const aggregate = await (query as any).count().get();
     const count = Number(aggregate?.data()?.count ?? 0);
     if (Number.isFinite(count)) return count;
-  } catch {
-    // fall through
+  } catch (error) {
+    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
   }
 
   const snapshot = await db.collection(table).get();
@@ -359,8 +362,8 @@ async function resolveDocIdByConflict(
 
     const snapshot = await query.limit(1).get();
     if (!snapshot.empty) return snapshot.docs[0].id;
-  } catch {
-    // fall through to in-memory fallback
+  } catch (error) {
+    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
   }
 
   const rows = await loadRows(db, table);

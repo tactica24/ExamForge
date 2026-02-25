@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
+import { takeRateLimit } from "@/lib/security/rate-limit";
 
 type ContactPayload = {
   name?: string;
@@ -8,30 +11,52 @@ type ContactPayload = {
   message?: string;
 };
 
+const ContactSchema = z.object({
+  name: z.string().trim().max(120).optional(),
+  email: z.string().trim().email().max(254),
+  topic: z.string().trim().max(120).optional(),
+  message: z.string().trim().min(10).max(2000)
+});
+
 export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request.headers)) {
+    return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
+  }
+
+  const rate = await takeRateLimit({
+    key: buildRateLimitKeyFromRequest("api:marketing:contact", request),
+    windowMs: 60 * 60 * 1000,
+    max: 20
+  });
+  if (!rate.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Too many contact submissions. Please retry later." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    );
+  }
+
   try {
     const payload = (await request.json()) as ContactPayload;
-    const message = String(payload.message ?? "").trim();
-    const name = String(payload.name ?? "").trim();
-    const email = String(payload.email ?? "").trim();
-    const topic = String(payload.topic ?? "").trim();
-
-    if (!message || !email) {
-      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    const parsed = ContactSchema.safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, message: "Invalid payload." }, { status: 400 });
     }
 
     const db = createFirebaseAdminClient();
-    await db.from("contact_requests").insert({
-      name: name || null,
-      email,
-      topic: topic || null,
-      message,
+    const { error } = await db.from("contact_requests").insert({
+      name: parsed.data.name || null,
+      email: parsed.data.email,
+      topic: parsed.data.topic || null,
+      message: parsed.data.message,
       source: "homepage",
       status: "new"
     });
+    if (error) {
+      return NextResponse.json({ ok: false, message: "Unable to submit request right now." }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "contact_failed" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, message: "Unable to submit request right now." }, { status: 500 });
   }
 }

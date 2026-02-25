@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { submitQuiz } from "@/lib/quizzes/submit";
 
 const SubmitSchema = z.object({
   quiz_id: z.string().uuid(),
@@ -13,9 +14,18 @@ const SubmitSchema = z.object({
 
 export async function submitQuizAction(_: unknown, formData: FormData) {
   const rawAnswers = formData.get("answers");
+  let parsedAnswers: unknown[] = [];
+  if (typeof rawAnswers === "string") {
+    try {
+      parsedAnswers = JSON.parse(rawAnswers);
+    } catch {
+      parsedAnswers = [];
+    }
+  }
+
   const parsed = SubmitSchema.safeParse({
     quiz_id: formData.get("quiz_id"),
-    answers: typeof rawAnswers === "string" ? JSON.parse(rawAnswers) : []
+    answers: parsedAnswers
   });
   if (!parsed.success) return { ok: false, message: "Invalid submission." };
 
@@ -25,26 +35,13 @@ export async function submitQuizAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: qs, error: qErr } = await firebase
-    .from("quiz_questions")
-    .select("correct_index")
-    .eq("quiz_id", parsed.data.quiz_id)
-    .order("id", { ascending: true });
-  if (qErr) return { ok: false, message: qErr.message };
-
-  const correct = (qs ?? []).map((q) => q.correct_index);
-  const total = correct.length;
-  const score = correct.reduce((acc, ci, idx) => acc + (parsed.data.answers[idx] === ci ? 1 : 0), 0);
-
-  const { error } = await firebase.from("user_quiz_results").insert({
-    user_id: user.id,
-    quiz_id: parsed.data.quiz_id,
-    score,
-    total,
+  const result = await submitQuiz({
+    userId: user.id,
+    quizId: parsed.data.quiz_id,
     answers: parsed.data.answers
   });
-  if (error) return { ok: false, message: error.message };
 
-  return { ok: true, score, total };
+  if (!result.ok) return result;
+  return { ok: true, score: result.score, total: result.total };
 }
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { setFirebaseSessionCookie } from "@/lib/firebase/session";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
+import { establishTrackedSessionFromIdToken } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -43,8 +42,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const cookieStore = await cookies();
-    await setFirebaseSessionCookie(cookieStore, idToken);
+    const established = await establishTrackedSessionFromIdToken({
+      idToken,
+      userId: decoded.uid,
+      email: decoded.email ?? null
+    });
+
+    if (!established.ok) {
+      return NextResponse.json({ ok: false, message: established.message }, { status: 403 });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create session.";

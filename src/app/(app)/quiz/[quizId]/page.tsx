@@ -10,7 +10,12 @@ export default async function QuizPage(props: { params: Promise<{ quizId: string
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await firebase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
+  const { data: quiz } = await firebase
+    .from("quizzes")
+    .select("*")
+    .eq("id", quizId)
+    .eq("created_by", user.id)
+    .maybeSingle();
   if (!quiz) redirect("/dashboard");
 
   const { data: questions } = await firebase

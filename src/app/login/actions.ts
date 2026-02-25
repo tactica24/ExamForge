@@ -12,6 +12,20 @@ const LoginSchema = z.object({
   password: z.string().min(8)
 });
 
+function sanitizeNextPath(input: string) {
+  const next = String(input ?? "").trim();
+  if (!next.startsWith("/")) return null;
+  if (next.startsWith("//")) return null;
+  if (next.includes("\\") || next.includes("\r") || next.includes("\n")) return null;
+
+  try {
+    const parsed = new URL(next, "http://localhost");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function loginAction(_: unknown, formData: FormData) {
   const headerStore = await headers();
   if (!hasTrustedOrigin(headerStore)) {
@@ -51,8 +65,8 @@ export async function loginAction(_: unknown, formData: FormData) {
     return { ok: false, message: error.message };
   }
 
-  const next = String(formData.get("next") ?? "").trim();
-  if (next.startsWith("/")) {
+  const next = sanitizeNextPath(String(formData.get("next") ?? ""));
+  if (next) {
     redirect(next);
   }
 

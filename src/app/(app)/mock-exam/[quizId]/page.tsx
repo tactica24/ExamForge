@@ -10,7 +10,12 @@ export default async function MockExamRunPage(props: { params: Promise<{ quizId:
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await firebase.from("quizzes").select("*").eq("id", quizId).maybeSingle();
+  const { data: quiz } = await firebase
+    .from("quizzes")
+    .select("*")
+    .eq("id", quizId)
+    .eq("created_by", user.id)
+    .maybeSingle();
   if (!quiz) redirect("/mock-exam");
 
   const durationSec = Number((quiz.meta as any)?.duration_sec ?? 3600);

@@ -33,6 +33,13 @@ type AuthPayload = {
   phone: string | null;
 };
 
+type SessionInitResult =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+    };
+
 type AuthSessionRow = {
   id: string;
   user_id: string;
@@ -375,6 +382,40 @@ async function sendVerificationEmail(idToken: string) {
       idToken
     });
   }
+}
+
+export async function establishTrackedSessionFromIdToken(args: {
+  idToken: string;
+  userId: string;
+  email: string | null;
+}): Promise<SessionInitResult> {
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const dataClient = createFirebaseDataClient(getFirebaseAdminDb());
+
+  try {
+    await setFirebaseSessionCookie(cookieStore, args.idToken);
+  } catch {
+    return {
+      ok: false,
+      message: "Unable to establish login session."
+    };
+  }
+
+  const tracked = await registerOrReuseSession({
+    dataClient,
+    cookieStore,
+    headerStore,
+    userId: args.userId,
+    email: args.email
+  });
+
+  if (!tracked.ok) {
+    clearSessionCookies(cookieStore);
+    return tracked;
+  }
+
+  return { ok: true };
 }
 
 export async function createFirebaseServerClient() {

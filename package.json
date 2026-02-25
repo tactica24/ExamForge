@@ -49,7 +49,6 @@
     "date-fns": "^4.1.0",
     "firebase": "^11.0.2",
     "firebase-admin": "^13.0.1",
-    "google-tts-api": "^2.0.2",
     "lucide-react": "^0.476.0",
     "next": "^15.1.0",
     "next-themes": "^0.4.4",
