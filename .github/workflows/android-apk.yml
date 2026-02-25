@@ -39,7 +39,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Capacitor toolchain only
-        run: npm run mobile:android:prepare
+        run: npm install --no-save @capacitor/cli@8 @capacitor/core@8 @capacitor/android@8
 
       - name: Resolve mobile app URL
         id: app_url
@@ -92,7 +92,11 @@ jobs:
       - name: Generate Android assets
         run: |
           if [ -f assets/logo.png ] || [ -f assets/logo.jpg ] || [ -f assets/logo.jpeg ] || [ -f assets/logo.svg ] || [ -f assets/icon.png ] || [ -f assets/icon.svg ]; then
-            npx @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#0a0f2c' --splashBackgroundColor '#0a0f2c'
+            if [ -d node_modules/@capacitor/assets ]; then
+              npx --no-install @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#0a0f2c' --splashBackgroundColor '#0a0f2c'
+            else
+              echo "Skipping asset generation: @capacitor/assets is unavailable in this registry policy."
+            fi
           else
             echo "No icon file found in assets/. Using default Capacitor icon."
           fi
