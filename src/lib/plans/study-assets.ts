@@ -15,6 +15,7 @@ import type { createFirebaseServerClient } from "@/lib/firebase/server";
 type FirebaseServerClient = Awaited<ReturnType<typeof createFirebaseServerClient>>;
 
 const STUDY_ASSET_CACHE_TABLE = "study_assets_cache";
+const STUDY_ASSET_CONTENT_VERSION = "study-lesson-v2";
 
 type SharedStudyAsset = {
   cacheKey: string;
@@ -205,7 +206,8 @@ export function buildStudyAssetCacheKey(args: {
     normalizeKeyPart(args.subject),
     `path:${pathKey}`,
     `title:${titleKey}`,
-    normalizeKeyPart(args.preferredLanguage || "en")
+    normalizeKeyPart(args.preferredLanguage || "en"),
+    STUDY_ASSET_CONTENT_VERSION
   ]
     .filter(Boolean)
     .join("|");

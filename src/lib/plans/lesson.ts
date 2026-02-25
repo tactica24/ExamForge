@@ -41,11 +41,77 @@ function normalizeLessonDraft(value: unknown): LessonDraft | null {
   };
 }
 
-function subjectNeedsCharts(subject: string, topic: string) {
+type VisualPolicy = {
+  allowGraph: boolean;
+  preferDiagram: boolean;
+  requiresVisualAid: boolean;
+  maxVisualAids: number;
+};
+
+function getVisualPolicy(subject: string, topic: string): VisualPolicy {
+  const subjectKey = normalizeText(subject, 120).toLowerCase();
   const key = `${subject} ${topic}`.toLowerCase();
-  return /(math|mathematics|further|physics|chemistry|economics|statistics|quantitative|gmat|accounting|finance)/i.test(
+
+  const graphSubject =
+    /(math|mathematics|further|physics|chemistry|economics|statistics|quantitative|gmat|accounting|finance|geography)/i.test(
+      subjectKey
+    );
+  const graphTopic = /(graph|chart|table|trend|data|rate|ratio|probability|distribution|coordinate|demand|supply|motion)/i.test(
     key
   );
+
+  const diagramSubject =
+    /(biology|agric|agriculture|animal husbandry|crop production|chemistry|physics|geography|basic science|health science|anatomy|technical drawing|home economics|food and nutrition)/i.test(
+      subjectKey
+    );
+  const diagramTopic =
+    /(diagram|label|structure|heart|cell|organ|tissue|circuit|apparatus|map|soil profile|seed|seedling|life cycle|anatomy|digestive|respiratory|skeletal|reproductive|plant|flower)/i.test(
+      key
+    );
+
+  const languageHeavy = /(english|language|literature|government|history|civic|crk|irs|commerce|marketing|book-keeping|bookkeeping)/i.test(
+    subjectKey
+  );
+  const textOnlyTopic = /(noun|pronoun|verb|adjective|adverb|concord|tense|direct and indirect speech|speech|comprehension|summary|lexis|structure)/i.test(
+    key
+  );
+
+  const blockVisuals = languageHeavy && textOnlyTopic && !diagramTopic && !graphTopic;
+  const allowGraph = (graphSubject || graphTopic) && !blockVisuals;
+  const preferDiagram = (diagramSubject || diagramTopic) && !blockVisuals;
+  const requiresVisualAid = (allowGraph || preferDiagram) && !blockVisuals;
+
+  return {
+    allowGraph,
+    preferDiagram,
+    requiresVisualAid,
+    maxVisualAids: blockVisuals ? 0 : allowGraph ? 2 : preferDiagram ? 2 : 1
+  };
+}
+
+function visualSystemInstruction(policy: VisualPolicy) {
+  if (!policy.requiresVisualAid) {
+    return "Visual policy: for text-heavy topics (for example English grammar, nouns, or direct/indirect speech), set visual_aids to an empty array. Do not include charts/graphs.";
+  }
+
+  if (policy.allowGraph && policy.preferDiagram) {
+    return "Visual policy: include 1-2 visual_aids. Use at most one graph only for numeric/trend relationships, and include at least one labeled diagram or illustration.";
+  }
+
+  if (policy.allowGraph) {
+    return "Visual policy: include 1-2 visual_aids. Use a graph only when numeric relationships are central; otherwise use diagram/illustration.";
+  }
+
+  return "Visual policy: include 1-2 visual_aids as diagram/illustration with clear labels. Do not include graph.";
+}
+
+function visualConstraint(policy: VisualPolicy) {
+  if (!policy.requiresVisualAid) return "visual_aids: []";
+  if (policy.allowGraph && policy.preferDiagram) {
+    return "visual_aids: 1-2 entries, max one graph (3-6 points) plus at least one labeled diagram/illustration";
+  }
+  if (policy.allowGraph) return "visual_aids: 1-2 entries; graph optional (3-6 points) only when needed";
+  return "visual_aids: 1-2 entries, diagram/illustration only (points should be empty)";
 }
 
 function fallbackVisualAids(args: {
@@ -53,55 +119,106 @@ function fallbackVisualAids(args: {
   title: string;
   subtopics: string[];
 }): PlanVisualAid[] {
-  const visualAids: PlanVisualAid[] = [
-    {
+  const policy = getVisualPolicy(args.subject, args.title);
+  if (!policy.requiresVisualAid) return [];
+
+  const visualAids: PlanVisualAid[] = [];
+
+  if (policy.preferDiagram) {
+    visualAids.push({
       kind: "diagram",
-      title: `${args.title} concept flow`,
-      explanation: `Shows how core ideas in ${args.title} move from definition to exam application.`,
-      alt_text: `Concept flow diagram for ${args.title} in ${args.subject}.`,
-      prompt: `Create a clean educational diagram for ${args.subject} topic ${args.title} showing concept -> rule -> application -> common trap.`,
+      title: `${args.title} labeled concept map`,
+      explanation: `Shows the major parts and relationships in ${args.title} so learners can interpret exam wording quickly.`,
+      alt_text: `Labeled diagram for ${args.title} in ${args.subject}.`,
+      prompt: `Create a clean labeled educational diagram for ${args.subject} topic ${args.title}. Highlight key parts and one common confusion point.`,
       bullets: [
-        "Start with the core concept definition.",
-        "Connect each rule to one exam-style application.",
-        "Show one common trap and where it appears."
+        "Label key parts clearly and keep wording short.",
+        "Show how one concept links to the next.",
+        "Include one frequent exam confusion and correction."
       ],
       points: []
-    }
-  ];
+    });
+  }
 
-  if (subjectNeedsCharts(args.subject, args.title)) {
+  if (policy.allowGraph) {
     visualAids.push({
       kind: "graph",
-      title: `${args.title} mastery tracker`,
-      explanation: `Visualizes the difficulty spread so learners can focus revision on high-impact areas in ${args.title}.`,
-      alt_text: `Bar chart showing topic mastery scores for ${args.title}.`,
-      prompt: `Generate a simple bar chart for ${args.subject} ${args.title} with labels and values representing mastery levels.`,
+      title: `${args.title} trend chart`,
+      explanation: `Summarizes numeric relationships in ${args.title} to support faster interpretation of exam questions.`,
+      alt_text: `Chart showing ${args.title} values or trend patterns.`,
+      prompt: `Generate a simple chart for ${args.subject} topic ${args.title} showing meaningful labels and numeric values.`,
       bullets: [
-        "Lower values indicate weaker subareas that need revision first.",
-        "Track improvement after each timed objective-question set."
+        "Use values only when the topic naturally involves quantity or trend.",
+        "Keep axis labels and units explicit."
       ],
       points: [
         { label: args.subtopics[0] ?? "Core concept", value: 42 },
         { label: args.subtopics[1] ?? "Application", value: 58 },
-        { label: args.subtopics[2] ?? "Exam strategy", value: 66 }
+        { label: args.subtopics[2] ?? "Interpretation", value: 66 }
       ]
     });
-  } else {
+  }
+
+  if (!visualAids.length) {
     visualAids.push({
       kind: "illustration",
-      title: `${args.title} exam context illustration`,
-      explanation: `Provides a quick mental picture to connect ${args.title} with real exam question wording.`,
-      alt_text: `Illustration brief for ${args.title} exam context.`,
-      prompt: `Create a minimal classroom-style illustration that explains ${args.title} for ${args.subject} candidates.`,
+      title: `${args.title} concept illustration`,
+      explanation: `Provides a simple mental model for ${args.title} using one clear scenario.`,
+      alt_text: `Illustration for ${args.title} in ${args.subject}.`,
+      prompt: `Create a minimal educational illustration that explains ${args.title} for ${args.subject} candidates.`,
       bullets: [
-        "Highlight where candidates usually misread the question.",
+        "Highlight one likely misconception.",
         "Show the correct interpretation in one clear scene."
       ],
       points: []
     });
   }
 
-  return visualAids;
+  return visualAids.slice(0, policy.maxVisualAids);
+}
+
+function alignVisualAidsToPolicy(args: {
+  subject: string;
+  title: string;
+  subtopics: string[];
+  visualAids: PlanVisualAid[];
+}): PlanVisualAid[] {
+  const policy = getVisualPolicy(args.subject, args.title);
+  if (!policy.requiresVisualAid) return [];
+
+  let visualAids = (args.visualAids ?? []).map((visual) => {
+    if (visual.kind === "graph" && !policy.allowGraph) {
+      return {
+        ...visual,
+        kind: "illustration",
+        points: []
+      } as PlanVisualAid;
+    }
+    return visual;
+  });
+
+  if (!policy.allowGraph) {
+    visualAids = visualAids.filter((visual) => visual.kind !== "graph");
+  }
+
+  if (policy.allowGraph) {
+    const hasGraph = visualAids.some((visual) => visual.kind === "graph" && visual.points.length >= 2);
+    if (!hasGraph) {
+      const fallbackGraph = fallbackVisualAids(args).find((visual) => visual.kind === "graph");
+      if (fallbackGraph) visualAids.push(fallbackGraph);
+    }
+  }
+
+  if (policy.preferDiagram) {
+    const hasDiagramLike = visualAids.some((visual) => visual.kind === "diagram" || visual.kind === "illustration");
+    if (!hasDiagramLike) {
+      const fallbackDiagram = fallbackVisualAids(args).find((visual) => visual.kind !== "graph");
+      if (fallbackDiagram) visualAids.unshift(fallbackDiagram);
+    }
+  }
+
+  if (!visualAids.length) return fallbackVisualAids(args);
+  return visualAids.slice(0, policy.maxVisualAids);
 }
 
 function fallbackLesson(args: {
@@ -202,7 +319,7 @@ export async function generatePlanLesson(args: {
     : [];
 
   const language = languageInstruction(args.preferredLanguage);
-  const requiresRichVisuals = subjectNeedsCharts(args.subject, title);
+  const visualPolicy = getVisualPolicy(args.subject, title);
   const system = [
     "You are an expert tutor creating deep study notes before a topic quiz.",
     "Return valid JSON only.",
@@ -213,9 +330,7 @@ export async function generatePlanLesson(args: {
     subtopics.length
       ? `Primary focus subtopics for this session: ${subtopics.join(", ")}. Give dedicated breakdown coverage to each.`
       : "If subtopics are missing, infer likely subtopic blocks and teach them clearly.",
-    requiresRichVisuals
-      ? "This topic is visual-heavy. Include at least 2 visual_aids with at least 1 graph."
-      : "Include at least 1 useful visual_aid. Use graph only when it improves understanding.",
+    visualSystemInstruction(visualPolicy),
     language
   ]
     .filter(Boolean)
@@ -233,9 +348,7 @@ export async function generatePlanLesson(args: {
       "examples: exactly 3 worked examples with clear step-by-step walkthroughs",
       "common_mistakes: 5-8 points",
       "recap: 6-8 action points",
-      requiresRichVisuals
-        ? "visual_aids: 2-3 entries, one must be graph with 3-6 points"
-        : "visual_aids: 1-2 entries with concise bullets",
+      visualConstraint(visualPolicy),
       "Avoid one-line explanations. Be explicit, instructional, and exam-useful.",
       "No markdown in JSON values"
     ]
@@ -263,8 +376,16 @@ export async function generatePlanLesson(args: {
     });
   }
 
+  const visualAids = alignVisualAidsToPolicy({
+    subject: args.subject,
+    title,
+    subtopics,
+    visualAids: draft.visual_aids
+  });
+
   return {
     ...draft,
+    visual_aids: visualAids,
     generated_at: new Date().toISOString(),
     source: "ai",
     provider: response.provider,

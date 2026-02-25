@@ -24,6 +24,10 @@ function baseTopicLabel(topic: string) {
   return parts[parts.length - 1] ?? cleaned;
 }
 
+function normalizeQuestionStem(value: string) {
+  return normalizeText(value, 500).replace(/^\([^)]{2,80}\)\s*/g, "").trim();
+}
+
 function topicFocuses(topic: string, syllabus: string[] | undefined, count: number) {
   const seed = [baseTopicLabel(topic), ...(syllabus ?? [])]
     .map((entry) => normalizeText(entry, 140))
@@ -49,6 +53,18 @@ function isQuantSubject(subject: string) {
   );
 }
 
+function isLanguageSubject(subject: string) {
+  return /(english|language|literature|verbal|comprehension|lexis|grammar)/i.test(subject);
+}
+
+function isAgricultureSubject(subject: string) {
+  return /(agric|agriculture|animal husbandry|crop production|agricultural science)/i.test(subject);
+}
+
+function isDirectIndirectFocus(topic: string, focus: string) {
+  return /(direct|indirect|reported speech)/i.test(`${topic} ${focus}`);
+}
+
 function makeQuantFallback(args: { examName: string; subject: string; topic: string; focus: string; index: number }): GeneratedQuestion {
   const base = 12 + args.index * 3;
   const delta = 3 + (args.index % 4);
@@ -60,53 +76,142 @@ function makeQuantFallback(args: { examName: string; subject: string; topic: str
   const rotated = options.slice(correctIndex).concat(options.slice(0, correctIndex));
 
   return {
-    question: `(${args.examName} ${args.subject}) ${args.focus}: A value changes from ${base} to ${next}. Which option gives the best percentage increase?`,
+    question: `A value in ${args.focus} changes from ${base} to ${next}. What is the percentage increase?`,
     options: rotated,
     correct_index: (4 - correctIndex) % 4,
-    explanation: `Percentage increase = ((${next} - ${base}) / ${base}) x 100 = ${percent}%. Apply this process to ${args.topic} questions before checking options.`
+    explanation: `Percentage increase = ((${next} - ${base}) / ${base}) x 100 = ${percent}%.`
   };
 }
 
 function makeConceptFallback(args: { examName: string; subject: string; topic: string; focus: string }): GeneratedQuestion {
   return {
-    question: `(${args.examName} ${args.subject}) Which option best explains ${args.focus} in ${args.topic}?`,
+    question: `${args.focus} is best described as which of the following?`,
     options: [
-      `Focus on the core definition of ${args.focus} and how it appears in exam prompts.`,
-      `Ignore the prompt context and choose whichever option looks longest.`,
-      `Rely on memorized wording only, even when the question changes the scenario.`,
-      `Skip checking units, constraints, or keywords before selecting an option.`
+      `The central principle that defines ${args.focus} in ${args.topic}.`,
+      `A random strategy used only when answers are difficult.`,
+      `Any option with technical words, even when the idea is unrelated.`,
+      `A memory trick that replaces understanding of the concept.`
     ],
     correct_index: 0,
-    explanation: `Correct answers in ${args.subject} usually come from the exact concept tested in the prompt. Start with the core definition of ${args.focus}, then test each option against it.`
+    explanation: `Exam questions on ${args.focus} are answered by applying the core concept, not by guessing strategies.`
   };
 }
 
 function makeApplicationFallback(args: { examName: string; subject: string; topic: string; focus: string }): GeneratedQuestion {
   return {
-    question: `(${args.examName} ${args.subject}) In an objective item on ${args.focus}, what should you do first to avoid common traps?`,
+    question: `Which option shows a correct application of ${args.focus}?`,
     options: [
-      "Match each option against the rule tested in the stem before elimination.",
-      "Pick the first option that mentions a familiar keyword.",
-      "Eliminate options randomly to save time.",
-      "Choose options based on wording complexity instead of concept fit."
+      `Apply the rule behind ${args.focus} and verify it matches the stem.`,
+      "Ignore the rule and pick the option that sounds familiar.",
+      "Choose the longest option without checking concept accuracy.",
+      "Rely on speed alone and skip checking the key condition."
     ],
     correct_index: 0,
-    explanation: `In ${args.topic} questions, the safest first step is to identify the exact rule/skill being tested and use it to evaluate every option.`
+    explanation: `Correct application means using the governing rule and checking whether it fits the exact condition in the question.`
   };
 }
 
 function makeTrapFallback(args: { examName: string; subject: string; topic: string; focus: string }): GeneratedQuestion {
   return {
-    question: `(${args.examName} ${args.subject}) Which choice is the most reliable strategy when two options on ${args.focus} look correct?`,
+    question: `All the following are associated with ${args.focus} except _____.`,
     options: [
-      "Re-read the stem for qualifiers (always, most, except) and check edge conditions.",
-      "Pick the option with more technical terms.",
-      "Select the answer that appears most often in past attempts.",
-      "Skip the item without verifying assumptions."
+      `Its core rule in ${args.topic}.`,
+      "Its common exam application pattern.",
+      "Typical misconceptions linked to the concept.",
+      "An unrelated idea outside the focus concept."
     ],
-    correct_index: 0,
-    explanation: `Most close-option traps in ${args.topic} are resolved by checking qualifiers and constraints in the stem.`
+    correct_index: 3,
+    explanation: `An EXCEPT item requires identifying the option that does not belong to the concept being tested.`
   };
+}
+
+function makeLanguageFallback(args: { topic: string; focus: string; index: number }): GeneratedQuestion {
+  const directIndirectBank: GeneratedQuestion[] = [
+    {
+      question: 'Choose the correct indirect speech form of: "I am ready for the test," Tola said.',
+      options: [
+        "Tola said that she was ready for the test.",
+        "Tola said that I am ready for the test.",
+        "Tola says that she is ready for the test yesterday.",
+        "Tola said she ready for the test."
+      ],
+      correct_index: 0,
+      explanation:
+        "In indirect speech, present tense in the quote usually backshifts to past when the reporting verb is past."
+    },
+    {
+      question: "Select the direct speech form of this statement: Ada said that she had finished the assignment.",
+      options: [
+        'Ada said, "I finished the assignment."',
+        'Ada said, "I had finished the assignment."',
+        'Ada says, "She has finished the assignment."',
+        'Ada said, "She had finish the assignment."'
+      ],
+      correct_index: 1,
+      explanation: "The pronoun and tense should preserve the reported meaning accurately in direct speech."
+    }
+  ];
+
+  const grammarBank: GeneratedQuestion[] = [
+    {
+      question: "Choose the option where the word in quotes is a noun.",
+      options: [
+        '"Honesty" is respected everywhere.',
+        "She answered the question honestly.",
+        "They moved quickly to the hall.",
+        "The team played carefully."
+      ],
+      correct_index: 0,
+      explanation: "A noun names a person, place, thing, or idea. 'Honesty' names an idea."
+    },
+    {
+      question: "Choose the correct option to complete the sentence: Neither the principal nor the teachers _____ present.",
+      options: ["is", "were", "was", "be"],
+      correct_index: 1,
+      explanation:
+        "With 'neither...nor', agreement follows the noun closest to the verb. 'Teachers' is plural, so 'were' is correct."
+    },
+    {
+      question: "Choose the option that best completes the sentence: By the time we arrived, the match _____.",
+      options: ["has started", "had started", "was starting", "starts"],
+      correct_index: 1,
+      explanation: "Past perfect is used for an action completed before another action in the past."
+    }
+  ];
+
+  const bank = isDirectIndirectFocus(args.topic, args.focus) ? directIndirectBank : grammarBank;
+  return bank[args.index % bank.length] as GeneratedQuestion;
+}
+
+function makeAgricultureFallback(args: { index: number }): GeneratedQuestion {
+  const bank: GeneratedQuestion[] = [
+    {
+      question: "Gummosis is mainly caused by a _____.",
+      options: ["fungal infection", "vitamin deficiency", "wind pressure", "soil texture only"],
+      correct_index: 0,
+      explanation:
+        "Gummosis in many crops is commonly linked to fungal pathogens, especially under poor management conditions."
+    },
+    {
+      question: "The roles of government in agricultural development include the following except _____.",
+      options: [
+        "funding agricultural research",
+        "providing extension services",
+        "developing rural infrastructure",
+        "doing manual weeding on every private farm"
+      ],
+      correct_index: 3,
+      explanation:
+        "Governments support policy, infrastructure, and extension, but they do not manually run every private farm activity."
+    },
+    {
+      question: "The best farm tool for transplanting seedlings is a _____.",
+      options: ["hand trowel", "cutlass", "ridger", "disc plough"],
+      correct_index: 0,
+      explanation: "A hand trowel is suitable for lifting and transplanting seedlings with minimal root damage."
+    }
+  ];
+  return bank[args.index % bank.length] as GeneratedQuestion;
 }
 
 function rotateQuestion(args: { base: GeneratedQuestion; step: number }): GeneratedQuestion {
@@ -123,11 +228,16 @@ function rotateQuestion(args: { base: GeneratedQuestion; step: number }): Genera
 }
 
 export function isPlaceholderQuestion(value: Pick<GeneratedQuestion, "question" | "options">) {
-  const q = normalizeText(value.question, 500).toLowerCase();
+  const q = normalizeQuestionStem(value.question).toLowerCase();
   const options = (value.options ?? []).map((option) => normalizeText(option, 140).toLowerCase());
   if (!q) return true;
   if (/practice question\s*\d+/i.test(q)) return true;
   if (/which option best fits/i.test(q)) return true;
+  if (/in an objective item on/i.test(q)) return true;
+  if (/which option best explains/i.test(q)) return true;
+  if (/what should you do first to avoid common traps/i.test(q)) return true;
+  if (/which choice is the most reliable strategy/i.test(q)) return true;
+  if (/^\([^)]{3,80}\)\s*/i.test(q)) return true;
   if (options.length === 4 && options.every((option) => /^option [abcd](\b|\s|\()/.test(option))) return true;
   return false;
 }
@@ -142,13 +252,23 @@ export function fallbackQuestions(args: {
   const amount = Math.max(1, Math.min(100, Math.trunc(args.count || 1)));
   const focuses = topicFocuses(args.topic, args.syllabus, amount);
   const isQuant = isQuantSubject(args.subject);
+  const isLanguage = isLanguageSubject(args.subject);
+  const isAgric = isAgricultureSubject(args.subject);
 
   const questions: GeneratedQuestion[] = [];
   for (let i = 0; i < amount; i += 1) {
     const focus = focuses[i] ?? baseTopicLabel(args.topic);
     const variant = i % 3;
     const base =
-      isQuant && i % 2 === 0
+      isLanguage
+        ? makeLanguageFallback({
+            topic: args.topic,
+            focus,
+            index: i
+          })
+        : isAgric
+          ? makeAgricultureFallback({ index: i })
+          : isQuant && i % 2 === 0
         ? makeQuantFallback({
             examName: args.examName,
             subject: args.subject,
@@ -190,7 +310,7 @@ function normalizeQuestions(raw: any): GeneratedQuestion[] {
   return questions
     .filter((q: any) => typeof q?.question === "string" && Array.isArray(q?.options))
     .map((q: any): GeneratedQuestion => ({
-      question: normalizeText(q.question, 500),
+      question: normalizeQuestionStem(q.question),
       options: (q.options as any[]).slice(0, 4).map((o) => normalizeText(o, 140)),
       correct_index: clampCorrectIndex(Number(q.correct_index ?? 0)),
       explanation: normalizeText(String(q.explanation ?? ""), 700)
@@ -223,7 +343,13 @@ export async function generateQuestions(args: {
       : "If no syllabus is provided, answer generally for the exam level.";
 
   const system = [
-    "You generate high-quality objective exam prep questions.",
+    "You generate high-quality WAEC/NECO/JAMB-style objective exam prep questions.",
+    "Question stems must look like real exam items, not study advice.",
+    "Never use meta phrasing such as 'In an objective item...' or 'what should you do first to avoid common traps'.",
+    "Never prefix stems with exam labels like '(NECO English Language)'.",
+    "Use direct exam stem forms: definition, completion, cause/effect, except/not, best tool/method, and short scenario application.",
+    "For English/Language topics, prefer sentence-based grammar and usage stems over abstract strategy wording.",
+    "Each item must test subject knowledge, not test-taking strategy.",
     "Output must be valid JSON only.",
     syllabusHint,
     lang
@@ -239,26 +365,36 @@ export async function generateQuestions(args: {
     format: {
       questions: [
         {
-          question: "string",
+          question: "string (direct exam-style stem)",
           options: ["string", "string", "string", "string"],
           correct_index: 0,
           explanation: "string"
         }
       ]
     },
+    style_examples: [
+      "Gummosis is caused by a _____.",
+      "The roles of government in agricultural development include the following except _____.",
+      "The best farm tool for transplanting seedlings is _____.",
+      'Choose the correct indirect speech form of: "..."'
+    ],
     constraints: [
+      `Return exactly ${args.count} unique questions.`,
+      "No exam/subject prefix in question stems.",
+      "No meta stem wording (no advice-style questions).",
       "Options must be plausible and unique.",
       "correct_index must be 0..3.",
       "Use clear Nigerian/International English (no slang).",
       "Include brief explanations.",
-      "Cover a spread of conceptual, application, and exam-style trap questions."
+      "Cover a spread of factual, conceptual, application, and except/not questions.",
+      "Avoid placeholders such as 'Option A/B/C/D' in option text."
     ]
   };
 
   const response = await generateJsonWithFallback<any>({
     system,
     user: `Generate questions as JSON:\n${JSON.stringify(user)}`,
-    temperature: 0.55,
+    temperature: 0.4,
     validate: (parsed) => {
       const cleaned = normalizeQuestions(parsed);
       if (!cleaned.length) return null;

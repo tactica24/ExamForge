@@ -12,6 +12,7 @@ import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 
 type QuizType = "daily" | "extra" | "group" | "mock";
 type Difficulty = "easy" | "medium" | "hard";
+const QUIZ_CONTENT_VERSION = "quiz-style-v2";
 
 function flattenTopics(topics: Array<{ title: string; path: string; subtopics?: string[] }>) {
   const out: string[] = [];
@@ -83,7 +84,8 @@ function buildPoolKey(args: {
     args.quizType,
     args.difficulty,
     String(args.preferredLanguage ?? "en").toLowerCase(),
-    stableStringify(normalizeMetaForPool(args.meta))
+    stableStringify(normalizeMetaForPool(args.meta)),
+    QUIZ_CONTENT_VERSION
   ].join("|");
 }
 
