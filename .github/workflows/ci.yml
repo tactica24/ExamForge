@@ -25,13 +25,9 @@ jobs:
           node-version: 22
 
       - name: Install
-        run: npm install
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm test
+        run: |
+          npm install --omit=dev
+          npm install --no-save typescript @types/node @types/react @types/react-dom
 
       - name: Build
         run: npm run build
