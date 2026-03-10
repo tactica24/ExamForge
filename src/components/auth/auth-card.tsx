@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "@/components/site-logo";
+import { BrandBadge } from "@/components/branding/brand-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AuthCard(props: {
@@ -15,14 +15,8 @@ export function AuthCard(props: {
       <div className="container flex min-h-dvh items-center justify-center py-12">
         <Card className="w-full max-w-md border-border/70">
           <CardHeader>
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
-                <Logo className="h-5 w-5 text-primary" />
-              </div>
-              <div className="leading-tight">
-                <div className="font-display text-sm font-semibold tracking-tight">ACE NAIJA</div>
-                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Exam prep</div>
-              </div>
+            <div className="mb-2">
+              <BrandBadge href="/" subtitle="Exam prep" />
             </div>
             <CardTitle>{props.title}</CardTitle>
             <CardDescription>{props.description}</CardDescription>

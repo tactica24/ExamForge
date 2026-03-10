@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BarChart3, Megaphone, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -295,16 +296,43 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Referral campaigns</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create admin-managed influencer codes and monitor onboarding + paid subscription conversion per code.
-          </p>
+      <div className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white shadow-[0_30px_80px_-40px_rgba(2,12,27,0.85)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/70">
+              <Megaphone className="h-3.5 w-3.5" />
+              Growth workspace
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Referral campaigns and conversion tracking</h1>
+            <p className="mt-2 max-w-3xl text-sm text-white/70">
+              Create influencer codes, distribute campaign links, and monitor onboarding plus paid conversion from a single board.
+            </p>
+          </div>
+          <Button asChild variant="secondary">
+            <Link href="/admin">Back to admin</Link>
+          </Button>
         </div>
-        <Button asChild variant="secondary">
-          <Link href="/admin">Back to admin</Link>
-        </Button>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/60">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Campaign codes
+            </div>
+            <div className="mt-2 text-3xl font-semibold">{campaignCodes.length}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Onboarded users</div>
+            <div className="mt-2 text-3xl font-semibold">{totalOnboardedUsers}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/60">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Active pro users
+            </div>
+            <div className="mt-2 text-3xl font-semibold">{totalActiveProUsers}</div>
+          </div>
+        </div>
       </div>
 
       {created ? (

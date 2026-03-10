@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,20 +82,41 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users and roles</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Monitor signups and assign admin privileges.
-          </p>
+      <div className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white shadow-[0_30px_80px_-40px_rgba(2,12,27,0.85)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/70">
+              <Users className="h-3.5 w-3.5" />
+              User operations
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Identity, access, and support fixes</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/70">
+              Manage signups, admin privileges, and subscription corrections from one workspace.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/admin">Back</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/exams">Manage exams</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary">
-            <Link href="/admin">Back</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/admin/exams">Manage exams</Link>
-          </Button>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Total users</div>
+            <div className="mt-2 text-3xl font-semibold">{totalUsers}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Admins</div>
+            <div className="mt-2 text-3xl font-semibold">{totalAdmins}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Pro subscribers</div>
+            <div className="mt-2 text-3xl font-semibold">{totalPro}</div>
+          </div>
         </div>
       </div>
 
@@ -111,29 +133,13 @@ export default async function AdminUsersPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Total users</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{totalUsers}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Admins</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{totalAdmins}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pro subscribers</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{totalPro}</CardContent>
-        </Card>
-      </div>
-
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
       <Card>
         <CardHeader>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Access control
+          </div>
           <CardTitle className="text-base">Assign role by email</CardTitle>
           <CardDescription>Use this to quickly promote or demote a known account.</CardDescription>
         </CardHeader>
@@ -163,6 +169,10 @@ export default async function AdminUsersPage() {
 
       <Card>
         <CardHeader>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            Billing support
+          </div>
           <CardTitle className="text-base">Support fixes</CardTitle>
           <CardDescription>Resolve subscription/tier issues when users report billing or access problems.</CardDescription>
         </CardHeader>
@@ -193,6 +203,7 @@ export default async function AdminUsersPage() {
           </AuthFormState>
         </CardContent>
       </Card>
+      </div>
 
       <Card>
         <CardHeader>

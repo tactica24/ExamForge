@@ -1,5 +1,14 @@
 ﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+export type AppSettingsRow = {
+  id: string;
+  logo_url: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+export type AppSettingsInsert = Partial<AppSettingsRow> & { id: string };
+export type AppSettingsUpdate = Partial<AppSettingsRow>;
+
 export type ProfilesRow = {
   user_id: string;
   email: string | null;
@@ -191,12 +200,18 @@ export type TutorMessagesUpdate = Partial<TutorMessagesRow>;
 
 export type ContactRequestsRow = {
   id: string;
+  user_id: string | null;
   name: string | null;
   email: string | null;
   topic: string | null;
   message: string;
   source: string | null;
   status: "new" | "handled" | string;
+  assigned_admin_id: string | null;
+  assigned_admin_email: string | null;
+  assigned_at: string | null;
+  handled_at: string | null;
+  resolution_notes: string | null;
   created_at: string;
 };
 export type ContactRequestsInsert = Partial<ContactRequestsRow> & { message: string };
@@ -407,6 +422,7 @@ type TableDef<Row, Insert, Update> = {
 export type Database = {
   public: {
     Tables: {
+      app_settings: TableDef<AppSettingsRow, AppSettingsInsert, AppSettingsUpdate>;
       profiles: TableDef<ProfilesRow, ProfilesInsert, ProfilesUpdate>;
       profile_public: TableDef<ProfilePublicRow, ProfilePublicInsert, ProfilePublicUpdate>;
       exams: TableDef<ExamsRow, ExamsInsert, ExamsUpdate>;

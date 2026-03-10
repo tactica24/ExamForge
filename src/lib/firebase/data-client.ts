@@ -22,6 +22,7 @@ export type DbResponse<T> = {
 };
 
 const PRIMARY_KEYS: Record<string, string[]> = {
+  app_settings: ["id"],
   profiles: ["user_id"],
   profile_public: ["user_id"],
   notification_prefs: ["user_id"],
@@ -35,6 +36,7 @@ const PRIMARY_KEYS: Record<string, string[]> = {
 };
 
 const HAS_ID_FIELD = new Set([
+  "app_settings",
   "exams",
   "syllabi",
   "user_exam_subjects",
@@ -58,6 +60,7 @@ const HAS_ID_FIELD = new Set([
 ]);
 
 const HAS_UPDATED_AT = new Set([
+  "app_settings",
   "profiles",
   "profile_public",
   "plan_items",

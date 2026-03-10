@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Activity, BellRing, Cpu } from "lucide-react";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,11 +48,39 @@ export default async function AdminOpsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Ops and reliability</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Queue health, delivery failures, and AI job processing status.
-        </p>
+      <div className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white shadow-[0_30px_80px_-40px_rgba(2,12,27,0.85)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/70">
+              <Activity className="h-3.5 w-3.5" />
+              Reliability console
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Queue health and worker visibility</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/70">
+              Watch notification delivery, AI job backlog, and failure streams from one ops board.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/60">
+              <BellRing className="h-3.5 w-3.5" />
+              Notification pressure
+            </div>
+            <div className="mt-2 text-3xl font-semibold">{Number(notifQueued.count ?? 0) + Number(notifFailed.count ?? 0)}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/60">
+              <Cpu className="h-3.5 w-3.5" />
+              AI backlog
+            </div>
+            <div className="mt-2 text-3xl font-semibold">{Number(aiQueued.count ?? 0) + Number(aiRunning.count ?? 0)}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Failures</div>
+            <div className="mt-2 text-3xl font-semibold">{Number(notifFailed.count ?? 0) + Number(aiFailed.count ?? 0)}</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
