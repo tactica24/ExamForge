@@ -3,6 +3,7 @@ import { Fraunces, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { InstallAppPrompt } from "@/components/install-app-prompt";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { getAppOrigin } from "@/lib/app-url";
 
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster richColors closeButton />
+          <InstallAppPrompt />
           <ServiceWorkerRegister />
         </ThemeProvider>
       </body>
