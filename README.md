@@ -60,7 +60,7 @@ After role changes, the user should log out and log back in.
 - The app stores data in collections mirroring feature names (for example `profiles`, `exams`, `syllabi`, `user_plans`, `plan_items`, `quizzes`, `quiz_questions`, `user_quiz_results`, `groups`, `group_members`, `group_messages`).
 - Add Firebase admin service-account env vars for cron/admin features, login sessions, parent links, and avatar uploads.
 
-## Vercel setup (recommended path)
+## AWS hosting setup
 1) Create a Firebase Web app and copy:
    - API Key
    - Auth Domain
@@ -73,11 +73,13 @@ After role changes, the user should log out and log back in.
 ```bash
 npm run firebase:env:print -- path/to/serviceAccountKey.json
 ```
-4) Copy the printed values into Vercel Environment Variables (Production + Preview), then redeploy.
-5) In Firebase Auth, add your Vercel domain under **Authorized domains**.
+4) Copy the printed values into your AWS runtime environment variables, then redeploy.
+5) Set `NEXT_PUBLIC_APP_URL=https://www.acenaija.com.ng`.
+6) In Firebase Auth, add `www.acenaija.com.ng` under **Authorized domains**.
+7) Make sure your AWS proxy/load balancer forwards `Host`, `Origin`, `X-Forwarded-Proto`, `X-Forwarded-For`, and cookies to the Next.js app.
 
 ## Login troubleshooting
-1) Confirm Vercel env vars are set for Production and Preview:
+1) Confirm these env vars are set in your AWS build/runtime environment:
    - `NEXT_PUBLIC_FIREBASE_API_KEY`
    - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -85,29 +87,29 @@ npm run firebase:env:print -- path/to/serviceAccountKey.json
    - `NEXT_PUBLIC_FIREBASE_APP_ID`
    - `NEXT_PUBLIC_APP_URL`
    - `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (or `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`)
-2) Redeploy after changing env vars.
+2) Restart or redeploy after changing env vars.
 3) If Google login fails, add your deployed domain under Firebase Authentication authorized domains.
 4) If avatar upload fails, set `FIREBASE_STORAGE_BUCKET` (usually `<project-id>.appspot.com`).
-5) In production, diagnostics are protected. Run:
+5) Confirm the app is reachable:
 ```bash
-curl -H "x-health-secret: $APP_CRON_SECRET" https://<your-domain>/api/health
+curl https://www.acenaija.com.ng/api/health
 ```
-and confirm `firebase.webConfigReady=true`, `firebase.adminReady=true`, and `ai.openaiReady=true`.
+and expect a JSON response with `status: "ok"`.
 
 ## OpenAI integration and syllabus-first flow
-1) Set `OPENAI_API_KEY` in local `.env.local` and in Vercel (Production + Preview), then redeploy.
+1) Set `OPENAI_API_KEY` in local `.env.local` and in your AWS environment, then redeploy.
 2) Check readiness:
 ```bash
-curl -H "x-health-secret: $APP_CRON_SECRET" https://<your-domain>/api/health
+curl https://www.acenaija.com.ng/api/health
 ```
-Expect: `ai.openaiReady=true`.
+Expect: `status: "ok"`, then test the tutor or explanation flows from the app.
 3) In admin, open `/admin/exams/<examId>` and use:
 - `Generate selected subject` for one subject
 - `Generate all subjects` to prebuild syllabus for the full exam
 4) Onboarding and quiz generation also call syllabus loading automatically. If AI is unavailable, stored fallback syllabus is used so planning still works.
 
 ## Paystack live setup
-1) Set these env vars in Vercel (Production + Preview), then redeploy:
+1) Set these env vars in your AWS environment, then redeploy:
    - `PAYSTACK_SECRET_KEY` (live secret key)
    - `PAYSTACK_PUBLIC_KEY` (live public key)
    - `PAYSTACK_CALLBACK_URL` (for example `https://<your-domain>/billing/callback`)
@@ -126,8 +128,8 @@ curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/group-n
 curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/ai-jobs
 ```
 
-## Deploy on Vercel
-- Deploy directly from GitHub on Vercel.
+## Deploy on AWS
+- Deploy the Next.js standalone build to your AWS runtime of choice.
 - Weekly leaderboard recompute is scheduled via the `Cron Jobs` GitHub workflow.
 
 ## Android APK (GitHub Actions)
@@ -135,7 +137,7 @@ This repo includes a workflow that builds a debug APK using Capacitor.
 
 ### One-time setup
 - In GitHub repo settings, set variable `APP_WEB_URL` to your deployed web URL (must start with `https://`).
-- Current production URL: `https://exam-forge-ten.vercel.app`
+- Current production URL: `https://www.acenaija.com.ng`
 - Do not leave placeholder domains in `capacitor.config.json`; the workflow now fails if `APP_WEB_URL` is missing.
 
 ### Trigger APK build

@@ -58,17 +58,12 @@ jobs:
           fi
 
           case "$APP_URL" in
-            ""|"https://your-app.vercel.app"|"https://your-vercel-domain.vercel.app")
+            ""|"https://your-app.example.com"|"https://your-domain.com")
               APP_URL=""
               ;;
           esac
 
-          if [ -z "$APP_URL" ]; then
-            echo "Missing mobile URL."
-            echo "Set repository variable APP_WEB_URL (or NEXT_PUBLIC_APP_URL), or pass workflow input app_web_url."
-            echo "Alternatively set server.url in capacitor.config.json to your real deployed domain."
-            exit 1
-          fi
+          APP_URL="${APP_URL:-https://www.acenaija.com.ng}"
 
           if [[ "$APP_URL" != https://* ]]; then
             echo "APP_WEB_URL must start with https://"

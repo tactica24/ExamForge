@@ -1,4 +1,6 @@
-const DEFAULT_APP_URL = "http://localhost:3000";
+const DEFAULT_APP_URL = process.env.NODE_ENV === "production"
+  ? "https://www.acenaija.com.ng"
+  : "http://localhost:3000";
 
 function toAbsoluteUrlString(value: string | undefined | null) {
   const raw = String(value ?? "").trim();
@@ -14,7 +16,7 @@ function toAbsoluteUrlString(value: string | undefined | null) {
 }
 
 export function getAppUrl() {
-  return toAbsoluteUrlString(process.env.NEXT_PUBLIC_APP_URL) ?? DEFAULT_APP_URL;
+  return toAbsoluteUrlString(process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_WEB_URL) ?? DEFAULT_APP_URL;
 }
 
 export function getAppOrigin() {

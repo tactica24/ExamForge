@@ -5,7 +5,10 @@ function normalizeHost(headers: HeaderReader) {
 }
 
 function fallbackHostFromEnv() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_WEB_URL ??
+    (process.env.NODE_ENV === "production" ? "https://www.acenaija.com.ng" : "");
   if (!appUrl) return "";
   try {
     return new URL(appUrl).host.toLowerCase();

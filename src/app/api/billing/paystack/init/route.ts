@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO, paystackInitialize } from "@/lib/billing/paystack";
+import { getAppUrl } from "@/lib/app-url";
 import { getServerEnv } from "@/lib/env";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   const email = user.email ?? "";
   if (!email) return NextResponse.json({ ok: false, message: "Email is required for billing." }, { status: 400 });
 
-  const callbackUrl = env.PAYSTACK_CALLBACK_URL ?? `${env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/billing/callback`;
+  const callbackUrl = env.PAYSTACK_CALLBACK_URL ?? `${getAppUrl()}/billing/callback`;
 
   try {
     const init = await paystackInitialize({
