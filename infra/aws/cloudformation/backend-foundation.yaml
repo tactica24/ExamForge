@@ -10,7 +10,7 @@ Parameters:
     Default: prod
   AppUrl:
     Type: String
-    Description: Public app URL without a trailing slash. Example: https://www.acenaija.com.ng
+    Description: "Public app URL without a trailing slash. Example: https://www.acenaija.com.ng"
   CallbackPath:
     Type: String
     Default: /api/auth/cognito/callback
@@ -27,6 +27,10 @@ Parameters:
   SesFromEmail:
     Type: String
     Description: Verified from-email address used by Cognito verification emails.
+  SesIdentityArn:
+    Type: String
+    Default: ""
+    Description: Optional existing SES identity ARN. If provided, the stack will not create a new SES identity.
   DbName:
     Type: String
     Default: examforge
@@ -43,6 +47,17 @@ Parameters:
   DbMaxCapacity:
     Type: Number
     Default: 2
+  DbBackupRetentionDays:
+    Type: Number
+    Default: 1
+    Description: Aurora backup retention period in days. Use 1 for free tier accounts.
+  DbWithExpressConfiguration:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Set to true for free plan accounts that require Express configuration.
   GoogleClientId:
     Type: String
     Default: ""
@@ -61,6 +76,8 @@ Conditions:
     - !Not [!Equals [!Ref GoogleClientId, ""]]
     - !Not [!Equals [!Ref GoogleClientSecret, ""]]
   HasRuntimeRoleName: !Not [!Equals [!Ref AppRuntimeRoleName, ""]]
+  HasSesIdentityArn: !Not [!Equals [!Ref SesIdentityArn, ""]]
+  CreateSesIdentity: !Equals [!Ref SesIdentityArn, ""]
 
 Resources:
   SessionSecret:
@@ -121,6 +138,7 @@ Resources:
 
   SesEmailIdentity:
     Type: AWS::SES::EmailIdentity
+    Condition: CreateSesIdentity
     Properties:
       EmailIdentity: !Ref SesIdentityValue
 
@@ -146,7 +164,7 @@ Resources:
       EmailConfiguration:
         EmailSendingAccount: DEVELOPER
         From: !Ref SesFromEmail
-        SourceArn: !GetAtt SesEmailIdentity.Arn
+        SourceArn: !If [CreateSesIdentity, !GetAtt SesEmailIdentity.Arn, !Ref SesIdentityArn]
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: false
       Policies:
@@ -282,6 +300,7 @@ Resources:
       Engine: aurora-postgresql
       EngineMode: provisioned
       EnableHttpEndpoint: true
+      WithExpressConfiguration: !Equals [!Ref DbWithExpressConfiguration, "true"]
       ManageMasterUserPassword: true
       MasterUsername: !Ref DbMasterUsername
       ServerlessV2ScalingConfiguration:
@@ -290,7 +309,7 @@ Resources:
       StorageEncrypted: true
       VpcSecurityGroupIds:
         - !Ref AuroraSecurityGroup
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: !Ref DbBackupRetentionDays
       DeletionProtection: true
 
   AuroraWriter:
@@ -376,4 +395,4 @@ Outputs:
   SessionSecretArn:
     Value: !Ref SessionSecret
   SesIdentityArn:
-    Value: !GetAtt SesEmailIdentity.Arn
+    Value: !If [CreateSesIdentity, !GetAtt SesEmailIdentity.Arn, !Ref SesIdentityArn]
