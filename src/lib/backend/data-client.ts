@@ -714,7 +714,7 @@ async function updateRowsInAurora(args: {
   const payload = stripUndefinedValues({
     ...args.values,
     ...(HAS_UPDATED_AT.has(args.table) ? { updated_at: new Date().toISOString() } : {})
-  });
+  }) as Record<string, any>;
   const columns = Object.keys(payload);
   if (!columns.length) return [];
 
