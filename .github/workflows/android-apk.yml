@@ -106,6 +106,7 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Upload APK artifact
+        if: false
         uses: actions/upload-artifact@v4
         with:
           name: ace-naija-apk-debug
