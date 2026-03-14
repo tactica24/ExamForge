@@ -478,13 +478,14 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
                     <div className="mt-2 space-y-2">
                       {analytics?.recentUsers?.length ? (
                         analytics.recentUsers.map((item) => (
-                          <div key={`${entry.code}:${item.userId}:${item.joinedAt ?? ""}`} className="rounded-md border bg-card px-3 py-2 text-xs">
+                          <div
+                            key={`${entry.code}:${item.userId}:${item.joinedAt ?? ""}`}
+                            className="rounded-md border bg-card px-3 py-2 text-xs"
+                          >
                             <div className="font-medium">{item.label}</div>
                             <div className="text-muted-foreground">{item.email ?? item.userId}</div>
                             <div className="mt-1 flex flex-wrap gap-2">
-                              <Badge variant={item.hasPaid ? "default" : "outline"}>
-                                {item.hasPaid ? "Paid subscriber" : "Not paid"}
-                              </Badge>
+                              <Badge variant={item.hasPaid ? "default" : "outline"}>{item.hasPaid ? "Paid subscriber" : "Not paid"}</Badge>
                               <Badge variant={item.hasActivePro ? "secondary" : "outline"}>
                                 {item.hasActivePro ? "Active pro" : "No active pro"}
                               </Badge>
@@ -494,4 +495,19 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
                             </div>
                           </div>
                         ))
-                      ) : 
+                      ) : (
+                        <div className="text-sm text-muted-foreground">No recent users yet.</div>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-sm text-muted-foreground">No campaigns yet.</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
