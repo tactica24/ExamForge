@@ -18,10 +18,6 @@ export function OAuthButtons() {
         toast.error(result.error.message);
         return;
       }
-
-      if (result.redirectTo) {
-        window.location.assign(result.redirectTo);
-      }
     })();
 
     return () => {
