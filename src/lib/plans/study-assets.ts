@@ -10,9 +10,9 @@ import {
   type PlanSlideDeck,
   type PlanStudyFormat
 } from "@/lib/plans/content";
-import type { createFirebaseServerClient } from "@/lib/firebase/server";
+import type { createBackendServerClient } from "@/lib/backend/server";
 
-type FirebaseServerClient = Awaited<ReturnType<typeof createFirebaseServerClient>>;
+type BackendServerClient = Awaited<ReturnType<typeof createBackendServerClient>>;
 
 const STUDY_ASSET_CACHE_TABLE = "study_assets_cache";
 const STUDY_ASSET_CONTENT_VERSION = "study-lesson-v2";
@@ -214,10 +214,10 @@ export function buildStudyAssetCacheKey(args: {
 }
 
 async function getSharedStudyAsset(args: {
-  firebase: FirebaseServerClient;
+  backend: BackendServerClient;
   cacheKey: string;
 }): Promise<SharedStudyAsset | null> {
-  const { data } = await args.firebase
+  const { data } = await args.backend
     .from(STUDY_ASSET_CACHE_TABLE)
     .select("cache_key,lesson,assets,created_at")
     .eq("cache_key", args.cacheKey)
@@ -235,7 +235,7 @@ async function getSharedStudyAsset(args: {
 }
 
 async function upsertSharedStudyAsset(args: {
-  firebase: FirebaseServerClient;
+  backend: BackendServerClient;
   cacheKey: string;
   examId: string;
   subject: string;
@@ -245,7 +245,7 @@ async function upsertSharedStudyAsset(args: {
   lesson: PlanLesson;
   assets: PlanLessonAssets;
 }) {
-  await args.firebase.from(STUDY_ASSET_CACHE_TABLE).upsert(
+  await args.backend.from(STUDY_ASSET_CACHE_TABLE).upsert(
     {
       cache_key: args.cacheKey,
       exam_id: args.examId,
@@ -278,7 +278,7 @@ function mergeLessonAssets(base: PlanLessonAssets, incoming: PlanLessonAssets): 
 }
 
 export async function ensureStudyAssetsForPlanTopic(args: {
-  firebase: FirebaseServerClient;
+  backend: BackendServerClient;
   examId: string;
   examName: string;
   subject: string;
@@ -299,7 +299,7 @@ export async function ensureStudyAssetsForPlanTopic(args: {
     preferredLanguage
   });
 
-  const shared = await getSharedStudyAsset({ firebase: args.firebase, cacheKey });
+  const shared = await getSharedStudyAsset({ backend: args.backend, cacheKey });
   let lesson = args.existingLesson ?? shared?.lesson ?? null;
   let assets = mergeLessonAssets(args.existingAssets, shared?.assets ?? asLessonAssets(null));
   let shouldPersistShared = false;
@@ -343,7 +343,7 @@ export async function ensureStudyAssetsForPlanTopic(args: {
 
   if (shouldPersistShared) {
     await upsertSharedStudyAsset({
-      firebase: args.firebase,
+      backend: args.backend,
       cacheKey,
       examId: args.examId,
       subject: args.subject,
@@ -361,3 +361,4 @@ export async function ensureStudyAssetsForPlanTopic(args: {
     assets
   };
 }
+

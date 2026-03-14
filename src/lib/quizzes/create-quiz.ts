@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "crypto";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import {
   fallbackQuestions,
   generateQuestions,
@@ -156,12 +156,12 @@ function seededShuffle<T>(items: T[], seed: string) {
 }
 
 async function fetchQuestionsForQuizIds(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   quizIds: string[];
 }) {
   const rows: any[] = [];
   for (const batch of chunk(args.quizIds, 60)) {
-    const { data } = await args.firebase
+    const { data } = await args.backend
       .from("quiz_questions")
       .select("quiz_id,question,options,correct_index,explanation")
       .in("quiz_id", batch);
@@ -171,7 +171,7 @@ async function fetchQuestionsForQuizIds(args: {
 }
 
 async function pickReusableQuestions(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   examId: string;
   subject: string;
@@ -182,7 +182,7 @@ async function pickReusableQuestions(args: {
   poolKey: string;
 }): Promise<GeneratedQuestion[]> {
   const countNeeded = Math.max(1, Math.trunc(args.questionCount || 1));
-  const baseFilters = args.firebase
+  const baseFilters = args.backend
     .from("quizzes")
     .select("id,created_by")
     .eq("exam_id", args.examId)
@@ -198,7 +198,7 @@ async function pickReusableQuestions(args: {
 
   const { data: fallbackSource } = withPoolKey?.length
     ? { data: null as any[] | null }
-    : await args.firebase
+    : await args.backend
         .from("quizzes")
         .select("id,created_by")
         .eq("exam_id", args.examId)
@@ -214,7 +214,7 @@ async function pickReusableQuestions(args: {
   if (!sourceQuizIds.length) return [];
 
   const sourceQuestionRows = await fetchQuestionsForQuizIds({
-    firebase: args.firebase,
+    backend: args.backend,
     quizIds: sourceQuizIds
   });
   const sourceQuestions = dedupeQuestions(
@@ -222,7 +222,7 @@ async function pickReusableQuestions(args: {
   );
   if (sourceQuestions.length < countNeeded) return [];
 
-  const { data: userQuizzes } = await args.firebase
+  const { data: userQuizzes } = await args.backend
     .from("quizzes")
     .select("id")
     .eq("created_by", args.userId)
@@ -237,7 +237,7 @@ async function pickReusableQuestions(args: {
   const userQuizIds = (userQuizzes ?? []).map((row: any) => String(row?.id ?? "")).filter(Boolean);
   if (userQuizIds.length) {
     const seenRows = await fetchQuestionsForQuizIds({
-      firebase: args.firebase,
+      backend: args.backend,
       quizIds: userQuizIds
     });
     for (const row of seenRows) {
@@ -256,7 +256,7 @@ async function pickReusableQuestions(args: {
 }
 
 async function createQuizRecord(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   examId: string;
   subject: string;
@@ -268,7 +268,7 @@ async function createQuizRecord(args: {
   cacheKey: string;
   meta?: Record<string, any>;
 }) {
-  const { data: quiz, error: quizErr } = await args.firebase
+  const { data: quiz, error: quizErr } = await args.backend
     .from("quizzes")
     .insert({
       exam_id: args.examId,
@@ -292,11 +292,11 @@ async function createQuizRecord(args: {
 }
 
 async function insertQuizQuestions(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   quizId: string;
   questions: GeneratedQuestion[];
 }) {
-  const { error } = await args.firebase.from("quiz_questions").insert(
+  const { error } = await args.backend.from("quiz_questions").insert(
     args.questions.map((question) => ({
       quiz_id: args.quizId,
       question: question.question,
@@ -323,7 +323,7 @@ export async function createQuizWithQuestions(args: {
   meta?: Record<string, any>;
   syllabusOverride?: string[];
 }) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const poolKey = buildPoolKey(args);
   const cacheKey = buildCacheKey({
     poolKey,
@@ -331,7 +331,7 @@ export async function createQuizWithQuestions(args: {
   });
 
   const reusableQuestions = await pickReusableQuestions({
-    firebase,
+    backend,
     userId: args.userId,
     examId: args.examId,
     subject: args.subject,
@@ -344,7 +344,7 @@ export async function createQuizWithQuestions(args: {
 
   if (reusableQuestions.length >= args.questionCount) {
     const quizId = await createQuizRecord({
-      firebase,
+      backend,
       userId: args.userId,
       examId: args.examId,
       subject: args.subject,
@@ -361,7 +361,7 @@ export async function createQuizWithQuestions(args: {
     });
 
     await insertQuizQuestions({
-      firebase,
+      backend,
       quizId,
       questions: reusableQuestions.slice(0, args.questionCount)
     });
@@ -369,7 +369,7 @@ export async function createQuizWithQuestions(args: {
   }
 
   const quizId = await createQuizRecord({
-    firebase,
+    backend,
     userId: args.userId,
     examId: args.examId,
     subject: args.subject,
@@ -384,7 +384,7 @@ export async function createQuizWithQuestions(args: {
 
   let examSlug = args.examSlug;
   if (!examSlug) {
-    const { data: exam } = await firebase.from("exams").select("slug").eq("id", args.examId).maybeSingle();
+    const { data: exam } = await backend.from("exams").select("slug").eq("id", args.examId).maybeSingle();
     examSlug = exam?.slug ?? undefined;
   }
 
@@ -431,10 +431,11 @@ export async function createQuizWithQuestions(args: {
   }
 
   await insertQuizQuestions({
-    firebase,
+    backend,
     quizId,
     questions: merged
   });
 
   return quizId;
 }
+

@@ -4,7 +4,8 @@ Production-ready MVP for **ACE NAIJA** - an AI-powered, subscription-based exam 
 
 ## Stack
 - **Next.js** (App Router) + TypeScript + Tailwind
-- **Firebase** (Auth + Firestore)
+- **AWS Amplify** (hosting) + **Cognito** (auth)
+- **Aurora PostgreSQL Serverless v2** (app data via Data API) + **Amazon S3** (uploads/assets)
 - Optional: **OpenAI** (quiz generation + tutor), **Paystack** (billing), Twilio/Resend (notifications)
 - **Node.js 22.x** runtime for CI/deploy compatibility
 
@@ -14,20 +15,25 @@ Production-ready MVP for **ACE NAIJA** - an AI-powered, subscription-based exam 
 npm install
 ```
 
-2) Create `.env.local` from `.env.example` and set Firebase keys:
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- (required for login sessions + Firestore server routes) either:
-  - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
-  - or `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (recommended)
+2) Create `.env.local` from `.env.example` and set the AWS auth/runtime values:
+- `APP_BACKEND_PROVIDER=aws`
+- `COGNITO_REGION`
+- `COGNITO_USER_POOL_ID`
+- `COGNITO_APP_CLIENT_ID`
+- `COGNITO_APP_CLIENT_SECRET`
+- `COGNITO_DOMAIN`
+- `COGNITO_CALLBACK_URL`
+- `COGNITO_LOGOUT_URL`
+- `APP_SESSION_SECRET`
+- `AURORA_CLUSTER_ARN`
+- `AURORA_SECRET_ARN`
+- `AURORA_DATABASE`
+- `S3_BUCKET_NAME`
+- `S3_REGION`
+- `NEXT_PUBLIC_APP_URL`
 - For AI generation, also set `OPENAI_API_KEY`
 
-3) Enable providers in Firebase Console
-- Authentication -> Sign-in method -> Email/Password
-- Authentication -> Sign-in method -> Google (optional)
-
-4) Run dev server
+3) Run dev server
 ```bash
 npm run dev
 ```
@@ -40,61 +46,12 @@ Open `http://localhost:3000`.
 - `/onboarding` (exam/subject + plan generation + optional group match)
 - `/dashboard`, `/plan`, `/quiz/today`, `/groups`, `/progress`, `/tutor`
 - `/billing` (Paystack checkout)
-- `/admin` and `/admin/users` (requires Firebase custom claim `role=admin`)
+- `/admin` and `/admin/users` (requires `profiles.role=admin`)
 
-## Admin role bootstrap
-Set or update a user role from your terminal:
-```bash
-npm run firebase:role:set -- path/to/serviceAccountKey.json user@example.com admin
-```
-
-To remove admin access:
-```bash
-npm run firebase:role:set -- path/to/serviceAccountKey.json user@example.com user
-```
-
-After role changes, the user should log out and log back in.
-
-## Firebase setup notes
-- Use Firestore in Native mode.
-- The app stores data in collections mirroring feature names (for example `profiles`, `exams`, `syllabi`, `user_plans`, `plan_items`, `quizzes`, `quiz_questions`, `user_quiz_results`, `groups`, `group_members`, `group_messages`).
-- Add Firebase admin service-account env vars for cron/admin features, login sessions, parent links, and avatar uploads.
-
-## AWS hosting setup
-1) Create a Firebase Web app and copy:
-   - API Key
-   - Auth Domain
-   - Project ID
-   - Storage Bucket
-   - Messaging Sender ID
-   - App ID
-2) Download Firebase service-account JSON (Project Settings -> Service Accounts).
-3) Run:
-```bash
-npm run firebase:env:print -- path/to/serviceAccountKey.json
-```
-4) Copy the printed values into your AWS runtime environment variables, then redeploy.
-5) Set `NEXT_PUBLIC_APP_URL=https://www.acenaija.com.ng`.
-6) In Firebase Auth, add `www.acenaija.com.ng` under **Authorized domains**.
-7) Make sure your AWS proxy/load balancer forwards `Host`, `Origin`, `X-Forwarded-Proto`, `X-Forwarded-For`, and cookies to the Next.js app.
-
-## Login troubleshooting
-1) Confirm these env vars are set in your AWS build/runtime environment:
-   - `NEXT_PUBLIC_FIREBASE_API_KEY`
-   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-   - `NEXT_PUBLIC_FIREBASE_APP_ID`
-   - `NEXT_PUBLIC_APP_URL`
-   - `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` (or `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`)
-2) Restart or redeploy after changing env vars.
-3) If Google login fails, add your deployed domain under Firebase Authentication authorized domains.
-4) If avatar upload fails, set `FIREBASE_STORAGE_BUCKET` (usually `<project-id>.appspot.com`).
-5) Confirm the app is reachable:
-```bash
-curl https://www.acenaija.com.ng/api/health
-```
-and expect a JSON response with `status: "ok"`.
+## Auth and role notes
+- Google sign-in now starts from `/api/auth/cognito/start` and completes at `/api/auth/cognito/callback`.
+- New signup confirmation uses the Cognito email code flow on the login page, and users must verify their email before a session is created.
+- Admin access is stored in the app profile record via `profiles.role`.
 
 ## OpenAI integration and syllabus-first flow
 1) Set `OPENAI_API_KEY` in local `.env.local` and in your AWS environment, then redeploy.
@@ -132,6 +89,13 @@ curl -H "x-cron-secret: $APP_CRON_SECRET" http://localhost:3000/api/cron/ai-jobs
 - Deploy the Next.js standalone build to your AWS runtime of choice.
 - Weekly leaderboard recompute is scheduled via the `Cron Jobs` GitHub workflow.
 
+## Deploy on Amplify
+- This repo now includes [`amplify.yml`](./amplify.yml) plus `npm run amplify:env:write` so Amplify build-time variables are copied into `.env.production` before `next build`.
+- Put all app env vars in Amplify environment variables, including every `NEXT_PUBLIC_*` value and the server-side secrets the app needs.
+- The AWS-native backend migration target, cutover checklist, and Aurora schema live in [`docs/aws-native-migration.md`](./docs/aws-native-migration.md) and [`infra/aws/aurora/schema.sql`](./infra/aws/aurora/schema.sql).
+- For AWS infrastructure automation, use [`infra/aws/cloudformation/backend-foundation.yaml`](./infra/aws/cloudformation/backend-foundation.yaml) and [`scripts/aws-stack-export-env.mjs`](./scripts/aws-stack-export-env.mjs) to provision Cognito/SES/Aurora/S3 and export Amplify-ready env values.
+- To auto-apply the Aurora schema after provisioning, use [`scripts/aws-apply-schema.mjs`](./scripts/aws-apply-schema.mjs).
+
 ## Android APK (GitHub Actions)
 This repo includes a workflow that builds a debug APK using Capacitor.
 
@@ -157,8 +121,8 @@ npm run mobile:android:sync
 
 ### If login fails on installed APK
 1. Confirm `APP_WEB_URL` points to your real deployed app (not a placeholder or another project).
-2. In Firebase Authentication -> Authorized domains, add that exact domain.
-3. Ensure deployed env vars are set (`NEXT_PUBLIC_FIREBASE_*` + admin vars).
+2. Ensure the deployed Cognito callback/logout URLs and `NEXT_PUBLIC_APP_URL` match that exact domain.
+3. Ensure the deployed auth env vars are set (`APP_BACKEND_PROVIDER=aws`, Cognito vars, and `APP_SESSION_SECRET`).
 
 ## Notes / disclaimers
 ACE NAIJA is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content is for preparation only.
@@ -166,8 +130,8 @@ ACE NAIJA is **not** affiliated with WAEC, JAMB, IELTS, ACCA, or ICAN. Content i
 ## Security hardening implemented
 - Strict security headers (CSP, HSTS in production, frame blocking, permissions policy, nosniff, COOP/CORP).
 - Same-origin enforcement for state-changing requests in middleware and sensitive routes.
-- Rate limiting on login, signup, OTP, session creation, avatar upload, billing init, and logout.
-- Firebase session cookies are `httpOnly`, `secure` (production), `sameSite=lax`, high priority, and 24-hour expiry.
+- Rate limiting on login, signup, email confirmation, session creation, avatar upload, billing init, and logout.
+- Session cookies are `httpOnly`, `secure` (production), `sameSite=lax`, high priority, and 24-hour expiry.
 - Avatar upload validates file type, max size, and binary signature before storing.
 
-Important: no internet app is 100% hack-proof. Keep dependencies updated, rotate secrets, enforce strong Firebase rules, and monitor logs/alerts continuously.
+Important: no internet app is 100% hack-proof. Keep dependencies updated, rotate secrets, enforce strong backend access controls, and monitor logs/alerts continuously.

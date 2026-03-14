@@ -35,8 +35,8 @@ export default function PricingPage() {
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Choose the plan that fits your prep style</h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Start free to build your study routine. Upgrade to Pro when you want deeper practice, mock exams, and
-            stronger accountability.
+            Start with 3 days of full access. After trial, history, tests, and mock exams remain available, while Pro
+            unlocks the full learning workflow for a rolling 30 days from activation.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -44,10 +44,10 @@ export default function PricingPage() {
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>Onboarding, study plan, objective questions, and explanations</li>
-                <li>One exam + one subject only</li>
-                <li>No full mock exams</li>
-                <li>Upgrade prompt when you try to add more</li>
+                <li>First 3 days include full access across the app</li>
+                <li>After trial: history, tests, and mock exams stay available</li>
+                <li>After trial: extra subjects and full app workflow require Pro</li>
+                <li>Upgrade prompt appears when you hit free access limits</li>
               </ul>
               <div className="mt-6">
                 <Button asChild variant="secondary" className="w-full">
@@ -63,7 +63,7 @@ export default function PricingPage() {
                 <div className="mt-3 text-sm font-medium">Pro</div>
                 <div className="mt-2 text-4xl font-semibold tracking-tight">
                   N3,000
-                  <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
+                  <span className="ml-1 text-base font-medium text-muted-foreground">/30 days</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">Designed for learners who want measurable score improvement.</p>
                 <ul className="mt-4 space-y-2 text-sm text-muted-foreground">

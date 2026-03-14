@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 import { getServerEnv } from "@/lib/env";
 import { sendViaProvider, type Channel } from "@/lib/notifications/providers";
 
@@ -102,7 +102,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const now = new Date();
   const nowIso = toIso(now);
   const today = nowIso.slice(0, 10);

@@ -1,7 +1,7 @@
 import "server-only";
 
-import { addDays } from "date-fns";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
+import { computeRollingProUntil } from "@/lib/billing/access";
 
 function normalizeCode(value: string) {
   return String(value ?? "")
@@ -38,22 +38,22 @@ function isConflictMessage(value: unknown) {
 }
 
 async function extendProAccess(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   bonusDays: number;
 }) {
-  const { data: profile } = await args.firebase
+  const { data: profile } = await args.backend
     .from("profiles")
     .select("subscription_tier,pro_until")
     .eq("user_id", args.userId)
     .maybeSingle();
 
-  const now = new Date();
-  const existing = profile?.pro_until ? new Date(profile.pro_until) : null;
-  const base = existing && existing > now ? existing : now;
-  const next = addDays(base, Math.max(1, Math.trunc(args.bonusDays || 1))).toISOString();
+  const next = computeRollingProUntil({
+    currentPeriodEnd: profile?.pro_until ?? null,
+    durationDays: Math.max(1, Math.trunc(args.bonusDays || 1))
+  });
 
-  await args.firebase
+  await args.backend
     .from("profiles")
     .update({
       subscription_tier: "pro",
@@ -61,7 +61,7 @@ async function extendProAccess(args: {
     })
     .eq("user_id", args.userId);
 
-  await args.firebase.from("subscriptions").upsert(
+  await args.backend.from("subscriptions").upsert(
     {
       user_id: args.userId,
       provider: "referral",
@@ -74,7 +74,7 @@ async function extendProAccess(args: {
 }
 
 async function identityAlreadyRewarded(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   email: string | null;
   phone: string | null;
@@ -82,7 +82,7 @@ async function identityAlreadyRewarded(args: {
   const candidateUserIds = new Set<string>();
 
   if (args.email) {
-    const { data: emailProfiles } = await args.firebase
+    const { data: emailProfiles } = await args.backend
       .from("profiles")
       .select("user_id")
       .eq("email", args.email);
@@ -93,7 +93,7 @@ async function identityAlreadyRewarded(args: {
   }
 
   if (args.phone) {
-    const { data: phoneProfiles } = await args.firebase
+    const { data: phoneProfiles } = await args.backend
       .from("profiles")
       .select("user_id")
       .eq("phone", args.phone);
@@ -106,7 +106,7 @@ async function identityAlreadyRewarded(args: {
   const ids = Array.from(candidateUserIds);
   if (!ids.length) return false;
 
-  const { data: existingReferrals } = await args.firebase
+  const { data: existingReferrals } = await args.backend
     .from("referrals")
     .select("invitee_user_id")
     .in("invitee_user_id", ids);
@@ -117,7 +117,7 @@ async function identityAlreadyRewarded(args: {
 }
 
 export async function claimReferralForUser(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   code: string;
   bonusDays?: number;
@@ -127,7 +127,7 @@ export async function claimReferralForUser(args: {
 
   const bonusDays = Math.max(1, Math.trunc(args.bonusDays ?? 3));
 
-  const { data: existingInvitee } = await args.firebase
+  const { data: existingInvitee } = await args.backend
     .from("referrals")
     .select("id")
     .eq("invitee_user_id", args.userId)
@@ -136,7 +136,7 @@ export async function claimReferralForUser(args: {
     return { applied: false as const, reason: "already_claimed" };
   }
 
-  const { data: inviterCode } = await args.firebase
+  const { data: inviterCode } = await args.backend
     .from("referral_codes")
     .select("user_id,code,owner_kind,is_active,campaign_external_id")
     .eq("code", code)
@@ -157,7 +157,7 @@ export async function claimReferralForUser(args: {
     return { applied: false as const, reason: "self_referral" };
   }
 
-  const { data: inviteeProfile } = await args.firebase
+  const { data: inviteeProfile } = await args.backend
     .from("profiles")
     .select("email,phone")
     .eq("user_id", args.userId)
@@ -167,7 +167,7 @@ export async function claimReferralForUser(args: {
   const phone = normalizePhone(inviteeProfile?.phone ?? null);
 
   const alreadyRewardedIdentity = await identityAlreadyRewarded({
-    firebase: args.firebase,
+    backend: args.backend,
     userId: args.userId,
     email,
     phone
@@ -176,7 +176,7 @@ export async function claimReferralForUser(args: {
     return { applied: false as const, reason: "identity_already_rewarded" };
   }
 
-  const { error: insertError } = await args.firebase.from("referrals").insert({
+  const { error: insertError } = await args.backend.from("referrals").insert({
     inviter_user_id: inviterCode.user_id,
     invitee_user_id: args.userId,
     code,
@@ -193,7 +193,7 @@ export async function claimReferralForUser(args: {
 
   const rewardTasks = [
     extendProAccess({
-      firebase: args.firebase,
+      backend: args.backend,
       userId: args.userId,
       bonusDays
     })
@@ -202,7 +202,7 @@ export async function claimReferralForUser(args: {
   if (ownerKind === "user") {
     rewardTasks.push(
       extendProAccess({
-        firebase: args.firebase,
+        backend: args.backend,
         userId: inviterCode.user_id,
         bonusDays
       })
@@ -218,3 +218,4 @@ export async function claimReferralForUser(args: {
     campaignExternalId
   };
 }
+

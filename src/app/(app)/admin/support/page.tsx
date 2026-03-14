@@ -13,7 +13,7 @@ import {
   reopenSupportIssueAction,
   resolveSupportIssueAction
 } from "@/app/(app)/admin/support/actions";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ function chunk<T>(arr: T[], size: number) {
 }
 
 async function selectByInBatches(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   table: string;
   select: string;
   field: string;
@@ -51,7 +51,7 @@ async function selectByInBatches(args: {
   if (!args.values.length) return [];
   const rows: any[] = [];
   for (const batch of chunk(args.values, 25)) {
-    const { data } = await args.firebase.from(args.table).select(args.select).in(args.field, batch);
+    const { data } = await args.backend.from(args.table).select(args.select).in(args.field, batch);
     rows.push(...(data ?? []));
   }
   return rows;
@@ -78,7 +78,7 @@ export default async function AdminSupportPage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
 
   const [
     pendingRes,
@@ -90,29 +90,29 @@ export default async function AdminSupportPage() {
     failedAiCountRes,
     failedAiRes
   ] = await Promise.all([
-    firebase
+    backend
       .from("contact_requests")
       .select("*")
       .in("status", ["new", "in_progress"])
       .order("created_at", { ascending: false })
       .limit(30),
-    firebase
+    backend
       .from("contact_requests")
       .select("*")
       .in("status", ["resolved", "handled"])
       .order("created_at", { ascending: false })
       .limit(30),
-    firebase.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["new", "in_progress"]),
-    firebase.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["resolved", "handled"]),
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
-    firebase
+    backend.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["new", "in_progress"]),
+    backend.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["resolved", "handled"]),
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
+    backend
       .from("notifications")
       .select("id,channel,message,created_at,user_id")
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .limit(6),
-    firebase.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "failed"),
-    firebase
+    backend.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "failed"),
+    backend
       .from("ai_jobs")
       .select("id,job_type,last_error,created_at")
       .eq("status", "failed")
@@ -129,7 +129,7 @@ export default async function AdminSupportPage() {
 
   const issueEmails = Array.from(new Set([...pendingIssues, ...resolvedIssues].map((issue) => issue.email).filter(Boolean))) as string[];
   const relatedProfiles = await selectByInBatches({
-    firebase,
+    backend,
     table: "profiles",
     select: "user_id,email,display_name,name,subscription_tier",
     field: "email",
@@ -386,3 +386,4 @@ export default async function AdminSupportPage() {
     </div>
   );
 }
+

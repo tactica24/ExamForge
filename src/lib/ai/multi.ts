@@ -82,8 +82,8 @@ function trimError(error: unknown) {
 function providerOrder() {
   const env = getServerEnv();
   const providers: AiProvider[] = [];
-  if (env.GEMINI_API_KEY) providers.push("gemini");
   if (env.GROQ_API_KEY) providers.push("groq");
+  if (env.GEMINI_API_KEY) providers.push("gemini");
   if (env.OPENAI_API_KEY) providers.push("openai");
   return providers;
 }

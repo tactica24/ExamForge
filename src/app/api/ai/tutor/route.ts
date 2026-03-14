@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
 import { generateTextWithFallback } from "@/lib/ai/multi";
@@ -37,10 +37,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
   let syllabusNote = "If a syllabus is available, keep answers aligned to it. Otherwise, respond generally for the exam level.";
   if (examId && subject) {
-    const { data: examRow } = await firebase.from("exams").select("slug").eq("id", examId).maybeSingle();
+    const { data: examRow } = await backend.from("exams").select("slug").eq("id", examId).maybeSingle();
     const examSlug = examRow?.slug ?? "";
     if (examSlug) {
       const topics = await getTopicsForExamSubject({ examId, examSlug, subject });
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
   let threadId = threadIdRaw;
   if (threadId) {
-    const { data: existingThread } = await firebase
+    const { data: existingThread } = await backend
       .from("tutor_threads")
       .select("id,user_id")
       .eq("id", threadId)
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 
   if (!threadId) {
     threadId = randomUUID();
-    await firebase.from("tutor_threads").insert({
+    await backend.from("tutor_threads").insert({
       id: threadId,
       user_id: user.id,
       exam_id: examId || null,
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     });
   }
 
-  await firebase.from("tutor_messages").insert({
+  await backend.from("tutor_messages").insert({
     id: randomUUID(),
     thread_id: threadId,
     user_id: user.id,
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     ai.text ||
     "Break the topic into definitions, formulas, and examples first, then solve 5 practice questions and review your mistakes.";
 
-  await firebase.from("tutor_messages").insert({
+  await backend.from("tutor_messages").insert({
     id: randomUUID(),
     thread_id: threadId,
     user_id: user.id,
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     created_at: new Date().toISOString()
   });
 
-  await firebase
+  await backend
     .from("tutor_threads")
     .update({
       updated_at: new Date().toISOString(),
@@ -147,3 +147,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, answer, thread_id: threadId });
 }
+

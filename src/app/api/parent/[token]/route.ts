@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
-import { isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
+import { createBackendAdminClient } from "@/lib/backend/admin";
+import { isAuroraDataConfigured } from "@/lib/aws/rds-data";
 
 export async function GET(_: Request, props: { params: Promise<{ token: string }> }) {
   const { token } = await props.params;
 
-  if (!isFirebaseAdminConfigured()) {
-    return NextResponse.json({ ok: false, message: "Parent view requires Firebase admin credentials." }, { status: 501 });
+  if (!isAuroraDataConfigured()) {
+    return NextResponse.json({ ok: false, message: "Parent view requires configured Aurora backend access." }, { status: 501 });
   }
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
 
   const { data: link, error: linkErr } = await admin
     .from("parent_links")

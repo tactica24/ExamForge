@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 
 const CreateCampaignCodeSchema = z.object({
   campaign_external_id: z.string().trim().min(2).max(48),
@@ -56,7 +56,7 @@ function randomCode() {
   return out;
 }
 
-async function ensureUniqueCode(admin: ReturnType<typeof createFirebaseAdminClient>, requested: string | null) {
+async function ensureUniqueCode(admin: ReturnType<typeof createBackendAdminClient>, requested: string | null) {
   if (requested) {
     const { data: existing } = await admin.from("referral_codes").select("code").eq("code", requested).maybeSingle();
     if (existing?.code) {
@@ -91,9 +91,9 @@ export async function createCampaignReferralCodeAction(_: unknown, formData: For
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Firebase admin credentials are missing.";
+    const message = error instanceof Error ? error.message : "Backend datastore credentials are missing.";
     return { ok: false, message };
   }
 
@@ -154,9 +154,9 @@ export async function toggleCampaignReferralCodeStatusAction(_: unknown, formDat
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Firebase admin credentials are missing.";
+    const message = error instanceof Error ? error.message : "Backend datastore credentials are missing.";
     return { ok: false, message };
   }
 

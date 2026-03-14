@@ -1,4 +1,4 @@
-import type { Json } from "@/lib/firebase/database.types";
+import type { Json } from "@/lib/backend/database.types";
 
 export type PlanResourceLink = {
   title: string;

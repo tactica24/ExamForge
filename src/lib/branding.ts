@@ -1,8 +1,8 @@
 import "server-only";
 
 import { cache } from "react";
-import { createFirebaseDataClient } from "@/lib/firebase/data-client";
-import { getFirebaseAdminDb } from "@/lib/firebase/admin-app";
+import { createBackendAdminClient } from "@/lib/backend/admin";
+import { isAllowedAssetUrl } from "@/lib/backend/storage";
 
 const BRANDING_DOC_ID = "branding";
 
@@ -15,15 +15,10 @@ type BrandingRecord = {
 };
 
 export const getBrandingSettings = cache(async () => {
-  const db = getFirebaseAdminDb();
-  if (!db) {
-    return { logoUrl: null as string | null };
-  }
-
-  const firebase = createFirebaseDataClient(db);
-  const { data } = await firebase.from("app_settings").select("*").eq("id", BRANDING_DOC_ID).maybeSingle();
+  const backend = createBackendAdminClient();
+  const { data } = await backend.from("app_settings").select("*").eq("id", BRANDING_DOC_ID).maybeSingle();
   const record = (data ?? {}) as BrandingRecord;
-  const logoUrl = typeof record.logo_url === "string" && /^https?:\/\//i.test(record.logo_url) ? record.logo_url : null;
+  const logoUrl = typeof record.logo_url === "string" && isAllowedAssetUrl(record.logo_url) ? record.logo_url : null;
 
   return { logoUrl };
 });

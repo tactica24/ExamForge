@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getUserAiPreferences } from "@/lib/ai/user-preferences";
 import { languageInstruction } from "@/lib/ai/language";
 import { generateJsonWithFallback } from "@/lib/ai/multi";
@@ -68,10 +68,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
 
   let syllabusNote = "If a syllabus is available, keep explanations aligned to it.";
   if (examId && subject) {
-    const { data: examRow } = await firebase.from("exams").select("slug").eq("id", examId).maybeSingle();
+    const { data: examRow } = await backend.from("exams").select("slug").eq("id", examId).maybeSingle();
     const examSlug = examRow?.slug ?? "";
     if (examSlug) {
       const topics = await getTopicsForExamSubject({ examId, examSlug, subject });
@@ -151,4 +151,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, answers });
 }
+
 

@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export default async function OnboardingPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const exams = await listActiveExams();
@@ -41,3 +41,4 @@ export default async function OnboardingPage() {
     />
   );
 }
+

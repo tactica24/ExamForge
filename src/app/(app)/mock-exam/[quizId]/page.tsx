@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { MockRunner } from "@/components/mock/mock-runner";
 
 export default async function MockExamRunPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await firebase
+  const { data: quiz } = await backend
     .from("quizzes")
     .select("*")
     .eq("id", quizId)
@@ -20,7 +20,7 @@ export default async function MockExamRunPage(props: { params: Promise<{ quizId:
 
   const durationSec = Number((quiz.meta as any)?.duration_sec ?? 3600);
 
-  const { data: questions } = await firebase
+  const { data: questions } = await backend
     .from("quiz_questions")
     .select("id,question,options")
     .eq("quiz_id", quizId)
@@ -42,3 +42,4 @@ export default async function MockExamRunPage(props: { params: Promise<{ quizId:
     />
   );
 }
+

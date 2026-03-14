@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -85,8 +85,8 @@ export async function signupAction(_: unknown, formData: FormData) {
   const fullName = `${parsed.data.name} ${parsed.data.surname}`.trim();
   const location = parsed.data.country === "Nigeria" ? `${parsed.data.state}, Nigeria` : parsed.data.country;
 
-  const firebase = await createFirebaseServerClient();
-  const { data, error } = await firebase.auth.signUp({
+  const backend = await createBackendServerClient();
+  const { data, error } = await backend.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -105,7 +105,7 @@ export async function signupAction(_: unknown, formData: FormData) {
   if (error) return { ok: false, message: error.message };
 
   if (data.user?.id) {
-    await firebase.from("profiles").upsert(
+    await backend.from("profiles").upsert(
       {
         user_id: data.user.id,
         email: parsed.data.email,
@@ -115,6 +115,7 @@ export async function signupAction(_: unknown, formData: FormData) {
         learning_style: "visual",
         level: "beginner",
         subscription_tier: "free",
+        role: "user",
         exam_interest_slugs: parsed.data.exam_interests,
         country: parsed.data.country,
         state: parsed.data.country === "Nigeria" ? parsed.data.state ?? null : null
@@ -123,5 +124,5 @@ export async function signupAction(_: unknown, formData: FormData) {
     );
   }
 
-  redirect("/login?verify=1");
+  redirect(`/login?verify=1&email=${encodeURIComponent(parsed.data.email)}`);
 }

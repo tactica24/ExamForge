@@ -3,9 +3,8 @@
 import { addDays, formatISO } from "date-fns";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
-import { hasActiveProAccess } from "@/lib/billing/access";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 
 const Schema = z.object({
@@ -28,32 +27,25 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid mock exam settings." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
-    .select("subscription_tier,pro_until,preferred_explanation_language")
+    .select("preferred_explanation_language")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!hasActiveProAccess(profile)) {
-    return {
-      ok: false,
-      message: "Mock exam is a Pro feature. Upgrade from /pricing to continue."
-    };
-  }
-
-  const { data: exam } = await firebase
+  const { data: exam } = await backend
     .from("exams")
     .select("name,slug")
     .eq("id", parsed.data.exam_id)
     .maybeSingle();
 
-  const { data: plan } = await firebase
+  const { data: plan } = await backend
     .from("user_plans")
     .select("id")
     .eq("user_id", user.id)
@@ -71,7 +63,7 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
 
   const end = formatISO(new Date(), { representation: "date" });
   const start = formatISO(addDays(new Date(), -6), { representation: "date" });
-  const { data: recentItems } = await firebase
+  const { data: recentItems } = await backend
     .from("plan_items")
     .select("topic_path,title,status,resource_links,scheduled_for")
     .eq("plan_id", plan.id)
@@ -113,3 +105,4 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
 
   redirect(`/mock-exam/${quizId}`);
 }
+

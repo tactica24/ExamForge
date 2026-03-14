@@ -2,20 +2,15 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
-import { createFirebaseDataClient, type FirebaseDataClient } from "@/lib/firebase/data-client";
-import { getFirebaseAdminDb } from "@/lib/firebase/admin-app";
+import { createAppDataClient, type AppDataClient } from "@/lib/backend/data-client";
+import { APP_DEVICE_COOKIE, APP_SESSION_COOKIE, APP_TRACKED_SESSION_COOKIE } from "@/lib/backend/constants";
+import { confirmCognitoSignUp, resendCognitoConfirmationCode, signInWithCognitoPassword, signUpWithCognito, type CognitoTokenSet } from "@/lib/aws/cognito-public";
 import {
-  clearFirebaseSessionCookie,
-  readFirebaseSessionUser,
-  setFirebaseSessionCookie
-} from "@/lib/firebase/session";
-import {
-  FIREBASE_DEVICE_COOKIE,
-  FIREBASE_SESSION_COOKIE,
-  FIREBASE_TRACKED_SESSION_COOKIE
-} from "@/lib/firebase/constants";
-import { getAppUrl } from "@/lib/app-url";
-import { getServerEnv } from "@/lib/env";
+  clearAwsSessionCookie,
+  readAwsSessionState,
+  setAwsSessionCookie,
+  stateToSessionUser
+} from "@/lib/aws/session";
 
 const MAX_ACTIVE_DEVICE_SESSIONS = 3;
 const AUTH_SESSION_IDLE_MS = 1000 * 60 * 60 * 24 * 30;
@@ -31,10 +26,12 @@ type AuthPayload = {
   id: string;
   email: string | null;
   phone: string | null;
+  app_metadata?: { role?: string | null };
+  user_metadata?: Record<string, unknown>;
 };
 
 type SessionInitResult =
-  | { ok: true }
+  | { ok: true; user?: AuthPayload | null }
   | {
       ok: false;
       message: string;
@@ -54,20 +51,6 @@ type AuthSessionRow = {
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 type HeaderStore = Awaited<ReturnType<typeof headers>>;
-
-function normalizeAuthError(message: string) {
-  const m = message.toUpperCase();
-  if (m.includes("INVALID_LOGIN_CREDENTIALS") || m.includes("INVALID_PASSWORD") || m.includes("EMAIL_NOT_FOUND")) {
-    return "Invalid login credentials.";
-  }
-  if (m.includes("EMAIL_EXISTS")) {
-    return "An account with this email already exists.";
-  }
-  if (m.includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
-    return "Too many attempts. Try again later.";
-  }
-  return message;
-}
 
 function trackingCookieOptions(maxAge: number) {
   const isProduction = process.env.NODE_ENV === "production";
@@ -138,7 +121,7 @@ function requestIp(headerStore: HeaderStore) {
 
 function clearTrackedSessionCookie(cookieStore: CookieStore) {
   try {
-    cookieStore.delete(FIREBASE_TRACKED_SESSION_COOKIE);
+    cookieStore.delete(APP_TRACKED_SESSION_COOKIE);
   } catch {
     // Server Components may not allow cookie mutation.
   }
@@ -146,7 +129,7 @@ function clearTrackedSessionCookie(cookieStore: CookieStore) {
 
 function clearSessionCookies(cookieStore: CookieStore) {
   try {
-    clearFirebaseSessionCookie(cookieStore);
+    clearAwsSessionCookie(cookieStore);
   } catch {
     // Server Components may not allow cookie mutation.
   }
@@ -154,23 +137,19 @@ function clearSessionCookies(cookieStore: CookieStore) {
 }
 
 async function setDeviceCookie(cookieStore: CookieStore) {
-  const existing = cleanText(cookieStore.get(FIREBASE_DEVICE_COOKIE)?.value, 120);
+  const existing = cleanText(cookieStore.get(APP_DEVICE_COOKIE)?.value, 120);
   if (existing) return existing;
 
   const deviceId = randomUUID();
-  cookieStore.set(FIREBASE_DEVICE_COOKIE, deviceId, trackingCookieOptions(DEVICE_COOKIE_MAX_AGE));
+  cookieStore.set(APP_DEVICE_COOKIE, deviceId, trackingCookieOptions(DEVICE_COOKIE_MAX_AGE));
   return deviceId;
 }
 
 function setTrackedSessionCookie(cookieStore: CookieStore, sessionId: string) {
-  cookieStore.set(
-    FIREBASE_TRACKED_SESSION_COOKIE,
-    sessionId,
-    trackingCookieOptions(TRACKED_SESSION_COOKIE_MAX_AGE)
-  );
+  cookieStore.set(APP_TRACKED_SESSION_COOKIE, sessionId, trackingCookieOptions(TRACKED_SESSION_COOKIE_MAX_AGE));
 }
 
-async function listActiveSessions(args: { dataClient: FirebaseDataClient; userId: string }) {
+async function listActiveSessions(args: { dataClient: AppDataClient; userId: string }) {
   const { data } = await args.dataClient
     .from("auth_sessions")
     .select("*")
@@ -183,7 +162,7 @@ async function listActiveSessions(args: { dataClient: FirebaseDataClient; userId
 }
 
 async function revokeSession(args: {
-  dataClient: FirebaseDataClient;
+  dataClient: AppDataClient;
   sessionId: string;
   reason: string;
 }) {
@@ -196,7 +175,7 @@ async function revokeSession(args: {
     .eq("id", args.sessionId);
 }
 
-async function pruneStaleSessions(args: { dataClient: FirebaseDataClient; sessions: AuthSessionRow[] }) {
+async function pruneStaleSessions(args: { dataClient: AppDataClient; sessions: AuthSessionRow[] }) {
   const active: AuthSessionRow[] = [];
   const stale: AuthSessionRow[] = [];
 
@@ -221,7 +200,7 @@ async function pruneStaleSessions(args: { dataClient: FirebaseDataClient; sessio
 }
 
 async function registerOrReuseSession(args: {
-  dataClient: FirebaseDataClient;
+  dataClient: AppDataClient;
   cookieStore: CookieStore;
   headerStore: HeaderStore;
   userId: string;
@@ -289,12 +268,12 @@ async function registerOrReuseSession(args: {
 }
 
 async function validateTrackedSession(args: {
-  dataClient: FirebaseDataClient;
+  dataClient: AppDataClient;
   cookieStore: CookieStore;
   headerStore: HeaderStore;
   userId: string;
 }) {
-  const sid = cleanText(args.cookieStore.get(FIREBASE_TRACKED_SESSION_COOKIE)?.value, 80);
+  const sid = cleanText(args.cookieStore.get(APP_TRACKED_SESSION_COOKIE)?.value, 80);
   if (!sid) return true;
 
   const { data } = await args.dataClient.from("auth_sessions").select("*").eq("id", sid).maybeSingle();
@@ -326,75 +305,31 @@ async function validateTrackedSession(args: {
   return true;
 }
 
-async function callIdentityToolkit(endpoint: string, payload: Record<string, unknown>) {
-  const env = getServerEnv();
-  const apiKey = env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error("Firebase web API key is missing. Set NEXT_PUBLIC_FIREBASE_API_KEY.");
-  }
-
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store"
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    const raw = String(json?.error?.message ?? "Authentication failed");
-    throw new Error(normalizeAuthError(raw));
-  }
-
-  return json as Record<string, any>;
+async function lookupUserRole(dataClient: AppDataClient, userId: string) {
+  const { data } = await dataClient.from("profiles").select("role").eq("user_id", userId).maybeSingle();
+  const role = cleanText((data as Record<string, unknown> | null)?.role, 20);
+  return role ?? null;
 }
 
-function getEmailVerificationContinueUrl() {
-  return `${getAppUrl()}/login?verified=1`;
+function toAuthPayload(state: Awaited<ReturnType<typeof readAwsSessionState>>, role: string | null): AuthPayload | null {
+  if (!state) return null;
+  return stateToSessionUser(state, role);
 }
 
-async function lookupIdentityToolkitUser(idToken: string) {
-  const json = await callIdentityToolkit("accounts:lookup", { idToken });
-  const users = Array.isArray(json.users) ? json.users : [];
-  return (users[0] as Record<string, unknown> | undefined) ?? null;
-}
-
-async function sendVerificationEmail(idToken: string) {
-  try {
-    await callIdentityToolkit("accounts:sendOobCode", {
-      requestType: "VERIFY_EMAIL",
-      idToken,
-      continueUrl: getEmailVerificationContinueUrl()
-    });
-  } catch (error) {
-    const raw = (error instanceof Error ? error.message : "").toUpperCase();
-    const invalidContinueUrl =
-      raw.includes("INVALID_CONTINUE_URI") ||
-      raw.includes("UNAUTHORIZED_CONTINUE_URI") ||
-      raw.includes("MISSING_CONTINUE_URI");
-
-    if (!invalidContinueUrl) {
-      throw error;
-    }
-
-    await callIdentityToolkit("accounts:sendOobCode", {
-      requestType: "VERIFY_EMAIL",
-      idToken
-    });
-  }
-}
-
-export async function establishTrackedSessionFromIdToken(args: {
-  idToken: string;
-  userId: string;
-  email: string | null;
+export async function establishTrackedSessionFromTokens(args: {
+  tokens: CognitoTokenSet;
+  role?: string | null;
 }): Promise<SessionInitResult> {
   const cookieStore = await cookies();
   const headerStore = await headers();
-  const dataClient = createFirebaseDataClient(getFirebaseAdminDb());
+  const dataClient = createAppDataClient();
 
+  let state;
   try {
-    await setFirebaseSessionCookie(cookieStore, args.idToken);
+    state = await setAwsSessionCookie(cookieStore, {
+      tokens: args.tokens,
+      role: args.role
+    });
   } catch {
     return {
       ok: false,
@@ -406,8 +341,8 @@ export async function establishTrackedSessionFromIdToken(args: {
     dataClient,
     cookieStore,
     headerStore,
-    userId: args.userId,
-    email: args.email
+    userId: state.subject,
+    email: state.email
   });
 
   if (!tracked.ok) {
@@ -415,26 +350,39 @@ export async function establishTrackedSessionFromIdToken(args: {
     return tracked;
   }
 
-  return { ok: true };
+  const role = args.role ?? (await lookupUserRole(dataClient, state.subject));
+  return { ok: true, user: toAuthPayload(state, role) };
 }
 
-export async function createFirebaseServerClient() {
+export async function createBackendServerClient() {
   const cookieStore = await cookies();
   const headerStore = await headers();
-  const dataClient = createFirebaseDataClient(getFirebaseAdminDb());
+  const dataClient = createAppDataClient();
 
   return {
     ...dataClient,
     auth: {
       async getUser() {
-        const sessionCookie = cookieStore.get(FIREBASE_SESSION_COOKIE)?.value;
+        const sessionCookie = cookieStore.get(APP_SESSION_COOKIE)?.value;
         if (!sessionCookie) {
           clearTrackedSessionCookie(cookieStore);
           return { data: { user: null }, error: null };
         }
 
-        const user = await readFirebaseSessionUser(sessionCookie);
-        if (!user) {
+        const rawState = await readAwsSessionState(sessionCookie, {
+          cookieStore
+        });
+        if (!rawState) {
+          clearSessionCookies(cookieStore);
+          return { data: { user: null }, error: null };
+        }
+
+        const role = await lookupUserRole(dataClient, rawState.subject);
+        const state = await readAwsSessionState(cookieStore.get(APP_SESSION_COOKIE)?.value ?? sessionCookie, {
+          cookieStore,
+          role
+        });
+        if (!state) {
           clearSessionCookies(cookieStore);
           return { data: { user: null }, error: null };
         }
@@ -443,72 +391,28 @@ export async function createFirebaseServerClient() {
           dataClient,
           cookieStore,
           headerStore,
-          userId: user.id
+          userId: state.subject
         });
         if (!isValidTrackedSession) {
           clearSessionCookies(cookieStore);
           return { data: { user: null }, error: null };
         }
 
-        return { data: { user }, error: null };
+        return { data: { user: toAuthPayload(state, role) }, error: null };
       },
 
       async signInWithPassword(args: { email: string; password: string }) {
         try {
-          const json = await callIdentityToolkit("accounts:signInWithPassword", {
-            email: args.email,
-            password: args.password,
-            returnSecureToken: true
-          });
-
-          const idToken = String(json.idToken);
-          const userRecord = await lookupIdentityToolkitUser(idToken);
-          const emailVerified = Boolean(userRecord?.emailVerified);
-
-          if (!emailVerified) {
-            try {
-              await sendVerificationEmail(idToken);
-              return {
-                data: { user: null },
-                error: {
-                  message:
-                    "Please verify your email before logging in. We sent a new verification link to your inbox."
-                }
-              };
-            } catch {
-              return {
-                data: { user: null },
-                error: {
-                  message: "Please verify your email before logging in."
-                }
-              };
-            }
-          }
-
-          await setFirebaseSessionCookie(cookieStore, idToken);
-
-          const user: AuthPayload = {
-            id: String(json.localId),
-            email: (json.email as string | undefined) ?? args.email,
-            phone: null
-          };
-
-          const tracked = await registerOrReuseSession({
-            dataClient,
-            cookieStore,
-            headerStore,
-            userId: user.id,
-            email: user.email
-          });
-          if (!tracked.ok) {
-            clearSessionCookies(cookieStore);
+          const tokens = await signInWithCognitoPassword(args);
+          const established = await establishTrackedSessionFromTokens({ tokens });
+          if (!established.ok) {
             return {
               data: { user: null },
-              error: { message: tracked.message }
+              error: { message: established.message }
             };
           }
 
-          return { data: { user }, error: null };
+          return { data: { user: established.user ?? null }, error: null };
         } catch (error) {
           return {
             data: { user: null },
@@ -519,22 +423,31 @@ export async function createFirebaseServerClient() {
 
       async signUp(args: { email: string; password: string; options?: Record<string, unknown> }) {
         try {
-          const json = await callIdentityToolkit("accounts:signUp", {
+          const metadata = (args.options?.data as Record<string, unknown> | undefined) ?? {};
+          const firstName = cleanText(metadata.first_name, 80) || null;
+          const surname = cleanText(metadata.surname, 80) || null;
+          const name = cleanText(metadata.name, 120) || `${firstName ?? ""} ${surname ?? ""}`.trim() || null;
+
+          const result = await signUpWithCognito({
             email: args.email,
             password: args.password,
-            returnSecureToken: true
+            attributes: {
+              email: args.email,
+              ...(name ? { name } : {}),
+              ...(firstName ? { given_name: firstName } : {}),
+              ...(surname ? { family_name: surname } : {})
+            }
           });
-          await sendVerificationEmail(String(json.idToken));
-
-          const user: AuthPayload = {
-            id: String(json.localId),
-            email: (json.email as string | undefined) ?? args.email,
-            phone: null
-          };
 
           return {
             data: {
-              user,
+              user: result.userId
+                ? ({
+                    id: result.userId,
+                    email: args.email,
+                    phone: null
+                  } satisfies AuthPayload)
+                : null,
               session: null
             },
             error: null
@@ -547,8 +460,34 @@ export async function createFirebaseServerClient() {
         }
       },
 
+      async confirmSignUp(args: { email: string; code: string }) {
+        try {
+          await confirmCognitoSignUp(args);
+          return { error: null };
+        } catch (error) {
+          return {
+            error: {
+              message: error instanceof Error ? error.message : "Confirmation failed."
+            }
+          };
+        }
+      },
+
+      async resendConfirmationCode(args: { email: string }) {
+        try {
+          await resendCognitoConfirmationCode(args);
+          return { error: null };
+        } catch (error) {
+          return {
+            error: {
+              message: error instanceof Error ? error.message : "Could not resend the confirmation code."
+            }
+          };
+        }
+      },
+
       async signOut() {
-        const trackedSessionId = cleanText(cookieStore.get(FIREBASE_TRACKED_SESSION_COOKIE)?.value, 80);
+        const trackedSessionId = cleanText(cookieStore.get(APP_TRACKED_SESSION_COOKIE)?.value, 80);
         if (trackedSessionId) {
           await revokeSession({
             dataClient,
@@ -559,22 +498,6 @@ export async function createFirebaseServerClient() {
 
         clearSessionCookies(cookieStore);
         return { error: null };
-      },
-
-      async signInWithOtp(_args?: { phone?: string }) {
-        return {
-          error: {
-            message: "Phone OTP sign-in is not enabled in this Firebase migration yet. Use email/password or Google login."
-          }
-        };
-      },
-
-      async verifyOtp(_args?: { phone?: string; token?: string; type?: string }) {
-        return {
-          error: {
-            message: "Phone OTP verification is not enabled in this Firebase migration yet."
-          }
-        };
       }
     }
   };

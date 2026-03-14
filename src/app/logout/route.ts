@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getAppOrigin } from "@/lib/app-url";
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const firebase = await createFirebaseServerClient();
-  await firebase.auth.signOut();
+  const backend = await createBackendServerClient();
+  await backend.auth.signOut();
   return NextResponse.redirect(new URL("/", getAppOrigin()), {
     status: 303
   });

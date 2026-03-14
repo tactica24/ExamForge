@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { createSupportRequestAction } from "@/app/(app)/support/actions";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 const TOPICS = [
   "Account access",
@@ -22,18 +22,18 @@ const TOPICS = [
 ] as const;
 
 export default async function SupportPage(props: { searchParams: Promise<{ created?: string }> }) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
     .select("display_name,name,email")
     .eq("user_id", user.id)
     .maybeSingle();
-  const { data: requests } = await firebase
+  const { data: requests } = await backend
     .from("contact_requests")
     .select("id,topic,message,status,created_at,handled_at,resolution_notes,assigned_admin_email")
     .eq("user_id", user.id)
@@ -196,3 +196,4 @@ export default async function SupportPage(props: { searchParams: Promise<{ creat
     </div>
   );
 }
+

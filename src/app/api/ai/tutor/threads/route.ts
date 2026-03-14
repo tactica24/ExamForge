@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { hasTrustedOrigin } from "@/lib/security/request";
 
 export async function GET(req: Request) {
@@ -7,17 +7,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Blocked by origin policy." }, { status: 403 });
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const url = new URL(req.url);
   const examId = String(url.searchParams.get("exam_id") ?? "").trim();
   const subject = String(url.searchParams.get("subject") ?? "").trim();
 
-  let query = firebase
+  let query = backend
     .from("tutor_threads")
     .select("id,title,exam_id,exam,subject,created_at,updated_at,last_message_at")
     .eq("user_id", user.id)
@@ -34,3 +34,4 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, threads: data ?? [] });
 }
+

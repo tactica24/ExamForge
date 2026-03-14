@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { submitQuiz } from "@/lib/quizzes/submit";
 
 const SubmitSchema = z.object({
@@ -29,10 +29,10 @@ export async function submitQuizAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid submission." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const result = await submitQuiz({
@@ -44,4 +44,5 @@ export async function submitQuizAction(_: unknown, formData: FormData) {
   if (!result.ok) return result;
   return { ok: true, score: result.score, total: result.total };
 }
+
 

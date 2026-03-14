@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 import {
   getPlanItemLesson,
@@ -14,7 +14,7 @@ import {
 } from "@/lib/plans/content";
 import { ensureStudyAssetsForPlanTopic } from "@/lib/plans/study-assets";
 import { findTopicSubtopics } from "@/lib/plans/topic-subtopics";
-import type { Json } from "@/lib/firebase/database.types";
+import type { Json } from "@/lib/backend/database.types";
 
 const UpdateSchema = z.object({
   item_id: z.string().uuid(),
@@ -47,18 +47,18 @@ type OwnedPlanTopic = {
 };
 
 async function getOwnedPlanTopic(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   itemId: string;
 }): Promise<OwnedPlanTopic | null> {
-  const { data: item } = await args.firebase
+  const { data: item } = await args.backend
     .from("plan_items")
     .select("id,plan_id,title,topic_path,status,resource_links")
     .eq("id", args.itemId)
     .maybeSingle();
   if (!item) return null;
 
-  const { data: plan } = await args.firebase
+  const { data: plan } = await args.backend
     .from("user_plans")
     .select("id,exam_id,subject")
     .eq("id", item.plan_id)
@@ -70,11 +70,11 @@ async function getOwnedPlanTopic(args: {
 }
 
 async function isPlanItemLocked(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   planId: string;
   itemId: string;
 }) {
-  const { data: items } = await args.firebase
+  const { data: items } = await args.backend
     .from("plan_items")
     .select("id,scheduled_for,day_index,status,resource_links,created_at")
     .eq("plan_id", args.planId)
@@ -104,21 +104,21 @@ export async function updatePlanItemStatusAction(_: unknown, formData: FormData)
   });
   if (!parsed.success) return { ok: false, message: "Invalid update." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const ownedTopic = await getOwnedPlanTopic({
-    firebase,
+    backend,
     userId: user.id,
     itemId: parsed.data.item_id
   });
   if (!ownedTopic) return { ok: false, message: "Topic not found." };
 
   const lockState = await isPlanItemLocked({
-    firebase,
+    backend,
     planId: ownedTopic.plan.id,
     itemId: ownedTopic.item.id
   });
@@ -130,7 +130,7 @@ export async function updatePlanItemStatusAction(_: unknown, formData: FormData)
     return { ok: false, message: "Finish the topic quiz to mark this topic as done." };
   }
 
-  const { error } = await firebase.from("plan_items").update({ status: parsed.data.status }).eq("id", parsed.data.item_id);
+  const { error } = await backend.from("plan_items").update({ status: parsed.data.status }).eq("id", parsed.data.item_id);
   if (error) return { ok: false, message: error.message };
 
   return { ok: true };
@@ -142,21 +142,21 @@ export async function createPlanTopicQuizAction(_: unknown, formData: FormData) 
   });
   if (!parsed.success) return { ok: false, message: "Invalid topic." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const ownedTopic = await getOwnedPlanTopic({
-    firebase,
+    backend,
     userId: user.id,
     itemId: parsed.data.item_id
   });
   if (!ownedTopic) return { ok: false, message: "Topic not found." };
 
   const lockState = await isPlanItemLocked({
-    firebase,
+    backend,
     planId: ownedTopic.plan.id,
     itemId: ownedTopic.item.id
   });
@@ -168,8 +168,8 @@ export async function createPlanTopicQuizAction(_: unknown, formData: FormData) 
   }
 
   const [{ data: exam }, { data: profile }] = await Promise.all([
-    firebase.from("exams").select("name,slug").eq("id", ownedTopic.plan.exam_id).maybeSingle(),
-    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
+    backend.from("exams").select("name,slug").eq("id", ownedTopic.plan.exam_id).maybeSingle(),
+    backend.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
   ]);
 
   const progress = getPlanItemProgress(ownedTopic.item.resource_links);
@@ -215,21 +215,21 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
   });
   if (!parsed.success) return { ok: false, message: "Invalid study format request." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const ownedTopic = await getOwnedPlanTopic({
-    firebase,
+    backend,
     userId: user.id,
     itemId: parsed.data.item_id
   });
   if (!ownedTopic) return { ok: false, message: "Topic not found." };
 
   const lockState = await isPlanItemLocked({
-    firebase,
+    backend,
     planId: ownedTopic.plan.id,
     itemId: ownedTopic.item.id
   });
@@ -243,14 +243,14 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
   const requestedFormat = normalizeRequestedFormat(parsed.data.format);
 
   const [{ data: latestItem }, { data: exam }, { data: profile }, { data: syllabus }] = await Promise.all([
-    firebase
+    backend
       .from("plan_items")
       .select("resource_links,topic_path,title")
       .eq("id", ownedTopic.item.id)
       .maybeSingle(),
-    firebase.from("exams").select("name").eq("id", ownedTopic.plan.exam_id).maybeSingle(),
-    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle(),
-    firebase
+    backend.from("exams").select("name").eq("id", ownedTopic.plan.exam_id).maybeSingle(),
+    backend.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle(),
+    backend
       .from("syllabi")
       .select("topics")
       .eq("exam_id", ownedTopic.plan.exam_id)
@@ -264,7 +264,7 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
 
   try {
     const ensured = await ensureStudyAssetsForPlanTopic({
-      firebase,
+      backend,
       examId: ownedTopic.plan.exam_id,
       examName: exam?.name ?? "Exam",
       subject: ownedTopic.plan.subject,
@@ -284,7 +284,7 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
     const withLesson = withPlanItemLesson(sourceLinks, ensured.lesson);
     const nextLinks = withPlanItemLessonAssets(withLesson, ensured.assets);
 
-    const { error } = await firebase
+    const { error } = await backend
       .from("plan_items")
       .update({ resource_links: nextLinks as Json })
       .eq("id", ownedTopic.item.id);
@@ -301,3 +301,4 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
 
   redirect(`/plan/${ownedTopic.item.id}?format=${requestedFormat}`);
 }
+

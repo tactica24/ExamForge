@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Invalid payload." }, { status: 400 });
     }
 
-    const db = createFirebaseAdminClient();
+    const db = createBackendAdminClient();
     const { error } = await db.from("contact_requests").insert({
       name: parsed.data.name || null,
       email: parsed.data.email,

@@ -1,10 +1,10 @@
 import "server-only";
 
 import { formatISO } from "date-fns";
-import type { FirebaseDataClient } from "@/lib/firebase/data-client";
+import type { AppDataClient } from "@/lib/backend/data-client";
 import { XP, computeLevel } from "@/lib/gamification/constants";
 import { computeNextStreak } from "@/lib/gamification/streak";
-type Firebase = FirebaseDataClient;
+type GamificationBackend = AppDataClient;
 
 function asSlugArray(badges: any): string[] {
   if (!Array.isArray(badges)) return [];
@@ -12,7 +12,7 @@ function asSlugArray(badges: any): string[] {
 }
 
 export async function updateGamificationAfterQuiz(args: {
-  firebase: Firebase;
+  backend: GamificationBackend;
   userId: string;
   score: number;
   total: number;
@@ -22,7 +22,7 @@ export async function updateGamificationAfterQuiz(args: {
   const today = formatISO(new Date(), { representation: "date" });
 
   try {
-    const { data: existing, error: existingErr } = await args.firebase
+    const { data: existing, error: existingErr } = await args.backend
       .from("user_gamification")
       .select("*")
       .eq("user_id", args.userId)
@@ -53,7 +53,7 @@ export async function updateGamificationAfterQuiz(args: {
     const totalXp = (current.total_xp ?? 0) + gained;
     const level = computeLevel(totalXp);
 
-    await args.firebase.from("user_xp_events").insert({
+    await args.backend.from("user_xp_events").insert({
       user_id: args.userId,
       xp: gained,
       reason: "quiz_completed",
@@ -66,7 +66,7 @@ export async function updateGamificationAfterQuiz(args: {
       }
     });
 
-    const { data: updated, error: upErr } = await args.firebase
+    const { data: updated, error: upErr } = await args.backend
       .from("user_gamification")
       .upsert(
         {
@@ -84,7 +84,7 @@ export async function updateGamificationAfterQuiz(args: {
     if (upErr) throw upErr;
 
     const unlocked = await maybeUnlockBadges({
-      firebase: args.firebase,
+      backend: args.backend,
       userId: args.userId,
       streakCount: updated.streak_count,
       totalXp: updated.total_xp
@@ -105,12 +105,12 @@ export async function updateGamificationAfterQuiz(args: {
 }
 
 async function maybeUnlockBadges(args: {
-  firebase: Firebase;
+  backend: GamificationBackend;
   userId: string;
   streakCount: number;
   totalXp: number;
 }) {
-  const { data: ug } = await args.firebase
+  const { data: ug } = await args.backend
     .from("user_gamification")
     .select("badges")
     .eq("user_id", args.userId)
@@ -118,10 +118,10 @@ async function maybeUnlockBadges(args: {
 
   const current = asSlugArray(ug?.badges);
 
-  const { data: allBadges } = await args.firebase.from("badges").select("slug,criteria,name");
+  const { data: allBadges } = await args.backend.from("badges").select("slug,criteria,name");
   const candidates = allBadges ?? [];
 
-  const { count: quizCount } = await args.firebase
+  const { count: quizCount } = await args.backend
     .from("user_quiz_results")
     .select("*", { head: true, count: "exact" })
     .eq("user_id", args.userId);
@@ -143,9 +143,9 @@ async function maybeUnlockBadges(args: {
 
   const next = [...current, ...unlocked];
 
-  await args.firebase.from("user_gamification").update({ badges: next }).eq("user_id", args.userId);
+  await args.backend.from("user_gamification").update({ badges: next }).eq("user_id", args.userId);
 
-  await args.firebase.from("notifications").insert(
+  await args.backend.from("notifications").insert(
     unlocked.map((slug) => ({
       user_id: args.userId,
       channel: "in_app" as const,
@@ -160,3 +160,4 @@ async function maybeUnlockBadges(args: {
 
   return unlocked;
 }
+

@@ -7,7 +7,7 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { StudyAudioPlayer } from "@/components/plan/study-audio-player";
 import { StudySlidesPlayer } from "@/components/plan/study-slides-player";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import {
   getPlanItemLesson,
   getPlanItemLessonAssets,
@@ -48,20 +48,20 @@ export default async function PlanTopicPage(props: {
   searchParams: Promise<{ format?: string }>;
 }) {
   const [{ itemId }, sp] = await Promise.all([props.params, props.searchParams]);
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: item } = await firebase
+  const { data: item } = await backend
     .from("plan_items")
     .select("id,plan_id,scheduled_for,title,topic_path,status,resource_links")
     .eq("id", itemId)
     .maybeSingle();
   if (!item) redirect("/plan");
 
-  const { data: plan } = await firebase
+  const { data: plan } = await backend
     .from("user_plans")
     .select("id,user_id,exam_id,subject")
     .eq("id", item.plan_id)
@@ -69,7 +69,7 @@ export default async function PlanTopicPage(props: {
     .maybeSingle();
   if (!plan) redirect("/plan");
 
-  const { data: orderedItems } = await firebase
+  const { data: orderedItems } = await backend
     .from("plan_items")
     .select("id,scheduled_for,day_index,status,resource_links,created_at")
     .eq("plan_id", plan.id)
@@ -86,8 +86,8 @@ export default async function PlanTopicPage(props: {
   const locked = Boolean(firstIncomplete);
 
   const [{ data: exam }, { data: profile }] = await Promise.all([
-    firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle(),
-    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
+    backend.from("exams").select("name").eq("id", plan.exam_id).maybeSingle(),
+    backend.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
   ]);
 
   const progress = getPlanItemProgress(item.resource_links);
@@ -393,4 +393,5 @@ export default async function PlanTopicPage(props: {
     </div>
   );
 }
+
 

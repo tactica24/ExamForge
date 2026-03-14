@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ import { ParentLinksCard } from "@/components/parent/parent-links-card";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { canUseFullAppFeatures, getBillingAccess } from "@/lib/billing/access";
 import { parseTopicsPerDay } from "@/lib/plans/pace";
 
 function toSubjects(value: unknown): string[] {
@@ -29,29 +29,29 @@ function toSubjects(value: unknown): string[] {
 }
 
 export default async function SettingsPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams, latestPlanRes] = await Promise.all([
-    firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-    firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
-    firebase
+    backend.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    backend.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
+    backend
       .from("parent_links")
       .select("token,label,created_at,revoked_at")
       .eq("user_id", user.id)
       .eq("revoked_at", null)
       .order("created_at", { ascending: false })
       .limit(5),
-    firebase
+    backend
       .from("user_exam_subjects")
       .select("exam_id,subject,is_active,created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     listActiveExams(),
-    firebase
+    backend
       .from("user_plans")
       .select("pace")
       .eq("user_id", user.id)
@@ -107,14 +107,22 @@ export default async function SettingsPage() {
         : mergeUniqueSubjects(exam.subjects);
     return subjects.some((subject) => !existingSet.has(`${exam.id}::${subject}`));
   });
-  const proAccess = hasActiveProAccess(profile);
-  const freeSubjectLimitReached = !proAccess && userExamSubjects.filter((item) => item.is_active).length >= 1;
+  const billingAccess = getBillingAccess(profile);
+  const freeSubjectLimitReached =
+    !canUseFullAppFeatures(profile) && userExamSubjects.filter((item) => item.is_active).length >= 1;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Profile, subjects, and reminders.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {billingAccess.status === "pro"
+            ? "Pro is active."
+            : billingAccess.status === "trial"
+              ? "Your 3-day free trial is active."
+              : "Trial ended. History, tests, and mock exams remain available, while full app features require Pro."}
+        </p>
       </div>
 
       <Card>
@@ -144,10 +152,15 @@ export default async function SettingsPage() {
                   placeholder="Shown on leaderboards"
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="avatar_url">Avatar URL (optional)</Label>
-                <Input id="avatar_url" name="avatar_url" defaultValue={profile?.avatar_url ?? ""} placeholder="https://..." />
-              </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="avatar_url">Avatar URL (optional)</Label>
+                  <Input
+                    id="avatar_url"
+                    name="avatar_url"
+                    defaultValue={profile?.avatar_url ?? ""}
+                    placeholder="https://... or /api/storage/object?key=..."
+                  />
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" name="location" defaultValue={profile?.location ?? ""} />
@@ -376,3 +389,4 @@ export default async function SettingsPage() {
     </div>
   );
 }
+

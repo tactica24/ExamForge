@@ -1,8 +1,8 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
+import { createBackendServerClient } from "@/lib/backend/server";
+import { isBackendStorageConfigured, uploadBackendStorageObject } from "@/lib/backend/storage";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -64,10 +64,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
@@ -91,13 +91,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Image is too large. Maximum size is 2MB." }, { status: 400 });
   }
 
-  const bucket = getFirebaseAdminStorageBucket();
-  if (!bucket) {
+  if (!isBackendStorageConfigured()) {
     return NextResponse.json(
       {
         ok: false,
-        message:
-          "Avatar uploads require Firebase admin storage configuration (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_STORAGE_BUCKET)."
+        message: "Avatar uploads require the configured backend storage service."
       },
       { status: 500 }
     );
@@ -106,28 +104,21 @@ export async function POST(request: Request) {
   const ext = extensionFromMimeType(file.type);
   const safeUserId = String(user.id).replace(/[^a-zA-Z0-9_-]/g, "");
   const storagePath = `avatars/${safeUserId}/${Date.now()}-${randomUUID()}.${ext}`;
-  const token = randomUUID();
   const bytes = Buffer.from(await file.arrayBuffer());
 
   if (!hasValidSignature(bytes, file.type)) {
     return NextResponse.json({ ok: false, message: "Invalid image file signature." }, { status: 400 });
   }
 
-  await bucket.file(storagePath).save(bytes, {
-    resumable: false,
-    metadata: {
-      contentType: file.type,
-      cacheControl: "public, max-age=31536000, immutable",
-      metadata: {
-        firebaseStorageDownloadTokens: token
-      }
-    }
+  const uploaded = await uploadBackendStorageObject({
+    path: storagePath,
+    bytes,
+    contentType: file.type,
+    cacheControl: "public, max-age=31536000, immutable"
   });
+  const avatarUrl = uploaded.url;
 
-  const encodedPath = encodeURIComponent(storagePath);
-  const avatarUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media&token=${token}`;
-
-  const { error } = await firebase
+  const { error } = await backend
     .from("profiles")
     .upsert({ user_id: user.id, avatar_url: avatarUrl }, { onConflict: "user_id" });
 

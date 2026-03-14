@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { createFirebaseBrowserClient } from "@/lib/firebase/client";
+import { createBackendBrowserClient } from "@/lib/backend/client";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,11 @@ export function GroupChat(props: {
   currentUserId: string;
   initialMessages: Message[];
 }) {
-  const firebase = React.useMemo(() => createFirebaseBrowserClient(), []);
+  const backend = React.useMemo(() => createBackendBrowserClient(), []);
   const [messages, setMessages] = React.useState<Message[]>(props.initialMessages);
 
   React.useEffect(() => {
-    const channel = firebase
+    const channel = backend
       .channel(`group:${props.groupId}`)
       .on(
         "postgres_changes",
@@ -41,9 +41,9 @@ export function GroupChat(props: {
       .subscribe();
 
     return () => {
-      firebase.removeChannel(channel);
+      backend.removeChannel(channel);
     };
-  }, [firebase, props.groupId]);
+  }, [backend, props.groupId]);
 
   return (
     <div className="grid gap-3">

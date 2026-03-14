@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BookOpenCheck, Layers3 } from "lucide-react";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,8 @@ export default async function AdminExamsPage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const firebase = await createFirebaseServerClient();
-  const { data: exams } = await firebase.from("exams").select("*").order("name", { ascending: true });
+  const backend = await createBackendServerClient();
+  const { data: exams } = await backend.from("exams").select("*").order("name", { ascending: true });
   const totalExams = exams?.length ?? 0;
 
   return (
@@ -121,3 +121,4 @@ export default async function AdminExamsPage() {
     </div>
   );
 }
+

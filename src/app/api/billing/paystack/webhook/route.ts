@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 import { activateProSubscriptionFromPaystack } from "@/lib/billing/paystack-activation";
 import {
   paystackVerify,
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
 
   try {
     const verification = await paystackVerify(reference);
-    const firebase = createFirebaseAdminClient();
+    const backend = createBackendAdminClient();
     const activation = await activateProSubscriptionFromPaystack({
-      firebase,
+      backend,
       verification,
       source: "webhook"
     });

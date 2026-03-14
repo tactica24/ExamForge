@@ -3,7 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import PptxGenJS from "pptxgenjs";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getPlanItemLessonAssets } from "@/lib/plans/content";
 import { buildRateLimitKeyFromRequest } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -289,20 +289,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Invalid request." }, { status: 400 });
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
-  const { data: item } = await firebase
+  const { data: item } = await backend
     .from("plan_items")
     .select("id,plan_id,title,resource_links")
     .eq("id", parsed.data.item_id)
     .maybeSingle();
   if (!item) return NextResponse.json({ ok: false, message: "Topic not found." }, { status: 404 });
 
-  const { data: plan } = await firebase
+  const { data: plan } = await backend
     .from("user_plans")
     .select("id,user_id,subject")
     .eq("id", item.plan_id)
@@ -317,7 +317,7 @@ export async function GET(req: Request) {
     const narration = assets.audio?.narration ?? "";
     if (!narration) return NextResponse.json({ ok: false, message: "Audio not generated yet." }, { status: 404 });
 
-    const { data: profile } = await firebase
+    const { data: profile } = await backend
       .from("profiles")
       .select("preferred_explanation_language")
       .eq("user_id", user.id)
@@ -353,3 +353,4 @@ export async function GET(req: Request) {
     }
   });
 }
+

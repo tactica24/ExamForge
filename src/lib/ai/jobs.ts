@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
 
 type SyllabusJobPayload = {
@@ -48,7 +48,7 @@ export async function enqueueSyllabusGenerationJobs(args: {
   subjects: string[];
   createdBy?: string | null;
 }) {
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const now = new Date();
   const uniqueSubjects = Array.from(
     new Set(
@@ -84,7 +84,7 @@ export async function enqueueSyllabusGenerationJobs(args: {
 }
 
 export async function processPendingAiJobs(args?: { limit?: number }) {
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const limit = Math.max(1, Math.min(200, Number(args?.limit ?? 30)));
   const now = new Date();
   const nowIso = toIso(now);

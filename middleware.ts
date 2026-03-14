@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { FIREBASE_SESSION_COOKIE } from "@/lib/firebase/constants";
+import { APP_SESSION_COOKIE } from "@/lib/backend/constants";
 import { hasTrustedOrigin } from "@/lib/security/request";
 
 const PROTECTED_PREFIXES = [
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
   const protectedPath = isProtectedPath(pathname);
   if (!protectedPath) return NextResponse.next();
 
-  const session = request.cookies.get(FIREBASE_SESSION_COOKIE)?.value;
+  const session = request.cookies.get(APP_SESSION_COOKIE)?.value;
   if (!session) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", nextUrl.pathname);

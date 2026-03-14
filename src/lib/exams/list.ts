@@ -1,11 +1,11 @@
 import "server-only";
 
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getFallbackExams } from "@/lib/exams/fallback";
 
 export async function listActiveExams() {
-  const firebase = await createFirebaseServerClient();
-  const { data, error } = await firebase
+  const backend = await createBackendServerClient();
+  const { data, error } = await backend
     .from("exams")
     .select("*")
     .eq("is_active", true)
@@ -15,3 +15,4 @@ export async function listActiveExams() {
   if (!data?.length) return getFallbackExams();
   return data;
 }
+

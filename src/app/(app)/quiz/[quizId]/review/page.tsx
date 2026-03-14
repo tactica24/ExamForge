@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuizReview } from "@/components/quiz/quiz-review";
 
 export default async function QuizReviewPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await firebase
+  const { data: quiz } = await backend
     .from("quizzes")
     .select("*")
     .eq("id", quizId)
@@ -21,10 +21,10 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
     .maybeSingle();
   if (!quiz) redirect("/dashboard");
 
-  const { data: exam } = await firebase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
+  const { data: exam } = await backend.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
   const examName = exam?.name ?? "Exam";
 
-  const { data: result } = await firebase
+  const { data: result } = await backend
     .from("user_quiz_results")
     .select("answers,score,total,created_at")
     .eq("user_id", user.id)
@@ -36,7 +36,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
 
   const answers = Array.isArray(result.answers) ? (result.answers as any[]).map((n) => Number(n)) : [];
 
-  const { data: questions } = await firebase
+  const { data: questions } = await backend
     .from("quiz_questions")
     .select("id,question,options,correct_index,explanation")
     .eq("quiz_id", quizId)
@@ -83,3 +83,4 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
     </div>
   );
 }
+

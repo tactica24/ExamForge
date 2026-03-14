@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
-import { establishTrackedSessionFromIdToken } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -28,33 +26,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "idToken is required." }, { status: 400 });
   }
 
-  try {
-    const auth = getFirebaseAdminAuth();
-    if (!auth) {
-      return NextResponse.json({ ok: false, message: "Firebase admin credentials are missing." }, { status: 500 });
-    }
-
-    const decoded = await auth.verifyIdToken(idToken, true);
-    if (decoded.email && decoded.email_verified === false) {
-      return NextResponse.json(
-        { ok: false, message: "Verify your email before continuing." },
-        { status: 403 }
-      );
-    }
-
-    const established = await establishTrackedSessionFromIdToken({
-      idToken,
-      userId: decoded.uid,
-      email: decoded.email ?? null
-    });
-
-    if (!established.ok) {
-      return NextResponse.json({ ok: false, message: established.message }, { status: 403 });
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to create session.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
-  }
+  return NextResponse.json(
+    {
+      ok: false,
+      message:
+        "Direct token session creation is not used in the AWS auth flow. Start sign-in through /api/auth/cognito/start."
+    },
+    { status: 400 }
+  );
 }

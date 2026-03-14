@@ -3,12 +3,12 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { matchOrCreateGroup } from "@/lib/groups/match";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { canUseFullAppFeatures } from "@/lib/billing/access";
 import { claimReferralForUser } from "@/lib/referrals/claim";
 
 const OnboardingSchema = z.object({
@@ -63,10 +63,10 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Target exam date must be on or after your start date." };
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "You must be logged in." };
 
   let examId = parsed.data.exam_id;
@@ -77,20 +77,20 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       return {
         ok: false,
         message:
-          "Seed data requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY then try again."
+          "Seed data requires the configured AWS backend connection. Add the Aurora and S3 environment values, then try again."
       };
     }
   }
 
-  const { data: existingProfile } = await firebase
+  const { data: existingProfile } = await backend
     .from("profiles")
-    .select("subscription_tier,pro_until")
+    .select("subscription_tier,pro_until,created_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const proAccess = hasActiveProAccess(existingProfile);
+  const fullFeatureAccess = canUseFullAppFeatures(existingProfile);
 
-  const { error: profileErr } = await firebase.from("profiles").upsert({
+  const { error: profileErr } = await backend.from("profiles").upsert({
     user_id: user.id,
     email: user.email ?? null,
     phone: parsed.data.phone ?? user.phone ?? null,
@@ -104,7 +104,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
   if (profileErr) return { ok: false, message: profileErr.message };
 
-  const { data: existingSelection } = await firebase
+  const { data: existingSelection } = await backend
     .from("user_exam_subjects")
     .select("id")
     .eq("user_id", user.id)
@@ -113,8 +113,8 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (!proAccess && !existingSelection?.id) {
-    const { count } = await firebase
+  if (!fullFeatureAccess && !existingSelection?.id) {
+    const { count } = await backend
       .from("user_exam_subjects")
       .select("id", { head: true, count: "exact" })
       .eq("user_id", user.id)
@@ -124,12 +124,12 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       return {
         ok: false,
         message:
-          "Free plan supports 1 exam and 1 subject only. Upgrade to Pro to switch or add more from /pricing."
+          "Your 3-day free trial has ended. Upgrade to Pro to switch or add more than 1 exam and 1 subject from /pricing."
       };
     }
   }
 
-  await firebase.from("user_exam_subjects").upsert(
+  await backend.from("user_exam_subjects").upsert(
     {
       user_id: user.id,
       exam_id: examId,
@@ -139,7 +139,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     { onConflict: "user_id,exam_id,subject" }
   );
 
-  const { data: plan, error: planErr } = await firebase
+  const { data: plan, error: planErr } = await backend
     .from("user_plans")
     .insert({
       user_id: user.id,
@@ -168,7 +168,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
 
   if (items.length) {
-    const { error: itemsErr } = await firebase.from("plan_items").insert(
+    const { error: itemsErr } = await backend.from("plan_items").insert(
       items.map((i) => ({
         plan_id: plan.id,
         scheduled_for: i.scheduled_for,
@@ -197,7 +197,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   const referralCode = cookieStore.get("ref_code")?.value ?? null;
   if (referralCode) {
     await claimReferralForUser({
-      firebase,
+      backend,
       userId: user.id,
       code: referralCode,
       bonusDays: 3
@@ -210,3 +210,4 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
 
   redirect("/dashboard");
 }
+

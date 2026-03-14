@@ -6,36 +6,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { getBillingAccess } from "@/lib/billing/access";
 import { describePace } from "@/lib/plans/pace";
 
 export default async function DashboardPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
-    .select("name,display_name,avatar_url,subscription_tier,pro_until")
+    .select("name,display_name,avatar_url,subscription_tier,pro_until,created_at")
     .eq("user_id", user.id)
     .maybeSingle();
-  const proAccess = hasActiveProAccess(profile);
+  const billingAccess = getBillingAccess(profile);
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
-  const { data: gamificationData, error: gamificationErr } = await firebase
+  const { data: gamificationData, error: gamificationErr } = await backend
     .from("user_gamification")
     .select("streak_count,total_xp,level,badges")
     .eq("user_id", user.id)
@@ -49,21 +49,21 @@ export default async function DashboardPage() {
   const levelProgress = Math.min(100, Math.round((totalXp / Math.max(1, nextLevelAt)) * 100));
   const badgesCount = Array.isArray(gamification?.badges) ? (gamification?.badges as any[]).length : 0;
 
-  const { data: todayItems } = await firebase
+  const { data: todayItems } = await backend
     .from("plan_items")
     .select("*")
     .eq("plan_id", plan.id)
     .eq("scheduled_for", todayStr)
     .order("day_index", { ascending: true });
 
-  const { data: recentResults } = await firebase
+  const { data: recentResults } = await backend
     .from("user_quiz_results")
     .select("score,total,created_at,quiz_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const { data: userExamSubjects } = await firebase
+  const { data: userExamSubjects } = await backend
     .from("user_exam_subjects")
     .select("exam_id,subject,is_active")
     .eq("user_id", user.id)
@@ -148,6 +148,9 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
+              {billingAccess.status === "pro" ? "Plan: Pro" : billingAccess.status === "trial" ? "Plan: Trial" : "Plan: Free"}
+            </Badge>
             <Badge variant="secondary">Streak: {streak} day{streak === 1 ? "" : "s"}</Badge>
             <Badge variant="secondary">XP: {totalXp}</Badge>
             <Badge variant="secondary">Level: {level}</Badge>
@@ -277,14 +280,8 @@ export default async function DashboardPage() {
                           </Link>
                         </Button>
                         <Button asChild size="sm">
-                          <Link
-                            href={
-                              proAccess
-                                ? `/mock-exam?exam_id=${examId}&subject=${encodeURIComponent(subject)}`
-                                : "/pricing"
-                            }
-                          >
-                            {proAccess ? "Mock exam" : "Upgrade for mock"}
+                          <Link href={`/mock-exam?exam_id=${examId}&subject=${encodeURIComponent(subject)}`}>
+                            Mock exam
                           </Link>
                         </Button>
                       </div>
@@ -303,3 +300,4 @@ export default async function DashboardPage() {
     </div>
   );
 }
+

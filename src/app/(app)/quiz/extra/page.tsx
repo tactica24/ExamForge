@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
@@ -9,10 +9,10 @@ import { ExtraQuizConfig } from "@/components/quiz/extra-quiz-config";
 
 export default async function ExtraQuizPage(props: { searchParams: Promise<{ exam_id?: string; subject?: string }> }) {
   const sp = await props.searchParams;
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const exams = await listActiveExams();
@@ -54,3 +54,4 @@ export default async function ExtraQuizPage(props: { searchParams: Promise<{ exa
     </div>
   );
 }
+

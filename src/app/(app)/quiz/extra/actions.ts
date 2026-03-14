@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 
 const Schema = z.object({
@@ -23,18 +23,18 @@ export async function createExtraQuizAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Pick a topic." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: exam } = await firebase
+  const { data: exam } = await backend
     .from("exams")
     .select("name,slug")
     .eq("id", parsed.data.exam_id)
     .maybeSingle();
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
     .select("preferred_explanation_language")
     .eq("user_id", user.id)
@@ -56,3 +56,4 @@ export async function createExtraQuizAction(_: unknown, formData: FormData) {
 
   redirect(`/quiz/${quizId}`);
 }
+

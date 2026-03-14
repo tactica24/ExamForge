@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TutorChat } from "@/components/tutor/tutor-chat";
 import { listActiveExams } from "@/lib/exams/list";
 
 export default async function TutorPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const exams = await listActiveExams();
@@ -38,3 +38,4 @@ export default async function TutorPage() {
     </div>
   );
 }
+

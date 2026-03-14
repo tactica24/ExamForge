@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { submitQuiz } from "@/lib/quizzes/submit";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -21,10 +21,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
@@ -55,3 +55,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, synced, results });
 }
+

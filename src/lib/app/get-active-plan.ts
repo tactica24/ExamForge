@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 export async function getActivePlanForUser(userId: string) {
-  const firebase = await createFirebaseServerClient();
-  const { data: plan } = await firebase
+  const backend = await createBackendServerClient();
+  const { data: plan } = await backend
     .from("user_plans")
     .select("*")
     .eq("user_id", userId)
@@ -13,3 +13,4 @@ export async function getActivePlanForUser(userId: string) {
     .maybeSingle();
   return plan;
 }
+

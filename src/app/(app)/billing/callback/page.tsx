@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { paystackVerify } from "@/lib/billing/paystack";
 import { activateProSubscriptionFromPaystack } from "@/lib/billing/paystack-activation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +12,10 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   const sp = await props.searchParams;
   const reference = sp.reference;
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   if (!reference) {
@@ -37,7 +37,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   try {
     const verification = await paystackVerify(reference);
     const activation = await activateProSubscriptionFromPaystack({
-      firebase,
+      backend,
       verification,
       source: "callback",
       expectedUserId: user.id
@@ -51,7 +51,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
       <Card className="mx-auto max-w-lg">
         <CardHeader>
           <CardTitle>Payment verified</CardTitle>
-          <CardDescription>Your Pro access is now active.</CardDescription>
+          <CardDescription>Your Pro access is now active for 30 days from payment time.</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
           <Button asChild>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Activity, BellRing, Cpu } from "lucide-react";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,7 +12,7 @@ export default async function AdminOpsPage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
 
   const [
     notifQueued,
@@ -25,20 +25,20 @@ export default async function AdminOpsPage() {
     recentNotifFailures,
     recentAiFailures
   ] = await Promise.all([
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "queued"),
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "sent"),
-    firebase.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "queued"),
-    firebase.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "in_progress"),
-    firebase.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "failed"),
-    firebase.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "completed"),
-    firebase
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "queued"),
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "sent"),
+    backend.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "queued"),
+    backend.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "in_progress"),
+    backend.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "failed"),
+    backend.from("ai_jobs").select("id", { head: true, count: "exact" }).eq("status", "completed"),
+    backend
       .from("notifications")
       .select("id,channel,message,provider_meta,created_at")
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .limit(8),
-    firebase
+    backend
       .from("ai_jobs")
       .select("id,job_type,last_error,payload,updated_at,created_at")
       .eq("status", "failed")
@@ -204,3 +204,4 @@ export default async function AdminOpsPage() {
     </div>
   );
 }
+

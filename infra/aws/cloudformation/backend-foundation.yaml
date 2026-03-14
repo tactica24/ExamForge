@@ -1,0 +1,379 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ExamForge AWS foundation for Cognito, SES, Aurora Serverless v2, and S3.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: examforge
+  EnvironmentName:
+    Type: String
+    Default: prod
+  AppUrl:
+    Type: String
+    Description: Public app URL without a trailing slash. Example: https://www.acenaija.com.ng
+  CallbackPath:
+    Type: String
+    Default: /api/auth/cognito/callback
+  LogoutPath:
+    Type: String
+    Default: /login
+  CognitoDomainPrefix:
+    Type: String
+    Description: Globally unique Cognito hosted UI domain prefix.
+    AllowedPattern: "^[a-z0-9-]+$"
+  SesIdentityValue:
+    Type: String
+    Description: Verified SES email identity or domain used for Cognito email sending.
+  SesFromEmail:
+    Type: String
+    Description: Verified from-email address used by Cognito verification emails.
+  DbName:
+    Type: String
+    Default: examforge
+  DbMasterUsername:
+    Type: String
+    Default: appadmin
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  DbMinCapacity:
+    Type: Number
+    Default: 0.5
+  DbMaxCapacity:
+    Type: Number
+    Default: 2
+  GoogleClientId:
+    Type: String
+    Default: ""
+    NoEcho: true
+  GoogleClientSecret:
+    Type: String
+    Default: ""
+    NoEcho: true
+  AppRuntimeRoleName:
+    Type: String
+    Default: ""
+    Description: Optional existing Amplify/Lambda runtime role name to attach app access permissions to.
+
+Conditions:
+  HasGoogleIdp: !And
+    - !Not [!Equals [!Ref GoogleClientId, ""]]
+    - !Not [!Equals [!Ref GoogleClientSecret, ""]]
+  HasRuntimeRoleName: !Not [!Equals [!Ref AppRuntimeRoleName, ""]]
+
+Resources:
+  SessionSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${AppName}/${EnvironmentName}/session-secret"
+      Description: !Sub "${AppName} ${EnvironmentName} app session signing secret"
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppName}-${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-assets"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - HEAD
+              - PUT
+            AllowedOrigins:
+              - !Ref AppUrl
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  AssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AssetsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${AssetsBucket}"
+              - !Sub "arn:aws:s3:::${AssetsBucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  SesEmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref SesIdentityValue
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AppName}-${EnvironmentName}"
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: "OFF"
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: !Sub "${AppName} verification code"
+        EmailMessage: "Your verification code is {####}."
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        From: !Ref SesFromEmail
+        SourceArn: !GetAtt SesEmailIdentity.Arn
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: given_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: family_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: phone_number
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: location
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: country
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: state
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: exam_interests
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+
+  CognitoGoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: HasGoogleIdp
+    Properties:
+      ProviderName: Google
+      ProviderType: Google
+      UserPoolId: !Ref CognitoUserPool
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: "openid email profile"
+      AttributeMapping:
+        email: email
+        family_name: family_name
+        given_name: given_name
+        name: name
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub "${AppName}-${EnvironmentName}-web"
+      GenerateSecret: true
+      PreventUserExistenceErrors: ENABLED
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - !Sub "${AppUrl}${CallbackPath}"
+      LogoutURLs:
+        - !Sub "${AppUrl}${LogoutPath}"
+      SupportedIdentityProviders: !If
+        - HasGoogleIdp
+        - ["COGNITO", "Google"]
+        - ["COGNITO"]
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref CognitoUserPool
+
+  AuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AppName}-${EnvironmentName} Aurora serverless security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: "-1"
+          ToPort: 0
+
+  AuroraSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub "${AppName}-${EnvironmentName} private Aurora subnets"
+      SubnetIds: !Ref PrivateSubnetIds
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DatabaseName: !Ref DbName
+      DBClusterIdentifier: !Sub "${AppName}-${EnvironmentName}"
+      DBSubnetGroupName: !Ref AuroraSubnetGroup
+      Engine: aurora-postgresql
+      EngineMode: provisioned
+      EnableHttpEndpoint: true
+      ManageMasterUserPassword: true
+      MasterUsername: !Ref DbMasterUsername
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !Ref DbMinCapacity
+        MaxCapacity: !Ref DbMaxCapacity
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+        - !Ref AuroraSecurityGroup
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+
+  AuroraWriter:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+
+  AppRuntimeAccessPolicy:
+    Type: AWS::IAM::Policy
+    Condition: HasRuntimeRoleName
+    Properties:
+      PolicyName: !Sub "${AppName}-${EnvironmentName}-runtime-access"
+      Roles:
+        - !Ref AppRuntimeRoleName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSessionAndAuroraSecrets
+            Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Ref SessionSecret
+              - !GetAtt AuroraCluster.MasterUserSecret.SecretArn
+          - Sid: AllowDataApi
+            Effect: Allow
+            Action:
+              - rds-data:ExecuteStatement
+              - rds-data:BatchExecuteStatement
+              - rds-data:BeginTransaction
+              - rds-data:CommitTransaction
+              - rds-data:RollbackTransaction
+            Resource:
+              - !GetAtt AuroraCluster.DBClusterArn
+          - Sid: AllowBucketList
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::${AssetsBucket}"
+          - Sid: AllowBucketObjects
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub "arn:aws:s3:::${AssetsBucket}/*"
+
+Outputs:
+  AppUrl:
+    Value: !Ref AppUrl
+  CognitoRegion:
+    Value: !Ref AWS::Region
+  CognitoUserPoolId:
+    Value: !Ref CognitoUserPool
+  CognitoAppClientId:
+    Value: !Ref CognitoUserPoolClient
+  CognitoDomain:
+    Value: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+  CognitoCallbackUrl:
+    Value: !Sub "${AppUrl}${CallbackPath}"
+  CognitoLogoutUrl:
+    Value: !Sub "${AppUrl}${LogoutPath}"
+  CognitoGoogleIdpName:
+    Condition: HasGoogleIdp
+    Value: Google
+  AuroraClusterArn:
+    Value: !GetAtt AuroraCluster.DBClusterArn
+  AuroraSecretArn:
+    Value: !GetAtt AuroraCluster.MasterUserSecret.SecretArn
+  AuroraDatabase:
+    Value: !Ref DbName
+  S3BucketName:
+    Value: !Ref AssetsBucket
+  S3Region:
+    Value: !Ref AWS::Region
+  S3PublicBaseUrl:
+    Value: !Sub "https://${AssetsBucket}.s3.${AWS::Region}.amazonaws.com"
+  SessionSecretArn:
+    Value: !Ref SessionSecret
+  SesIdentityArn:
+    Value: !GetAtt SesEmailIdentity.Arn

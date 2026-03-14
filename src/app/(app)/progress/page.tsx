@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { subDays, format, addDays, isValid } from "date-fns";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressCharts } from "@/components/progress/progress-charts";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,10 @@ function toDate(value?: string) {
 
 export default async function ProgressPage(props: { searchParams: Promise<{ start?: string; end?: string }> }) {
   const sp = await props.searchParams;
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const today = new Date();
@@ -26,7 +26,7 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
   const endDate = toDate(sp.end) ?? today;
   const since = startDate.toISOString();
   const until = addDays(endDate, 1).toISOString();
-  const { data: results } = await firebase
+  const { data: results } = await backend
     .from("user_quiz_results")
     .select("score,total,created_at,quiz_id")
     .eq("user_id", user.id)
@@ -45,7 +45,7 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
 
   const quizIds = Array.from(new Set((results ?? []).map((r) => r.quiz_id).filter(Boolean)));
   const { data: quizzes } = quizIds.length
-    ? await firebase.from("quizzes").select("id,subject,quiz_type").in("id", quizIds)
+    ? await backend.from("quizzes").select("id,subject,quiz_type").in("id", quizIds)
     : { data: [] as any[] };
   const quizById = new Map((quizzes ?? []).map((q) => [q.id, q]));
 
@@ -128,3 +128,4 @@ export default async function ProgressPage(props: { searchParams: Promise<{ star
     </div>
   );
 }
+

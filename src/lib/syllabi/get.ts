@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { generateJsonWithFallback } from "@/lib/ai/multi";
 import { getFallbackTopics, getGenericTopicsForSubject, type Topic } from "@/lib/syllabi/fallback";
 
@@ -23,8 +23,8 @@ async function persistTopics(args: {
   source: SyllabusSource;
   sourceMeta?: SourceMeta;
 }) {
-  const firebase = await createFirebaseServerClient();
-  await firebase
+  const backend = await createBackendServerClient();
+  await backend
     .from("syllabi")
     .upsert(
       {
@@ -358,9 +358,9 @@ function sourceFromMeta(sourceMeta: Record<string, unknown>): string {
 }
 
 export async function getTopicsForExamSubject(args: { examId: string; examSlug: string; subject: string }) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
 
-  const { data } = await firebase
+  const { data } = await backend
     .from("syllabi")
     .select("topics,source_meta,last_updated")
     .eq("exam_id", args.examId)
@@ -444,3 +444,4 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
   });
   return generic;
 }
+

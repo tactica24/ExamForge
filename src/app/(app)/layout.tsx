@@ -3,17 +3,17 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/app/app-shell";
 import { OfflineWarmCache } from "@/components/offline/offline-warm-cache";
 import { OfflineSync } from "@/components/offline/offline-sync";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+  const { data: profile } = await backend.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
   const isAdmin = (user.app_metadata as any)?.role === "admin";
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname") ?? "";

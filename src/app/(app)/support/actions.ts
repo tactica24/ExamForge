@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendAdminClient } from "@/lib/backend/admin";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 const SupportRequestSchema = z.object({
   topic: z.string().trim().min(2).max(120),
@@ -11,10 +11,10 @@ const SupportRequestSchema = z.object({
 });
 
 export async function createSupportRequestAction(_: unknown, formData: FormData) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
 
   if (!user) return { ok: false, message: "Not authenticated." };
 
@@ -26,13 +26,13 @@ export async function createSupportRequestAction(_: unknown, formData: FormData)
     return { ok: false, message: "Enter a topic and a clear message." };
   }
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
     .select("name,display_name,email")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const { error } = await admin.from("contact_requests").insert({
     user_id: user.id,
     name: profile?.display_name ?? profile?.name ?? user.email ?? "User",
@@ -51,3 +51,4 @@ export async function createSupportRequestAction(_: unknown, formData: FormData)
   if (error) return { ok: false, message: error.message };
   redirect("/support?created=1");
 }
+

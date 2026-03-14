@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getAppUrl } from "@/lib/app-url";
+import { hasActiveProAccess as hasSharedActiveProAccess } from "@/lib/billing/access";
 import {
   createCampaignReferralCodeAction,
   toggleCampaignReferralCodeStatusAction
@@ -77,7 +78,7 @@ function chunk<T>(arr: T[], size: number) {
 }
 
 async function selectByInBatches(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   table: string;
   select: string;
   field: string;
@@ -87,7 +88,7 @@ async function selectByInBatches(args: {
 
   const rows: any[] = [];
   for (const batch of chunk(args.values, 25)) {
-    const { data } = await args.firebase.from(args.table).select(args.select).in(args.field, batch);
+    const { data } = await args.backend.from(args.table).select(args.select).in(args.field, batch);
     rows.push(...(data ?? []));
   }
 
@@ -105,13 +106,10 @@ function hasActivePaidSubscription(rows: SubscriptionSnapshot[]) {
 }
 
 function hasActiveProAccess(profile: ProfileSnapshot | null | undefined) {
-  if (!profile) return false;
-  const tier = cleanText(profile.subscriptionTier, 20).toLowerCase();
-  if (tier !== "pro") return false;
-
-  const until = profile.proUntil ? new Date(profile.proUntil).getTime() : Number.NaN;
-  if (!Number.isFinite(until)) return true;
-  return until > Date.now();
+  return hasSharedActiveProAccess({
+    subscription_tier: profile?.subscriptionTier ?? null,
+    pro_until: profile?.proUntil ?? null
+  });
 }
 
 export default async function AdminReferralsPage(props: { searchParams: Promise<{ created?: string }> }) {
@@ -122,8 +120,8 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
   const sp = await props.searchParams;
   const created = sp.created === "1";
 
-  const firebase = await createFirebaseServerClient();
-  const { data: rawCodes } = await firebase
+  const backend = await createBackendServerClient();
+  const { data: rawCodes } = await backend
     .from("referral_codes")
     .select(
       "code,campaign_external_id,influencer_name,influencer_email,influencer_phone,is_active,created_at"
@@ -150,7 +148,7 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
 
   const codes = campaignCodes.map((entry) => entry.code);
   const rawReferrals = await selectByInBatches({
-    firebase,
+    backend,
     table: "referrals",
     select: "id,code,invitee_user_id,created_at",
     field: "code",
@@ -173,7 +171,7 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
   const inviteeUserIds = Array.from(new Set(referralUses.map((entry) => entry.inviteeUserId)));
 
   const rawProfiles = await selectByInBatches({
-    firebase,
+    backend,
     table: "profiles",
     select: "user_id,display_name,name,email,subscription_tier,pro_until",
     field: "user_id",
@@ -181,7 +179,7 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
   });
 
   const rawSubscriptions = await selectByInBatches({
-    firebase,
+    backend,
     table: "subscriptions",
     select: "user_id,provider,tier,status",
     field: "user_id",
@@ -496,21 +494,4 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
                             </div>
                           </div>
                         ))
-                      ) : (
-                        <div className="text-xs text-muted-foreground">No onboarded users yet for this code.</div>
-                      )}
-                    </div>
-                  </details>
-                </div>
-              );
-            })
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              No admin campaign codes yet. Create one above, share the link, and analytics will populate after onboarding.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+                      ) : 

@@ -1,20 +1,20 @@
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 
 export default async function QuizTodayPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const { data: item } = await firebase
+  const { data: item } = await backend
     .from("plan_items")
     .select("*")
     .eq("plan_id", plan.id)
@@ -26,3 +26,4 @@ export default async function QuizTodayPage() {
   if (!item) redirect("/plan");
   redirect(`/plan/${item.id}`);
 }
+

@@ -24,28 +24,15 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { recomputeLeaderboardAction } from "@/app/(app)/admin/actions";
 import { getBrandingSettings } from "@/lib/branding";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
+import { createBackendServerClient } from "@/lib/backend/server";
+import { getAppBackendProvider } from "@/lib/backend/provider";
+import { isAwsBackendConfigured } from "@/lib/aws/config";
 import { getServerEnv } from "@/lib/env";
 
 async function getAdminCount() {
-  const auth = getFirebaseAdminAuth();
-  if (!auth) return null;
-
-  let count = 0;
-  let pageToken: string | undefined;
-  let page = 0;
-
-  do {
-    const result = await auth.listUsers(1000, pageToken);
-    for (const entry of result.users) {
-      if (entry.customClaims?.role === "admin") count += 1;
-    }
-    pageToken = result.pageToken;
-    page += 1;
-  } while (pageToken && page < 20);
-
-  return count;
+  const backend = await createBackendServerClient();
+  const { count } = await backend.from("profiles").select("user_id", { head: true, count: "exact" }).eq("role", "admin");
+  return count ?? 0;
 }
 
 function ratio(value: number, total: number) {
@@ -58,7 +45,7 @@ export default async function AdminHomePage() {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/dashboard");
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const branding = await getBrandingSettings();
 
   const [
@@ -78,40 +65,40 @@ export default async function AdminHomePage() {
     pendingSupportRes,
     adminCount
   ] = await Promise.all([
-    firebase.from("profiles").select("user_id", { head: true, count: "exact" }),
-    firebase.from("exams").select("id", { head: true, count: "exact" }),
-    firebase.from("syllabi").select("id", { head: true, count: "exact" }),
-    firebase.from("quizzes").select("id", { head: true, count: "exact" }),
-    firebase.from("user_quiz_results").select("id", { head: true, count: "exact" }),
-    firebase.from("groups").select("id", { head: true, count: "exact" }),
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "queued"),
-    firebase.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
-    firebase.from("group_messages").select("id", { head: true, count: "exact" }).eq("flagged", true),
-    firebase
+    backend.from("profiles").select("user_id", { head: true, count: "exact" }),
+    backend.from("exams").select("id", { head: true, count: "exact" }),
+    backend.from("syllabi").select("id", { head: true, count: "exact" }),
+    backend.from("quizzes").select("id", { head: true, count: "exact" }),
+    backend.from("user_quiz_results").select("id", { head: true, count: "exact" }),
+    backend.from("groups").select("id", { head: true, count: "exact" }),
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "queued"),
+    backend.from("notifications").select("id", { head: true, count: "exact" }).eq("status", "failed"),
+    backend.from("group_messages").select("id", { head: true, count: "exact" }).eq("flagged", true),
+    backend
       .from("profiles")
       .select("user_id,email,name,display_name,created_at")
       .order("created_at", { ascending: false })
       .limit(6),
-    firebase
+    backend
       .from("notifications")
       .select("id,user_id,channel,message,created_at")
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .limit(5),
-    firebase
+    backend
       .from("group_messages")
       .select("id,group_id,content,created_at")
       .eq("flagged", true)
       .order("created_at", { ascending: false })
       .limit(5),
-    firebase
+    backend
       .from("leaderboard_entries")
       .select("computed_at")
       .eq("period", "weekly")
       .order("computed_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    firebase.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["new", "in_progress"]),
+    backend.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["new", "in_progress"]),
     getAdminCount()
   ]);
 
@@ -135,12 +122,8 @@ export default async function AdminHomePage() {
     ? new Date(leaderboardSnapshotRes.data.computed_at).toLocaleString()
     : "Not computed yet";
 
-  const firebaseWebReady = Boolean(
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  );
-  const firebaseAdminReady = isFirebaseAdminConfigured();
+  const backendProvider = getAppBackendProvider();
+  const awsReady = isAwsBackendConfigured();
   const env = getServerEnv();
   const openAiReady = Boolean(env.OPENAI_API_KEY);
   const groqReady = Boolean(env.GROQ_API_KEY);
@@ -150,8 +133,8 @@ export default async function AdminHomePage() {
   const cronReady = Boolean(env.APP_CRON_SECRET);
   const aiReady = openAiReady || groqReady || geminiReady;
   const readinessScore = [
-    firebaseWebReady,
-    firebaseAdminReady,
+    backendProvider === "aws",
+    awsReady,
     aiReady,
     twilioReady,
     resendReady,
@@ -326,8 +309,8 @@ export default async function AdminHomePage() {
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {[
-              ["Firebase web", firebaseWebReady],
-              ["Firebase admin", firebaseAdminReady],
+              ["Backend provider", backendProvider === "aws"],
+              ["AWS backend", awsReady],
               ["AI routing", aiReady],
               ["OpenAI", openAiReady],
               ["Groq", groqReady],

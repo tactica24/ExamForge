@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 export async function getUserAiPreferences(userId: string) {
-  const firebase = await createFirebaseServerClient();
-  const { data } = await firebase
+  const backend = await createBackendServerClient();
+  const { data } = await backend
     .from("profiles")
     .select("preferred_explanation_language,low_data_mode")
     .eq("user_id", userId)
@@ -14,3 +14,4 @@ export async function getUserAiPreferences(userId: string) {
     lowDataMode: Boolean(data?.low_data_mode)
   };
 }
+

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { startOfDay } from "date-fns";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 
 export async function getOrCreateDailyQuiz(args: {
@@ -14,11 +14,11 @@ export async function getOrCreateDailyQuiz(args: {
   difficulty?: "easy" | "medium" | "hard";
   preferredLanguage?: string | null;
 }) {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const difficulty = args.difficulty ?? "medium";
   const dayStart = startOfDay(new Date()).toISOString();
 
-  const { data: existing } = await firebase
+  const { data: existing } = await backend
     .from("quizzes")
     .select("id")
     .eq("exam_id", args.examId)
@@ -49,3 +49,4 @@ export async function getOrCreateDailyQuiz(args: {
     }
   });
 }
+

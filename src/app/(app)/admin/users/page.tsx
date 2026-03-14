@@ -10,8 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
+import { createBackendServerClient } from "@/lib/backend/server";
 import {
   setUserRoleAction,
   setUserRoleByEmailAction,
@@ -30,41 +29,17 @@ type AdminUserRow = {
   role: "admin" | "user";
 };
 
-async function getRoleMap() {
-  const auth = getFirebaseAdminAuth();
-  if (!auth) return { ok: false as const, roleByUid: new Map<string, "admin" | "user">() };
-
-  const roleByUid = new Map<string, "admin" | "user">();
-  let pageToken: string | undefined;
-  let page = 0;
-
-  do {
-    const result = await auth.listUsers(1000, pageToken);
-    result.users.forEach((entry) => {
-      const role = entry.customClaims?.role === "admin" ? "admin" : "user";
-      roleByUid.set(entry.uid, role);
-    });
-    pageToken = result.pageToken;
-    page += 1;
-  } while (pageToken && page < 20);
-
-  return { ok: true as const, roleByUid };
-}
-
 export default async function AdminUsersPage() {
   const { user, isAdmin } = await requireAdmin();
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const firebase = await createFirebaseServerClient();
-  const { data: profiles } = await firebase
+  const backend = await createBackendServerClient();
+  const { data: profiles } = await backend
     .from("profiles")
-    .select("user_id,email,name,display_name,subscription_tier,created_at")
+    .select("user_id,email,name,display_name,subscription_tier,created_at,role")
     .order("created_at", { ascending: false })
     .limit(300);
-
-  const roles = await getRoleMap();
-  const roleByUid = roles.roleByUid;
 
   const users: AdminUserRow[] = (profiles ?? []).map((profile: any) => ({
     user_id: String(profile.user_id),
@@ -73,7 +48,7 @@ export default async function AdminUsersPage() {
     display_name: profile.display_name ? String(profile.display_name) : null,
     subscription_tier: profile.subscription_tier ? String(profile.subscription_tier) : null,
     created_at: profile.created_at ? String(profile.created_at) : null,
-    role: roleByUid.get(String(profile.user_id)) ?? "user"
+    role: String(profile.role ?? "user").toLowerCase() === "admin" ? "admin" : "user"
   }));
 
   const totalUsers = users.length;
@@ -119,19 +94,6 @@ export default async function AdminUsersPage() {
           </div>
         </div>
       </div>
-
-      {!roles.ok ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Admin configuration required</CardTitle>
-            <CardDescription>Could not load Firebase Auth users.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Add Firebase admin credentials in your AWS environment (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` recommended),
-            then redeploy.
-          </CardContent>
-        </Card>
-      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
       <Card>

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { startOfMonth, startOfWeek } from "date-fns";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 
 type Period = "weekly" | "monthly" | "all_time";
 
@@ -12,10 +12,10 @@ function rankify(map: Map<string, number>) {
 }
 
 export async function recomputeLeaderboards(args?: {
-  admin?: ReturnType<typeof createFirebaseAdminClient>;
+  admin?: ReturnType<typeof createBackendAdminClient>;
   now?: Date;
 }) {
-  const admin = args?.admin ?? createFirebaseAdminClient();
+  const admin = args?.admin ?? createBackendAdminClient();
   const now = args?.now ?? new Date();
   const sinceMonth = startOfMonth(now).toISOString();
   const sinceWeek = startOfWeek(now, { weekStartsOn: 1 }).toISOString();

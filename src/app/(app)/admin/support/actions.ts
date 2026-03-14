@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createBackendAdminClient } from "@/lib/backend/admin";
 
 const IssueActionSchema = z.object({
   request_id: z.string().min(2),
@@ -19,7 +19,7 @@ export async function claimSupportIssueAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid issue payload." };
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const { error } = await admin
     .from("contact_requests")
     .update({
@@ -44,7 +44,7 @@ export async function resolveSupportIssueAction(_: unknown, formData: FormData) 
   });
   if (!parsed.success) return { ok: false, message: "Invalid resolution payload." };
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const { error } = await admin
     .from("contact_requests")
     .update({
@@ -69,7 +69,7 @@ export async function reopenSupportIssueAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid issue payload." };
 
-  const admin = createFirebaseAdminClient();
+  const admin = createBackendAdminClient();
   const { error } = await admin
     .from("contact_requests")
     .update({

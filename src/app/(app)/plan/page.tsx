@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { addDays, differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,10 @@ import { getPlanItemLesson, isPlanItemQuizCompleted } from "@/lib/plans/content"
 import { describePace } from "@/lib/plans/pace";
 
 export default async function PlanPage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
@@ -24,14 +24,14 @@ export default async function PlanPage() {
   const start = format(new Date(), "yyyy-MM-dd");
   const end = format(addDays(new Date(), 13), "yyyy-MM-dd");
 
-  const { data: items } = await firebase
+  const { data: items } = await backend
     .from("plan_items")
     .select("*")
     .eq("plan_id", plan.id)
     .gte("scheduled_for", start)
     .lte("scheduled_for", end)
     .order("scheduled_for", { ascending: true });
-  const { data: orderedItems } = await firebase
+  const { data: orderedItems } = await backend
     .from("plan_items")
     .select("id,scheduled_for,day_index,status,resource_links,created_at")
     .eq("plan_id", plan.id)
@@ -135,3 +135,4 @@ export default async function PlanPage() {
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getFirebaseAdminDb } from "@/lib/firebase/admin-app";
+import { executeAuroraStatement, isAuroraDataConfigured } from "@/lib/aws/rds-data";
 
 type RateLimitRecord = {
   count: number;
@@ -77,47 +77,45 @@ function takeRateLimitInMemory(input: RateLimitInput): RateLimitResult {
   return toRateLimitResult({ input, record, now });
 }
 
-async function takeRateLimitWithFirestore(input: RateLimitInput): Promise<RateLimitResult | null> {
-  const db = getFirebaseAdminDb();
-  if (!db) return null;
+async function takeRateLimitWithAurora(input: RateLimitInput): Promise<RateLimitResult | null> {
+  if (!isAuroraDataConfigured()) return null;
 
   const now = Date.now();
-  const docRef = db.collection("rate_limits").doc(input.key);
-  let record: RateLimitRecord | null = null;
+  const nextResetAt = now + input.windowMs;
+  const updatedAt = new Date(now).toISOString();
 
   try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(docRef);
-      const raw = snap.exists ? (snap.data() as Record<string, unknown>) : null;
-      const prevCount = Number(raw?.count ?? 0);
-      const prevResetAt = Number(raw?.resetAt ?? 0);
-      const inWindow = Number.isFinite(prevResetAt) && prevResetAt > now;
-
-      record = inWindow
-        ? { count: Math.max(0, prevCount) + 1, resetAt: prevResetAt }
-        : { count: 1, resetAt: now + input.windowMs };
-
-      tx.set(
-        docRef,
-        {
-          count: record.count,
-          resetAt: record.resetAt,
-          updated_at: new Date(now).toISOString()
-        },
-        { merge: true }
-      );
+    const result = await executeAuroraStatement({
+      sql: `
+        INSERT INTO "rate_limits" AS rl ("key", "count", "reset_at", "updated_at")
+        VALUES (:key, 1, :next_reset_at, :updated_at)
+        ON CONFLICT ("key") DO UPDATE SET
+          "count" = CASE WHEN rl."reset_at" > :now_ms THEN rl."count" + 1 ELSE 1 END,
+          "reset_at" = CASE WHEN rl."reset_at" > :now_ms THEN rl."reset_at" ELSE :next_reset_at END,
+          "updated_at" = :updated_at
+        RETURNING "count", "reset_at"
+      `,
+      parameters: [
+        { name: "key", value: input.key },
+        { name: "next_reset_at", value: nextResetAt },
+        { name: "updated_at", value: updatedAt },
+        { name: "now_ms", value: now }
+      ]
     });
+
+    const row = (result.rows[0] ?? {}) as Record<string, unknown>;
+    const record: RateLimitRecord = {
+      count: Number(row.count ?? 0),
+      resetAt: Number(row.reset_at ?? nextResetAt)
+    };
+    return toRateLimitResult({ input, record, now });
   } catch {
     return null;
   }
-
-  if (!record) return null;
-  return toRateLimitResult({ input, record, now });
 }
 
 export async function takeRateLimit(input: RateLimitInput): Promise<RateLimitResult> {
-  const distributed = await takeRateLimitWithFirestore(input);
+  const distributed = await takeRateLimitWithAurora(input);
   if (distributed) return distributed;
   return takeRateLimitInMemory(input);
 }
-

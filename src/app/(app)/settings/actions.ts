@@ -3,13 +3,14 @@
 import { randomBytes } from "crypto";
 import { formatISO } from "date-fns";
 import { z } from "zod";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
+import { isAllowedAssetUrl } from "@/lib/backend/storage";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { redirect } from "next/navigation";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { canUseFullAppFeatures } from "@/lib/billing/access";
 import { matchOrCreateGroup } from "@/lib/groups/match";
 import { paceFromTopicsPerDay } from "@/lib/plans/pace";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
@@ -22,7 +23,7 @@ const ProfileSchema = z.object({
     .trim()
     .max(500)
     .optional()
-    .refine((value) => !value || /^https?:\/\//i.test(value), "Avatar URL must start with http:// or https://"),
+    .refine((value) => !value || isAllowedAssetUrl(value), "Avatar URL must start with http://, https://, or /"),
   location: z.string().max(80).optional(),
   timezone: z.string().min(2).max(60),
   learning_style: z.string().min(2).max(30),
@@ -34,11 +35,11 @@ const ProfileSchema = z.object({
 });
 
 async function realignPendingPlanItemsForPace(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   pace: string;
 }) {
-  const { data: plans } = await args.firebase
+  const { data: plans } = await args.backend
     .from("user_plans")
     .select("id,target_date")
     .eq("user_id", args.userId);
@@ -47,7 +48,7 @@ async function realignPendingPlanItemsForPace(args: {
   const startDate = formatISO(new Date(), { representation: "date" });
 
   for (const plan of plans) {
-    const { data: items } = await args.firebase
+    const { data: items } = await args.backend
       .from("plan_items")
       .select("id,title,topic_path,status,resource_links,scheduled_for,day_index,created_at")
       .eq("plan_id", plan.id)
@@ -78,7 +79,7 @@ async function realignPendingPlanItemsForPace(args: {
         continue;
       }
 
-      await args.firebase
+      await args.backend
         .from("plan_items")
         .update({
           scheduled_for: next.scheduled_for,
@@ -105,21 +106,21 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
   });
   if (!parsed.success) return { ok: false, message: "Invalid profile fields." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const { topics_per_day, ...profileUpdate } = parsed.data;
-  const { error } = await firebase.from("profiles").update(profileUpdate).eq("user_id", user.id);
+  const { error } = await backend.from("profiles").update(profileUpdate).eq("user_id", user.id);
   if (error) return { ok: false, message: error.message };
 
   const pace = paceFromTopicsPerDay(topics_per_day);
-  const { error: paceError } = await firebase.from("user_plans").update({ pace }).eq("user_id", user.id);
+  const { error: paceError } = await backend.from("user_plans").update({ pace }).eq("user_id", user.id);
   if (paceError) return { ok: false, message: paceError.message };
   await realignPendingPlanItemsForPace({
-    firebase,
+    backend,
     userId: user.id,
     pace
   });
@@ -135,19 +136,19 @@ const AddExamSubjectSchema = z.object({
 });
 
 async function ensurePlanForSubject(args: {
-  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  backend: Awaited<ReturnType<typeof createBackendServerClient>>;
   userId: string;
   examId: string;
   examSlug: string;
   subject: string;
 }) {
-  const { data: profile } = await args.firebase
+  const { data: profile } = await args.backend
     .from("profiles")
     .select("level,timezone")
     .eq("user_id", args.userId)
     .maybeSingle();
 
-  const { data: existingPlan } = await args.firebase
+  const { data: existingPlan } = await args.backend
     .from("user_plans")
     .select("id")
     .eq("user_id", args.userId)
@@ -158,7 +159,7 @@ async function ensurePlanForSubject(args: {
 
   if (existingPlan?.id) return { ok: true as const, created: false as const };
 
-  const { data: templatePlan } = await args.firebase
+  const { data: templatePlan } = await args.backend
     .from("user_plans")
     .select("mode,pace,start_date,target_date")
     .eq("user_id", args.userId)
@@ -172,7 +173,7 @@ async function ensurePlanForSubject(args: {
   const startDate = templatePlan?.start_date ?? formatISO(new Date(), { representation: "date" });
   const targetDate = templatePlan?.target_date ?? null;
 
-  const { data: plan, error: planErr } = await args.firebase
+  const { data: plan, error: planErr } = await args.backend
     .from("user_plans")
     .insert({
       user_id: args.userId,
@@ -205,7 +206,7 @@ async function ensurePlanForSubject(args: {
 
   if (!items.length) return { ok: true as const, created: true as const };
 
-  const { error: itemsErr } = await args.firebase.from("plan_items").insert(
+  const { error: itemsErr } = await args.backend.from("plan_items").insert(
     items.map((item) => ({
       plan_id: plan.id,
       scheduled_for: item.scheduled_for,
@@ -249,15 +250,15 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
 
   if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
-    .select("subscription_tier,pro_until")
+    .select("subscription_tier,pro_until,created_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -269,12 +270,12 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
       return {
         ok: false,
         message:
-          "Seed exam setup requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY."
+          "Seed exam setup requires the configured AWS backend connection. Add the Aurora and S3 environment values, then try again."
       };
     }
   }
 
-  const { data: existingSelection } = await firebase
+  const { data: existingSelection } = await backend
     .from("user_exam_subjects")
     .select("id")
     .eq("user_id", user.id)
@@ -283,8 +284,8 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (!hasActiveProAccess(profile) && !existingSelection?.id) {
-    const { count } = await firebase
+  if (!canUseFullAppFeatures(profile) && !existingSelection?.id) {
+    const { count } = await backend
       .from("user_exam_subjects")
       .select("id", { head: true, count: "exact" })
       .eq("user_id", user.id)
@@ -294,12 +295,12 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
       return {
         ok: false,
         message:
-          "Free plan allows only 1 exam and 1 subject. Upgrade to Pro to add more from /pricing."
+          "Your 3-day free trial has ended. Upgrade to Pro to add more than 1 exam and 1 subject from /pricing."
       };
     }
   }
 
-  const { error } = await firebase.from("user_exam_subjects").upsert(
+  const { error } = await backend.from("user_exam_subjects").upsert(
     {
       user_id: user.id,
       exam_id: examId,
@@ -312,7 +313,7 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   if (error) return { ok: false, message: error.message };
 
   const plan = await ensurePlanForSubject({
-    firebase,
+    backend,
     userId: user.id,
     examId,
     examSlug: parsed.data.exam_slug,
@@ -366,10 +367,10 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
     return { ok: false, message: "Add at least one reminder." };
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   const whatsappOptIn = formData.get("whatsapp_opt_in") === "on";
@@ -379,7 +380,7 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
     : "coach";
 
   const primary = reminders[0] as { time: string; channel: string } | undefined;
-  const { error } = await firebase.from("notification_prefs").upsert({
+  const { error } = await backend.from("notification_prefs").upsert({
     user_id: user.id,
     reminder_time: primary?.time ?? "19:00",
     channels: primary ? [primary.channel] : ["in_app"],
@@ -398,16 +399,16 @@ export async function updateNotificationPrefsAction(_: unknown, formData: FormDa
 export async function createParentLinkAction(_: unknown, formData: FormData) {
   const label = String(formData.get("label") ?? "").trim().slice(0, 40) || null;
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
   let inserted = false;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const token = randomBytes(18).toString("base64url");
-    const { error } = await firebase.from("parent_links").insert({
+    const { error } = await backend.from("parent_links").insert({
       token,
       user_id: user.id,
       label
@@ -421,4 +422,5 @@ export async function createParentLinkAction(_: unknown, formData: FormData) {
 
   redirect("/settings");
 }
+
 

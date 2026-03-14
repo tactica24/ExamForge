@@ -172,7 +172,7 @@ export default function HomePage() {
               </p>
               <div className="mt-4 text-4xl font-semibold tracking-tight">
                 N3,000
-                <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
+                <span className="ml-1 text-base font-medium text-muted-foreground">/30 days</span>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 <li>Unlimited objective questions and weak-area mode</li>

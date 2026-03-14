@@ -4,17 +4,17 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
-import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendAdminClient } from "@/lib/backend/admin";
+import { createBackendServerClient } from "@/lib/backend/server";
+import { isBackendStorageConfigured, uploadBackendStorageObject } from "@/lib/backend/storage";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
 
 async function assertAdmin() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
   if (!user || !isAdmin) throw new Error("Forbidden");
 }
@@ -73,11 +73,6 @@ function toStorageSlug(value: string) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 60);
-}
-
-function toStorageDownloadUrl(bucketName: string, path: string, token: string) {
-  const encodedPath = encodeURIComponent(path);
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
 
 function normalizeSyllabusSources(value: unknown) {
@@ -156,7 +151,7 @@ async function generateSubjectsNow(args: {
   return { generated, failures };
 }
 
-async function deleteByIn(admin: ReturnType<typeof createFirebaseAdminClient>, table: string, field: string, values: string[]) {
+async function deleteByIn(admin: ReturnType<typeof createBackendAdminClient>, table: string, field: string, values: string[]) {
   const unique = Array.from(new Set(values.map((value) => String(value).trim()).filter(Boolean)));
   if (!unique.length) return;
 
@@ -191,11 +186,10 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
     return { ok: false, message: e?.message ?? "Could not read syllabus file." };
   }
 
-  const bucket = getFirebaseAdminStorageBucket();
   let documentUrl: string | null = null;
   let documentStorageError: string | null = null;
 
-  if (bucket) {
+  if (isBackendStorageConfigured()) {
     try {
       const ext = extensionForSyllabus(parsedDoc.fileName, parsedDoc.mimeType);
       const storagePath = [
@@ -204,20 +198,13 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
         toStorageSlug(parsed.data.subject),
         `${Date.now()}-${randomUUID()}.${ext}`
       ].join("/");
-      const token = randomUUID();
-
-      await bucket.file(storagePath).save(parsedDoc.bytes, {
-        resumable: false,
-        metadata: {
-          contentType: parsedDoc.mimeType,
-          cacheControl: "private, max-age=0, no-store",
-          metadata: {
-            firebaseStorageDownloadTokens: token
-          }
-        }
+      const uploaded = await uploadBackendStorageObject({
+        path: storagePath,
+        bytes: parsedDoc.bytes,
+        contentType: parsedDoc.mimeType,
+        cacheControl: "private, max-age=0, no-store"
       });
-
-      documentUrl = toStorageDownloadUrl(bucket.name, storagePath, token);
+      documentUrl = uploaded.url;
     } catch (e: any) {
       documentStorageError = e?.message ? String(e.message).slice(0, 240) : "storage_error";
     }
@@ -238,7 +225,7 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
         extraction_chars: parsedDoc.extractedText.length,
         document_uploaded_at: new Date().toISOString(),
         document_url: documentUrl ?? undefined,
-        document_storage: documentUrl ? "firebase_storage" : "not_configured",
+        document_storage: documentUrl ? "backend_storage" : "not_configured",
         document_storage_error: documentStorageError ?? undefined
       }
     });
@@ -254,15 +241,15 @@ export async function uploadSubjectSyllabusDocumentAction(_: unknown, formData: 
   }
 
   if (documentUrl) {
-    const firebase = await createFirebaseServerClient();
-    const { data: exam } = await firebase
+    const backend = await createBackendServerClient();
+    const { data: exam } = await backend
       .from("exams")
       .select("syllabus_sources")
       .eq("id", parsed.data.exam_id)
       .maybeSingle();
     const existing = normalizeSyllabusSources(exam?.syllabus_sources);
     const next = [documentUrl, ...existing.filter((entry) => entry !== documentUrl)].slice(0, 100);
-    await firebase.from("exams").update({ syllabus_sources: next }).eq("id", parsed.data.exam_id);
+    await backend.from("exams").update({ syllabus_sources: next }).eq("id", parsed.data.exam_id);
   }
 
   revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
@@ -293,11 +280,11 @@ export async function upsertSyllabusAction(_: unknown, formData: FormData) {
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch {
     return {
       ok: false,
-      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+      message: "Backend datastore credentials are missing. Configure the datastore service-account credentials and redeploy."
     };
   }
 
@@ -371,9 +358,9 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
     return { ok: false, message: "Forbidden." };
   }
 
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
 
-  const { data: exam, error } = await firebase
+  const { data: exam, error } = await backend
     .from("exams")
     .select("subjects")
     .eq("id", parsed.data.exam_id)
@@ -385,7 +372,7 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
     return { ok: false, message: "No subjects configured for this exam." };
   }
 
-  const { data: existing } = await firebase
+  const { data: existing } = await backend
     .from("syllabi")
     .select("subject")
     .eq("exam_id", parsed.data.exam_id);
@@ -433,11 +420,11 @@ export async function deleteSyllabusAction(_: unknown, formData: FormData) {
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch {
     return {
       ok: false,
-      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+      message: "Backend datastore credentials are missing. Configure the datastore service-account credentials and redeploy."
     };
   }
 
@@ -465,8 +452,8 @@ export async function removeExamSubjectAction(_: unknown, formData: FormData) {
     return { ok: false, message: "Forbidden." };
   }
 
-  const firebase = await createFirebaseServerClient();
-  const { data: exam } = await firebase.from("exams").select("subjects").eq("id", parsed.data.exam_id).maybeSingle();
+  const backend = await createBackendServerClient();
+  const { data: exam } = await backend.from("exams").select("subjects").eq("id", parsed.data.exam_id).maybeSingle();
   const subjects = normalizeSubjects(exam?.subjects);
   const target = parsed.data.subject.trim().toLowerCase();
 
@@ -481,11 +468,11 @@ export async function removeExamSubjectAction(_: unknown, formData: FormData) {
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch {
     return {
       ok: false,
-      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+      message: "Backend datastore credentials are missing. Configure the datastore service-account credentials and redeploy."
     };
   }
 
@@ -549,11 +536,11 @@ export async function deleteExamAction(_: unknown, formData: FormData) {
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch {
     return {
       ok: false,
-      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+      message: "Backend datastore credentials are missing. Configure the datastore service-account credentials and redeploy."
     };
   }
 
@@ -583,3 +570,4 @@ export async function deleteExamAction(_: unknown, formData: FormData) {
   revalidatePath("/admin/exams");
   redirect("/admin/exams");
 }
+

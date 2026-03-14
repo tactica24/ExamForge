@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getBillingAccess } from "@/lib/billing/access";
 
 function initialsFromName(name: string) {
   return (
@@ -18,19 +19,19 @@ function initialsFromName(name: string) {
 }
 
 export default async function ProfilePage() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await firebase
+  const { data: profile } = await backend
     .from("profiles")
-    .select("name,display_name,location,timezone,avatar_url,subscription_tier,pro_until,leaderboard_anonymous")
+    .select("name,display_name,location,timezone,avatar_url,subscription_tier,pro_until,created_at,leaderboard_anonymous")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const { data: gamData, error: gamErr } = await firebase
+  const { data: gamData, error: gamErr } = await backend
     .from("user_gamification")
     .select("streak_count,total_xp,level,badges")
     .eq("user_id", user.id)
@@ -39,12 +40,13 @@ export default async function ProfilePage() {
 
   const unlockedBadges = Array.isArray(gam?.badges) ? (gam?.badges as any[]).map(String) : [];
   const { data: allBadges } = unlockedBadges.length
-    ? await firebase.from("badges").select("slug,name,description").in("slug", unlockedBadges)
+    ? await backend.from("badges").select("slug,name,description").in("slug", unlockedBadges)
     : { data: [] as any[] };
   const badgeBySlug = new Map((allBadges ?? []).map((badge) => [badge.slug, badge]));
 
   const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Account");
-  const subscriptionTier = (profile?.subscription_tier ?? "free").toUpperCase();
+  const billingAccess = getBillingAccess(profile);
+  const subscriptionTier = billingAccess.status.toUpperCase();
   const isAnonymous = Boolean(profile?.leaderboard_anonymous);
 
   return (
@@ -77,8 +79,10 @@ export default async function ProfilePage() {
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">Plan: {subscriptionTier}</Badge>
             <Badge variant="secondary">{isAnonymous ? "Leaderboard: Anonymous" : "Leaderboard: Public"}</Badge>
-            {profile?.pro_until ? (
-              <Badge variant="outline">Pro until: {new Date(profile.pro_until).toLocaleDateString()}</Badge>
+            {billingAccess.proEndsAt ? (
+              <Badge variant="outline">Pro until: {new Date(billingAccess.proEndsAt).toLocaleDateString()}</Badge>
+            ) : billingAccess.trialEndsAt ? (
+              <Badge variant="outline">Trial until: {new Date(billingAccess.trialEndsAt).toLocaleDateString()}</Badge>
             ) : null}
           </div>
         </CardContent>
@@ -133,3 +137,4 @@ export default async function ProfilePage() {
     </div>
   );
 }
+

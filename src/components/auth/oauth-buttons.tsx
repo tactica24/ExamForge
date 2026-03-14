@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { createFirebaseBrowserClient } from "@/lib/firebase/client";
+import { createBackendBrowserClient } from "@/lib/backend/client";
 import { Button } from "@/components/ui/button";
 
 export function OAuthButtons() {
@@ -10,8 +10,8 @@ export function OAuthButtons() {
     let mounted = true;
 
     (async () => {
-      const firebase = createFirebaseBrowserClient();
-      const result = await firebase.auth.completeOAuthRedirect();
+      const backend = createBackendBrowserClient();
+      const result = await backend.auth.completeOAuthRedirect();
       if (!mounted || !result?.handled) return;
 
       if (result.error) {
@@ -31,9 +31,9 @@ export function OAuthButtons() {
 
   async function start(provider: "google") {
     try {
-      const firebase = createFirebaseBrowserClient();
+      const backend = createBackendBrowserClient();
       const redirectTo = `${window.location.origin}/onboarding`;
-      const { error } = await firebase.auth.signInWithOAuth({
+      const { error } = await backend.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo

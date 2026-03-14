@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
 
 export default async function QuizPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quiz } = await firebase
+  const { data: quiz } = await backend
     .from("quizzes")
     .select("*")
     .eq("id", quizId)
@@ -18,7 +18,7 @@ export default async function QuizPage(props: { params: Promise<{ quizId: string
     .maybeSingle();
   if (!quiz) redirect("/dashboard");
 
-  const { data: questions } = await firebase
+  const { data: questions } = await backend
     .from("quiz_questions")
     .select("id,question,options,explanation")
     .eq("quiz_id", quizId)
@@ -34,3 +34,4 @@ export default async function QuizPage(props: { params: Promise<{ quizId: string
 
   return <QuizRunner quizId={quizId} title={`${quiz.subject} | ${quiz.topic_path}`} questions={safeQuestions} />;
 }
+

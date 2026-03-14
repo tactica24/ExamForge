@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/app/(app)/admin/guard";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +39,11 @@ export default async function AdminExamDetailPage(props: {
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
-  const firebase = await createFirebaseServerClient();
-  const { data: exam } = await firebase.from("exams").select("*").eq("id", examId).maybeSingle();
+  const backend = await createBackendServerClient();
+  const { data: exam } = await backend.from("exams").select("*").eq("id", examId).maybeSingle();
   if (!exam) redirect("/admin/exams");
 
-  const { data: syllabi } = await firebase
+  const { data: syllabi } = await backend
     .from("syllabi")
     .select("*")
     .eq("exam_id", examId)
@@ -378,3 +378,4 @@ export default async function AdminExamDetailPage(props: {
     </div>
   );
 }
+

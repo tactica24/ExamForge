@@ -1,10 +1,10 @@
 import "server-only";
 
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 export async function syncProfilePublic(args: { userId: string }) {
-  const firebase = await createFirebaseServerClient();
-  const { data: profile } = await firebase
+  const backend = await createBackendServerClient();
+  const { data: profile } = await backend
     .from("profiles")
     .select("display_name,name,leaderboard_anonymous")
     .eq("user_id", args.userId)
@@ -15,7 +15,7 @@ export async function syncProfilePublic(args: { userId: string }) {
     profile?.name?.trim() ||
     `Learner-${args.userId.slice(0, 6)}`;
 
-  await firebase.from("profile_public").upsert(
+  await backend.from("profile_public").upsert(
     {
       user_id: args.userId,
       display_name: display,
@@ -26,3 +26,4 @@ export async function syncProfilePublic(args: { userId: string }) {
 
   return { display_name: display, anonymous: Boolean(profile?.leaderboard_anonymous) };
 }
+

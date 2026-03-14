@@ -1,4 +1,4 @@
-import type { Database, Json } from "@/lib/firebase/database.types";
+import type { Database, Json } from "@/lib/backend/database.types";
 import { seedExamsNG } from "@/data/seed/exams";
 
 export type ExamRow = Database["public"]["Tables"]["exams"]["Row"];

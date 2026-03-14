@@ -1,8 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { createFirebaseAdminClient } from "@/lib/firebase/admin";
-import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { createBackendAdminClient } from "@/lib/backend/admin";
+import { createBackendServerClient } from "@/lib/backend/server";
 
 const ExamSchema = z.object({
   slug: z.string().min(2).max(80),
@@ -41,10 +41,10 @@ function normalizeSubjects(raw: string) {
 }
 
 async function assertAdmin() {
-  const firebase = await createFirebaseServerClient();
+  const backend = await createBackendServerClient();
   const {
     data: { user }
-  } = await firebase.auth.getUser();
+  } = await backend.auth.getUser();
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
   if (!user || !isAdmin) throw new Error("Forbidden");
 }
@@ -97,11 +97,11 @@ export async function createExamAction(_: unknown, formData: FormData) {
 
   let admin;
   try {
-    admin = createFirebaseAdminClient();
+    admin = createBackendAdminClient();
   } catch {
     return {
       ok: false,
-      message: "Firebase admin credentials are missing. Add FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 and redeploy."
+      message: "Backend datastore credentials are missing. Configure the datastore service-account credentials and redeploy."
     };
   }
 
@@ -131,3 +131,4 @@ export async function createExamAction(_: unknown, formData: FormData) {
 
   return { ok: true };
 }
+
