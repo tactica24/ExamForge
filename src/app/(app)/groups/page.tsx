@@ -31,11 +31,12 @@ function groupLabel(group: any) {
   return subject ? `${subject} Group` : "Subject Group";
 }
 
-export default async function GroupsPage(props: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+export default async function GroupsPage({
+  searchParams
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const searchParams = await Promise.resolve(props.searchParams ?? {});
-  const requestedGroupId = readSearchParam(searchParams.group);
+  const requestedGroupId = readSearchParam(searchParams?.group);
 
   const backend = await createBackendServerClient();
   const {
