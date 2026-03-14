@@ -25,7 +25,7 @@ function toSafeRedirectPath(raw: string | undefined, fallback: string) {
 class PollingRealtimeChannel {
   private filter = "";
   private handler: GroupMessageHandler | null = null;
-  private intervalId: ReturnType<typeof window.setInterval> | null = null;
+  private intervalId: number | null = null;
   private lastSeenAt = "";
   private seenIds = new Set<string>();
   private visibilityHandler: (() => void) | null = null;
