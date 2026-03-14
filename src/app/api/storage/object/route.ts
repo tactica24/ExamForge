@@ -44,5 +44,6 @@ export async function GET(request: Request) {
     shouldDownload ? `attachment; filename="${safeFileName(key.split("/").pop() ?? "file")}"` : "inline"
   );
 
-  return new NextResponse(object.body, { headers });
+  const body = object.body as BodyInit;
+  return new NextResponse(body, { headers });
 }
