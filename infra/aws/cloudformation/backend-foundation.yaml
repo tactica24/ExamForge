@@ -51,13 +51,6 @@ Parameters:
     Type: Number
     Default: 1
     Description: Aurora backup retention period in days. Use 1 for free tier accounts.
-  DbWithExpressConfiguration:
-    Type: String
-    Default: "true"
-    AllowedValues:
-      - "true"
-      - "false"
-    Description: Set to true for free plan accounts that require Express configuration.
   GoogleClientId:
     Type: String
     Default: ""
@@ -78,7 +71,6 @@ Conditions:
   HasRuntimeRoleName: !Not [!Equals [!Ref AppRuntimeRoleName, ""]]
   HasSesIdentityArn: !Not [!Equals [!Ref SesIdentityArn, ""]]
   CreateSesIdentity: !Equals [!Ref SesIdentityArn, ""]
-  UseExpressConfiguration: !Equals [!Ref DbWithExpressConfiguration, "true"]
 
 Resources:
   SessionSecret:
@@ -301,7 +293,6 @@ Resources:
       Engine: aurora-postgresql
       EngineMode: provisioned
       EnableHttpEndpoint: true
-      WithExpressConfiguration: !If [UseExpressConfiguration, true, false]
       ManageMasterUserPassword: true
       MasterUsername: !Ref DbMasterUsername
       ServerlessV2ScalingConfiguration:
