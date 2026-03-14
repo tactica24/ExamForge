@@ -78,6 +78,7 @@ Conditions:
   HasRuntimeRoleName: !Not [!Equals [!Ref AppRuntimeRoleName, ""]]
   HasSesIdentityArn: !Not [!Equals [!Ref SesIdentityArn, ""]]
   CreateSesIdentity: !Equals [!Ref SesIdentityArn, ""]
+  UseExpressConfiguration: !Equals [!Ref DbWithExpressConfiguration, "true"]
 
 Resources:
   SessionSecret:
@@ -300,7 +301,7 @@ Resources:
       Engine: aurora-postgresql
       EngineMode: provisioned
       EnableHttpEndpoint: true
-      WithExpressConfiguration: !Equals [!Ref DbWithExpressConfiguration, "true"]
+      WithExpressConfiguration: !If [UseExpressConfiguration, true, false]
       ManageMasterUserPassword: true
       MasterUsername: !Ref DbMasterUsername
       ServerlessV2ScalingConfiguration:
