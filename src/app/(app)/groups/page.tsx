@@ -34,9 +34,10 @@ function groupLabel(group: any) {
 export default async function GroupsPage({
   searchParams
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const requestedGroupId = readSearchParam(searchParams?.group);
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const requestedGroupId = readSearchParam(resolvedSearchParams.group);
 
   const backend = await createBackendServerClient();
   const {
