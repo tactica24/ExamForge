@@ -53,7 +53,7 @@ function cleanText(value: unknown) {
 
 function normalizeCognitoError(json: CognitoJson | null) {
   const type = String(json?.__type ?? json?.code ?? "").split("#").pop() ?? "";
-  const message = String(json?.message ?? json?.Message ?? type || "Authentication failed.");
+  const message = String((json?.message ?? json?.Message ?? type) || "Authentication failed.");
 
   if (type === "NotAuthorizedException") {
     return "Invalid email or password.";
