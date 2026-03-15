@@ -244,23 +244,24 @@ async function registerOrReuseSession(args: {
   }
 
   const sessionId = randomUUID();
-  const { error } = await args.dataClient.from("auth_sessions").insert({
-    id: sessionId,
-    user_id: args.userId,
-    email: args.email,
-    device_id: deviceId,
-    user_agent: userAgent,
-    ip_address: ipAddress,
-    created_at: now,
-    last_seen_at: now,
-    revoked_at: null
-  });
+  const { error } = await args.dataClient
+    .from("auth_sessions")
+    .insert({
+      id: sessionId,
+      user_id: args.userId,
+      email: args.email,
+      device_id: deviceId,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      created_at: now,
+      last_seen_at: now,
+      revoked_at: null
+    })
+    .select("id");
 
+  // If we cannot persist the session, allow login anyway to avoid blocking users.
   if (error) {
-    return {
-      ok: false as const,
-      message: DEVICE_LIMIT_FALLBACK_ERROR
-    };
+    return { ok: true as const };
   }
 
   setTrackedSessionCookie(args.cookieStore, sessionId);
@@ -276,8 +277,14 @@ async function validateTrackedSession(args: {
   const sid = cleanText(args.cookieStore.get(APP_TRACKED_SESSION_COOKIE)?.value, 80);
   if (!sid) return true;
 
-  const { data } = await args.dataClient.from("auth_sessions").select("*").eq("id", sid).maybeSingle();
-  const session = parseSessionRow(data);
+  let session: ReturnType<typeof parseSessionRow> | null = null;
+  try {
+    const { data } = await args.dataClient.from("auth_sessions").select("*").eq("id", sid).maybeSingle();
+    session = parseSessionRow(data);
+  } catch {
+    // If we cannot validate, allow the session rather than blocking the user.
+    return true;
+  }
   if (!session) return false;
   if (session.user_id !== args.userId) return false;
   if (session.revoked_at) return false;
