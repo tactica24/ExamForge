@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { createBackendServerClient } from "@/lib/backend/server";
+import { isUserAdmin } from "@/lib/auth/admin";
 import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -80,7 +81,7 @@ export async function loginAction(_: unknown, formData: FormData) {
   }
 
   const user = result.data.user;
-  const isAdmin = String((user?.app_metadata as any)?.role ?? "").toLowerCase() === "admin";
+  const isAdmin = await isUserAdmin(backend, user);
   redirect(isAdmin ? "/admin" : "/onboarding");
 }
 

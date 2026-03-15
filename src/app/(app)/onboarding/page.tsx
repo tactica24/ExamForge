@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { isUserAdmin } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
@@ -10,7 +11,7 @@ export default async function OnboardingPage() {
   } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  if (String((user.app_metadata as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
+  if (await isUserAdmin(backend, user)) redirect("/admin");
 
   const { data: existingPlan } = await backend
     .from("user_plans")

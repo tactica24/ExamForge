@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isUserAdmin } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 
 export async function requireAdmin() {
@@ -7,6 +8,6 @@ export async function requireAdmin() {
   const {
     data: { user }
   } = await backend.auth.getUser();
-  const isAdmin = String((user?.app_metadata as any)?.role ?? "").toLowerCase() === "admin";
+  const isAdmin = user ? await isUserAdmin(backend, user) : false;
   return { user, isAdmin };
 }

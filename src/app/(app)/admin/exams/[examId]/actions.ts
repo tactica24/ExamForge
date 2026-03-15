@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createBackendAdminClient } from "@/lib/backend/admin";
+import { isUserAdmin } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 import { isBackendStorageConfigured, uploadBackendStorageObject } from "@/lib/backend/storage";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
@@ -15,7 +16,7 @@ async function assertAdmin() {
   const {
     data: { user }
   } = await backend.auth.getUser();
-  const isAdmin = (user?.app_metadata as any)?.role === "admin";
+  const isAdmin = user ? await isUserAdmin(backend, user) : false;
   if (!user || !isAdmin) throw new Error("Forbidden");
 }
 

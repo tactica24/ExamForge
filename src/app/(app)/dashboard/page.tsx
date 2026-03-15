@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { isUserAdmin } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ export default async function DashboardPage() {
   } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  if (String((user.app_metadata as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
+  if (await isUserAdmin(backend, user)) redirect("/admin");
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");

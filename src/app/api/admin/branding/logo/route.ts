@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getBrandingDocId } from "@/lib/branding";
+import { isUserAdmin } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 import { isBackendStorageConfigured, uploadBackendStorageObject } from "@/lib/backend/storage";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
   }
 
-  const isAdmin = (user.app_metadata as any)?.role === "admin";
+  const isAdmin = await isUserAdmin(backend, user);
   if (!isAdmin) {
     return NextResponse.json({ ok: false, message: "Admin access required." }, { status: 403 });
   }

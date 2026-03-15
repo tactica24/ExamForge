@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
+import { executeAuroraStatement, isAuroraDataConfigured } from "@/lib/aws/rds-data";
 import { createAppDataClient, type AppDataClient } from "@/lib/backend/data-client";
 import { APP_DEVICE_COOKIE, APP_SESSION_COOKIE, APP_TRACKED_SESSION_COOKIE } from "@/lib/backend/constants";
 import { confirmCognitoSignUp, resendCognitoConfirmationCode, signInWithCognitoPassword, signUpWithCognito, type CognitoTokenSet } from "@/lib/aws/cognito-public";
@@ -69,6 +70,16 @@ function cleanText(value: unknown, maxLength: number) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+function normalizeRole(value: unknown) {
+  const role = cleanText(value, 20).toLowerCase();
+  return role || null;
+}
+
+function normalizeEmail(value: unknown) {
+  const email = cleanText(value, 200).toLowerCase();
+  return email || null;
 }
 
 function nowIso() {
@@ -278,17 +289,36 @@ async function validateTrackedSession(args: {
   return true;
 }
 
+async function lookupUserRoleByEmailCi(email: string) {
+  if (!isAuroraDataConfigured()) return null;
+
+  try {
+    const result = await executeAuroraStatement({
+      sql: "select role from profiles where lower(email) = lower(:email) order by created_at desc limit 1",
+      parameters: [{ name: "email", value: email }]
+    });
+    return normalizeRole((result.rows[0] as Record<string, unknown> | undefined)?.role);
+  } catch {
+    return null;
+  }
+}
+
 async function lookupUserRole(dataClient: AppDataClient, userId: string, email?: string | null) {
   const { data: byUserId } = await dataClient.from("profiles").select("role").eq("user_id", userId).maybeSingle();
-  const roleByUserId = cleanText((byUserId as Record<string, unknown> | null)?.role, 20);
+  const roleByUserId = normalizeRole((byUserId as Record<string, unknown> | null)?.role);
   if (roleByUserId) return roleByUserId;
 
-  const normalizedEmail = cleanText(email, 200);
+  const rawEmail = cleanText(email, 200);
+  if (!rawEmail) return null;
+
+  const { data: byEmail } = await dataClient.from("profiles").select("role").eq("email", rawEmail).maybeSingle();
+  const roleByEmail = normalizeRole((byEmail as Record<string, unknown> | null)?.role);
+  if (roleByEmail) return roleByEmail;
+
+  const normalizedEmail = normalizeEmail(rawEmail);
   if (!normalizedEmail) return null;
 
-  const { data: byEmail } = await dataClient.from("profiles").select("role").eq("email", normalizedEmail).maybeSingle();
-  const roleByEmail = cleanText((byEmail as Record<string, unknown> | null)?.role, 20);
-  return roleByEmail ?? null;
+  return lookupUserRoleByEmailCi(normalizedEmail);
 }
 
 function toAuthPayload(state: Awaited<ReturnType<typeof readAwsSessionState>>, role: string | null): AuthPayload | null {

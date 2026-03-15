@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/app/app-shell";
 import { OfflineWarmCache } from "@/components/offline/offline-warm-cache";
 import { OfflineSync } from "@/components/offline/offline-sync";
+import { resolveUserRole } from "@/lib/auth/admin";
 import { createBackendServerClient } from "@/lib/backend/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,9 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await backend.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  const isAdmin =
-    (user.app_metadata as any)?.role === "admin" || String((profile as any)?.role ?? "").toLowerCase() === "admin";
+  const { data: profileById } = await backend.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+  const profile =
+    profileById ??
+    (user.email ? (await backend.from("profiles").select("*").eq("email", user.email).maybeSingle()).data : null);
+  const isAdmin = (await resolveUserRole(backend, user)) === "admin";
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/superadmin");
@@ -29,12 +32,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell
-      name={profile?.display_name ?? profile?.name ?? user.email ?? null}
-      avatarUrl={profile?.avatar_url ?? null}
+      name={(profile as any)?.display_name ?? (profile as any)?.name ?? user.email ?? null}
+      avatarUrl={(profile as any)?.avatar_url ?? null}
       isAdmin={isAdmin}
     >
       <OfflineSync />
-      <OfflineWarmCache lowDataMode={Boolean(profile?.low_data_mode)} />
+      <OfflineWarmCache lowDataMode={Boolean((profile as any)?.low_data_mode)} />
       {children}
     </AppShell>
   );
