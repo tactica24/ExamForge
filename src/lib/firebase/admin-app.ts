@@ -15,6 +15,7 @@ type CredentialConfig = {
 
 let firebaseAdminApp: App | null | undefined;
 let cachedCredentialConfig: CredentialConfig | null | undefined;
+let firebaseAdminInitErrorLogged = false;
 
 function toPrivateKey(value: string) {
   return value.replace(/\\n/g, "\n");
@@ -107,18 +108,26 @@ export function getFirebaseAdminApp(): App | null {
     return null;
   }
 
-  const existing = getApps()[0];
-  firebaseAdminApp =
-    existing ??
-    initializeApp({
-      credential: cert({
+  try {
+    const existing = getApps()[0];
+    firebaseAdminApp =
+      existing ??
+      initializeApp({
+        credential: cert({
+          projectId: cfg.projectId,
+          clientEmail: cfg.clientEmail,
+          privateKey: cfg.privateKey
+        }),
         projectId: cfg.projectId,
-        clientEmail: cfg.clientEmail,
-        privateKey: cfg.privateKey
-      }),
-      projectId: cfg.projectId,
-      ...(cfg.storageBucket ? { storageBucket: cfg.storageBucket } : {})
-    });
+        ...(cfg.storageBucket ? { storageBucket: cfg.storageBucket } : {})
+      });
+  } catch (error) {
+    firebaseAdminApp = null;
+    if (!firebaseAdminInitErrorLogged) {
+      firebaseAdminInitErrorLogged = true;
+      console.error("Firebase admin initialization failed.", error);
+    }
+  }
 
   return firebaseAdminApp;
 }
