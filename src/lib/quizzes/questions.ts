@@ -87,13 +87,13 @@ function makeConceptFallback(args: { examName: string; subject: string; topic: s
   return {
     question: `${args.focus} is best described as which of the following?`,
     options: [
-      `The central principle that defines ${args.focus} in ${args.topic}.`,
-      `A random strategy used only when answers are difficult.`,
-      `Any option with technical words, even when the idea is unrelated.`,
-      `A memory trick that replaces understanding of the concept.`
+      `The statement that correctly defines ${args.focus} in ${args.topic}.`,
+      `A rule that removes the conditions attached to ${args.focus}.`,
+      `An idea that is automatically identical to every related term in ${args.topic}.`,
+      `A detail that falls outside the meaning of ${args.focus}.`
     ],
     correct_index: 0,
-    explanation: `Exam questions on ${args.focus} are answered by applying the core concept, not by guessing strategies.`
+    explanation: `The correct answer is the option that preserves the meaning of ${args.focus} accurately.`
   };
 }
 
@@ -101,13 +101,13 @@ function makeApplicationFallback(args: { examName: string; subject: string; topi
   return {
     question: `Which option shows a correct application of ${args.focus}?`,
     options: [
-      `Apply the rule behind ${args.focus} and verify it matches the stem.`,
-      "Ignore the rule and pick the option that sounds familiar.",
-      "Choose the longest option without checking concept accuracy.",
-      "Rely on speed alone and skip checking the key condition."
+      `It applies the rule behind ${args.focus} and respects the condition given in the question.`,
+      "It ignores one key condition linked to the concept.",
+      "It changes the meaning of the concept halfway through the solution.",
+      "It uses a result that does not belong to this concept."
     ],
     correct_index: 0,
-    explanation: `Correct application means using the governing rule and checking whether it fits the exact condition in the question.`
+    explanation: `A correct application follows the rule behind the concept and keeps the condition in the question intact.`
   };
 }
 
@@ -350,6 +350,7 @@ export async function generateQuestions(args: {
     "Use direct exam stem forms: definition, completion, cause/effect, except/not, best tool/method, and short scenario application.",
     "For English/Language topics, prefer sentence-based grammar and usage stems over abstract strategy wording.",
     "Each item must test subject knowledge, not test-taking strategy.",
+    "Explanations should sound like a teacher giving a quick correction, not like an AI coach.",
     "Output must be valid JSON only.",
     syllabusHint,
     lang

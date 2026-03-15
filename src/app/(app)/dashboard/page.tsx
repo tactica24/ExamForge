@@ -22,8 +22,7 @@ export default async function DashboardPage() {
   } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: roleProfile } = await backend.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
-  if (String((roleProfile as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
+  if (String((user.app_metadata as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
 
   const plan = await getActivePlanForUser(user.id);
   if (!plan) redirect("/onboarding");

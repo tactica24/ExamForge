@@ -360,27 +360,18 @@ export async function createQuizWithQuestions(args: {
       }
     });
 
-    await insertQuizQuestions({
-      backend,
-      quizId,
-      questions: reusableQuestions.slice(0, args.questionCount)
-    });
-    return quizId;
+    try {
+      await insertQuizQuestions({
+        backend,
+        quizId,
+        questions: reusableQuestions.slice(0, args.questionCount)
+      });
+      return quizId;
+    } catch (error) {
+      await backend.from("quizzes").delete().eq("id", quizId);
+      throw error;
+    }
   }
-
-  const quizId = await createQuizRecord({
-    backend,
-    userId: args.userId,
-    examId: args.examId,
-    subject: args.subject,
-    topicPath: args.topicPath,
-    quizType: args.quizType,
-    difficulty: args.difficulty,
-    preferredLanguage: args.preferredLanguage,
-    poolKey,
-    cacheKey,
-    meta: args.meta
-  });
 
   let examSlug = args.examSlug;
   if (!examSlug) {
@@ -430,12 +421,30 @@ export async function createQuizWithQuestions(args: {
     throw new Error("Question generation failed.");
   }
 
-  await insertQuizQuestions({
+  const quizId = await createQuizRecord({
     backend,
-    quizId,
-    questions: merged
+    userId: args.userId,
+    examId: args.examId,
+    subject: args.subject,
+    topicPath: args.topicPath,
+    quizType: args.quizType,
+    difficulty: args.difficulty,
+    preferredLanguage: args.preferredLanguage,
+    poolKey,
+    cacheKey,
+    meta: args.meta
   });
 
-  return quizId;
+  try {
+    await insertQuizQuestions({
+      backend,
+      quizId,
+      questions: merged
+    });
+    return quizId;
+  } catch (error) {
+    await backend.from("quizzes").delete().eq("id", quizId);
+    throw error;
+  }
 }
 

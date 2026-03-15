@@ -128,13 +128,13 @@ function fallbackVisualAids(args: {
     visualAids.push({
       kind: "diagram",
       title: `${args.title} labeled concept map`,
-      explanation: `Shows the major parts and relationships in ${args.title} so learners can interpret exam wording quickly.`,
+      explanation: `Shows the main parts and relationships in ${args.title} so the learner can see how the ideas connect.`,
       alt_text: `Labeled diagram for ${args.title} in ${args.subject}.`,
-      prompt: `Create a clean labeled educational diagram for ${args.subject} topic ${args.title}. Highlight key parts and one common confusion point.`,
+      prompt: `Create a clean labeled educational diagram for ${args.subject} topic ${args.title}. Highlight key parts and one common point of confusion.`,
       bullets: [
         "Label key parts clearly and keep wording short.",
         "Show how one concept links to the next.",
-        "Include one frequent exam confusion and correction."
+        "Include one frequent confusion and the correct interpretation."
       ],
       points: []
     });
@@ -144,7 +144,7 @@ function fallbackVisualAids(args: {
     visualAids.push({
       kind: "graph",
       title: `${args.title} trend chart`,
-      explanation: `Summarizes numeric relationships in ${args.title} to support faster interpretation of exam questions.`,
+      explanation: `Summarizes numeric relationships in ${args.title} so patterns can be compared quickly.`,
       alt_text: `Chart showing ${args.title} values or trend patterns.`,
       prompt: `Generate a simple chart for ${args.subject} topic ${args.title} showing meaningful labels and numeric values.`,
       bullets: [
@@ -240,62 +240,62 @@ function fallbackLesson(args: {
   const focusBreakdown = activeFocus.flatMap((subtopic, index) => [
     {
       heading: `${index + 1}) ${subtopic}: meaning and intuition`,
-      explanation: `${subtopic} is a foundational part of ${title} in ${subject}. Start by defining it in plain language, then restate the rule as you would explain it to a classmate. For objective questions, exam setters often hide this idea in unfamiliar wording, so train yourself to map question language back to the core definition before touching options. Build intuition by asking what changes and what stays constant when you apply the rule in different examples.`
+      explanation: `${subtopic} is a foundational part of ${title} in ${subject}. Start by defining it in plain language, then restate the idea as you would explain it to a classmate. After that, connect the definition to a simple example so you can see what changes and what stays constant when the idea is applied. The aim is to understand the concept well enough to recognize it even when the wording changes.`
     },
     {
-      heading: `${index + 1}) ${subtopic}: exam application steps`,
-      explanation: `Use a repeatable step-by-step approach for ${subtopic}: identify the tested rule, translate values or terms correctly, run the operation, and verify units/conditions. Under time pressure, most mistakes come from skipping one of these steps, not from difficult arithmetic or vocabulary. Practice one timed mini-set where you say each step out loud, then review where your reasoning broke. This method turns ${subtopic} from memorization into a dependable exam process.`
+      heading: `${index + 1}) ${subtopic}: using the idea correctly`,
+      explanation: `Apply ${subtopic} in a steady sequence: identify the rule or meaning involved, connect it to the given condition, carry out the needed step, and check that the final statement still fits the concept. Most errors happen when one condition is ignored or when a related term is treated as if it means the same thing. A short worked example is often enough to turn the idea from memorized words into usable understanding.`
     }
   ]);
 
   return {
-    overview: `${title} is a high-impact area in ${subject}. ${focusLine} The goal is not to skim definitions, but to master how each idea behaves in real exam stems, including traps that look correct at first glance. Move from concept -> method -> timed practice -> error review. If you can explain the logic behind each step without looking at notes, your retention and speed both increase.`,
+    overview: `${title} is an important part of ${subject}. ${focusLine} Start with the core meaning of each idea, then connect it to examples and short applications so the topic becomes concrete. A strong lesson on ${title} should help the learner define the idea clearly, recognise it in different wording, and apply it carefully to related problems. By the end of the session, the learner should be able to explain the rule, show where it applies, and avoid the most common misunderstandings.`,
     breakdown: [
       {
         heading: "Topic map and why this matters",
-        explanation: `Before solving questions, map the lesson into small parts: definition, rule, worked example, and common trap. This prevents overload and helps you connect each subtopic to the exact style of objective question where it appears. In exam prep, breadth without depth causes repeated errors, so focus on mastery of a narrow set per session. Your aim is to understand why an option is right or wrong, not just memorize final answers.`
+        explanation: `Break ${title} into small parts: the main definition, the core rule or principle, a worked example, and the common misunderstanding attached to it. This makes the lesson easier to follow and shows how each subtopic supports the next. Depth matters more than speed here, because clear understanding is what makes later practice useful.`
       },
       ...focusBreakdown,
       {
-        heading: "Integration and exam strategy",
-        explanation: `After studying each focus subtopic, combine them in mixed questions and watch how setters blend concepts in one stem. Use elimination only after you test options against the governing rule. For difficult items, mark and return after quick wins, then solve with a strict checklist to avoid careless misses. End the session by summarizing one rule you mastered and one trap you will avoid next time.`
+        heading: "Putting the parts together",
+        explanation: `After learning the main pieces, combine them in short mixed examples so the learner can see how the ideas support one another. The goal is to move from isolated facts to connected understanding. End the lesson by summarizing the rule you now understand better and one misunderstanding that has been cleared up.`
       }
     ],
     examples: [
       {
-        question: `Example 1: In a ${subject} question on ${title}, two options look correct. What should you do first?`,
+        question: `Example 1: Which statement best defines ${activeFocus[0] ?? title}?`,
         walkthrough:
-          "Identify the exact rule being tested, then test each remaining option against that rule step-by-step. Rewrite key values/terms from the stem, apply the rule carefully, and reject any option that breaks the rule even once.",
-        answer: "Choose the option that stays fully consistent with the tested rule."
+          `Start from the exact meaning of ${activeFocus[0] ?? title}. Remove any statement that changes the core idea, removes an important condition, or mixes it up with a related term. The remaining statement should preserve both the meaning and the scope of the concept.`,
+        answer: `The correct choice is the statement that preserves the meaning of ${activeFocus[0] ?? title} accurately.`
       },
       {
-        question: `Example 2: You keep missing ${title} questions under time pressure. What should you change?`,
+        question: `Example 2: Which condition must be checked before ${activeFocus[1] ?? title} is applied?`,
         walkthrough:
-          "Create a short checklist for this topic and apply it to every question: identify rule, execute method, verify constraints, then select. Practice timed sets and review only the rule-based reason for each mistake.",
-        answer: "Use a fixed checklist and timed review loop for this topic."
+          `Identify the condition that makes ${activeFocus[1] ?? title} valid. Then compare each option or scenario with that condition. Any option that ignores the required condition, changes the setting, or applies the idea too broadly should be ruled out.`,
+        answer: `The correct answer is the one that keeps the required condition for ${activeFocus[1] ?? title} in place.`
       },
       {
-        question: `Example 3: A question combines two subtopics from ${title}. How do you avoid confusion?`,
+        question: `Example 3: How can ${title} be handled when two related ideas appear together?`,
         walkthrough:
-          "Split the problem into parts and label which rule belongs to each subtopic. Solve the first part fully before moving to the second, then recombine results and verify that the final option satisfies both rules.",
-        answer: "Decompose the question and apply one subtopic rule at a time."
+          `Separate the problem into the two ideas involved, decide what each part contributes, and solve in a clear order. Once both parts are understood, combine them carefully and check that the final result still matches the rule for the topic.`,
+        answer: `Handle the parts one at a time, then combine them only after each idea is clear.`
       }
     ],
     common_mistakes: [
-      "Picking the first option that sounds familiar without testing the rule.",
-      "Confusing related concepts because definitions were memorized without examples.",
-      "Combining multiple subtopics mentally without writing intermediate steps.",
-      "Rushing difficult items instead of skipping and returning with fresh attention.",
-      "Ignoring why wrong options are wrong, which causes repeated errors.",
-      "Reviewing score only, without tracking the exact reasoning mistake."
+      "Confusing a topic with another idea that sounds similar but has a different meaning.",
+      "Memorizing the definition without connecting it to an example or application.",
+      "Ignoring the condition that must hold before the rule can be applied.",
+      "Combining multiple subtopics mentally without separating their roles clearly.",
+      "Focusing on the final answer without checking whether the reasoning is sound.",
+      "Repeating the same misunderstanding because earlier mistakes were not reviewed carefully."
     ],
     recap: [
       `Define ${title} clearly in one sentence before solving questions.`,
-      "Match each question to a rule before reading options deeply.",
-      "If multiple subtopics appear, solve one rule-layer at a time.",
-      "Eliminate weak options early and compare the final two carefully.",
-      "After each practice set, log one rule you got wrong and one fix.",
-      "Reattempt missed questions 24 hours later without checking notes first."
+      "Connect each definition to one example or worked application.",
+      "Check the condition that makes the rule valid before applying it.",
+      "If multiple ideas appear together, separate them and solve in a clear order.",
+      "Review why a wrong option is wrong, not just why the right one is right.",
+      "Revisit the topic later and explain it again without looking at notes."
     ],
     visual_aids: fallbackVisualAids({ subject, title, subtopics }),
     generated_at: new Date().toISOString(),
@@ -321,12 +321,15 @@ export async function generatePlanLesson(args: {
   const language = languageInstruction(args.preferredLanguage);
   const visualPolicy = getVisualPolicy(args.subject, title);
   const system = [
-    "You are an expert tutor creating deep study notes before a topic quiz.",
+    "You are an expert subject tutor creating deep study notes before a topic quiz.",
+    "Write like a knowledgeable teacher, not like an AI assistant or exam coach.",
     "Return valid JSON only.",
     "Use this shape exactly:",
     '{"lesson":{"overview":"string","breakdown":[{"heading":"string","explanation":"string"}],"examples":[{"question":"string","walkthrough":"string","answer":"string"}],"common_mistakes":["string"],"recap":["string"],"visual_aids":[{"kind":"diagram|graph|illustration","title":"string","explanation":"string","alt_text":"string","prompt":"string","bullets":["string"],"points":[{"label":"string","value":42}]}]}}',
     "Teach for comprehension, not speed-writing. Explanations must be elaborate, practical, and exam-focused.",
     "Each breakdown explanation should be detailed enough to feel like a mini-lesson, not a short note.",
+    "Do not mention exam setters, tricks, traps, guessing, or test-taking strategy.",
+    "Worked examples must be real topic questions or concept checks, not advice about how to answer questions.",
     subtopics.length
       ? `Primary focus subtopics for this session: ${subtopics.join(", ")}. Give dedicated breakdown coverage to each.`
       : "If subtopics are missing, infer likely subtopic blocks and teach them clearly.",
@@ -350,6 +353,7 @@ export async function generatePlanLesson(args: {
       "recap: 6-8 action points",
       visualConstraint(visualPolicy),
       "Avoid one-line explanations. Be explicit, instructional, and exam-useful.",
+      "Examples must be content-based, not meta-study prompts.",
       "No markdown in JSON values"
     ]
   };

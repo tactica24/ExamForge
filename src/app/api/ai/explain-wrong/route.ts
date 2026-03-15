@@ -6,6 +6,7 @@ import { generateTextWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+import { getQuizReviewFeedback, withQuizReviewFeedback } from "@/lib/quizzes/review-feedback";
 
 function flattenTopics(topics: Array<{ title: string; path: string; subtopics?: string[] }>) {
   const out: string[] = [];
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const exam = String(body?.exam ?? "").trim();
   const examId = String(body?.exam_id ?? "").trim();
+  const quizId = String(body?.quiz_id ?? "").trim();
+  const questionId = String(body?.question_id ?? "").trim();
+  const refresh = Boolean(body?.refresh);
   const subject = String(body?.subject ?? "").trim();
   const question = String(body?.question ?? "").trim();
   const options: string[] = Array.isArray(body?.options) ? body.options.map(String) : [];
@@ -62,6 +66,33 @@ export async function POST(req: Request) {
     examId.length > 120
   ) {
     return NextResponse.json({ ok: false, message: "Payload is too large or malformed." }, { status: 400 });
+  }
+
+  let quizMeta: unknown = null;
+  if (quizId && questionId && !refresh) {
+    const { data: quiz } = await backend
+      .from("quizzes")
+      .select("id,meta")
+      .eq("id", quizId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+    if (quiz?.id) {
+      const feedback = getQuizReviewFeedback(quiz.meta);
+      if (feedback[questionId]) {
+        return NextResponse.json({ ok: true, answer: feedback[questionId] });
+      }
+      quizMeta = quiz.meta;
+    }
+  } else if (quizId && questionId) {
+    const { data: quiz } = await backend
+      .from("quizzes")
+      .select("id,meta")
+      .eq("id", quizId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+    if (quiz?.id) {
+      quizMeta = quiz.meta;
+    }
   }
 
   const prefs = await getUserAiPreferences(user.id);
@@ -82,10 +113,11 @@ export async function POST(req: Request) {
 
   const ai = await generateTextWithFallback({
     system: [
-      "You are an exam prep coach.",
+      "You are a careful subject tutor.",
       "Explain why the user's selected option is incorrect and why the correct option is correct.",
-      "Use 3 short bullets and then a 1-sentence memory tip.",
+      "Use 3 short bullets and then a 1-sentence quick reminder.",
       "Prioritize conceptual clarity and exam application.",
+      "Write naturally, not like an AI coach or motivational assistant.",
       "Do not invent official marking schemes.",
       syllabusNote,
       lang
@@ -106,6 +138,20 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, answer: ai.text });
+  const answer = ai.text.slice(0, 1200);
+
+  if (quizId && questionId) {
+    const nextFeedback = {
+      ...getQuizReviewFeedback(quizMeta),
+      [questionId]: answer
+    };
+    await backend
+      .from("quizzes")
+      .update({ meta: withQuizReviewFeedback(quizMeta, nextFeedback) })
+      .eq("id", quizId)
+      .eq("created_by", user.id);
+  }
+
+  return NextResponse.json({ ok: true, answer });
 }
 

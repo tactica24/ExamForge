@@ -95,7 +95,7 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
     {
       slide_number: 1,
       title: `${args.topicTitle} (${args.subject})`,
-      content: overviewPoints.length ? overviewPoints : ["Study this topic with an exam-first mindset."],
+      content: overviewPoints.length ? overviewPoints : ["Build a clear understanding of this topic."],
       visual_suggestions: "Title card, exam icon, simple progress timeline",
       narration: cleanText(lesson.overview, 800),
       visual: lesson.visual_aids[0] ?? null
@@ -113,7 +113,7 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
     },
     {
       slide_number: 3,
-      title: "How this appears in exams",
+      title: "Key applications",
       content: slideThree.map((section) => `${section.heading}: ${section.explanation}`).slice(0, 4),
       visual_suggestions: "Question-paper mockup and highlight strips",
       narration: cleanText(
@@ -127,21 +127,21 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
       title: "Worked example 1",
       content: exampleOne
         ? [`Question: ${exampleOne.question}`, `Walkthrough: ${exampleOne.walkthrough}`, `Answer: ${exampleOne.answer}`]
-        : ["Use one worked example to connect rules to options."],
+        : ["Use one worked example to connect the idea to a complete solution."],
       visual_suggestions: "Step-by-step reveal animation with checkmarks",
       narration: exampleOne
         ? cleanText(`${exampleOne.question}. ${exampleOne.walkthrough}. Answer: ${exampleOne.answer}`, 900)
-        : "Use one worked example to connect rules to options.",
+        : "Use one worked example to connect the idea to a complete solution.",
       visual: null
     },
     {
       slide_number: 5,
-      title: "Worked example 2 + traps",
+      title: "Worked example 2 + common mistakes",
       content: [
         ...(exampleTwo
           ? [`Question: ${exampleTwo.question}`, `Walkthrough: ${exampleTwo.walkthrough}`, `Answer: ${exampleTwo.answer}`]
           : []),
-        ...lesson.common_mistakes.slice(0, 2).map((point) => `Avoid: ${point}`)
+        ...lesson.common_mistakes.slice(0, 2).map((point) => `Common mistake: ${point}`)
       ].slice(0, 4),
       visual_suggestions: "Split layout: example on left, mistakes on right",
       narration: cleanText(

@@ -118,7 +118,7 @@ export default async function PlanTopicPage(props: {
               <Badge variant="outline">Locked</Badge>
             ) : lesson ? (
               <Badge variant={lesson.source === "ai" ? "secondary" : "outline"}>
-                {lesson.source === "ai" ? "AI lesson" : "Starter lesson"}
+                {lesson.source === "ai" ? "Lesson" : "Starter lesson"}
               </Badge>
             ) : null}
           </div>

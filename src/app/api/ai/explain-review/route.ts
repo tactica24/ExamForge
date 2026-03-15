@@ -6,6 +6,7 @@ import { generateJsonWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+import { getQuizReviewFeedback, withQuizReviewFeedback } from "@/lib/quizzes/review-feedback";
 
 type WrongQuestion = {
   id: string;
@@ -77,11 +78,32 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const exam = String(body?.exam ?? "").trim();
   const examId = String(body?.exam_id ?? "").trim();
+  const quizId = String(body?.quiz_id ?? "").trim();
   const subject = String(body?.subject ?? "").trim();
   const questions = parseQuestions(body?.questions);
 
   if (!questions.length) {
     return NextResponse.json({ ok: false, message: "No invalid answers supplied." }, { status: 400 });
+  }
+
+  let quizMeta: unknown = null;
+  let cachedAnswers: Record<string, string> = {};
+  if (quizId) {
+    const { data: quiz } = await backend
+      .from("quizzes")
+      .select("id,meta")
+      .eq("id", quizId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+    if (quiz?.id) {
+      quizMeta = quiz.meta;
+      cachedAnswers = getQuizReviewFeedback(quiz.meta);
+    }
+  }
+
+  const missingQuestions = questions.filter((question) => !cachedAnswers[question.id]);
+  if (!missingQuestions.length) {
+    return NextResponse.json({ ok: true, answers: cachedAnswers });
   }
 
   const prefs = await getUserAiPreferences(user.id);
@@ -100,13 +122,14 @@ export async function POST(req: Request) {
     }
   }
 
-  const allowedIds = new Set(questions.map((q) => q.id));
+  const allowedIds = new Set(missingQuestions.map((q) => q.id));
 
   const ai = await generateJsonWithFallback<{ answers: Array<{ id: string; text: string }> }>({
     system: [
-      "You are an exam prep coach.",
-      "For each missed objective question, explain why the selected option is wrong and why the correct option is right.",
-      "Keep each explanation concise: 3 short bullets plus 1 memory tip.",
+      "You are a careful subject tutor.",
+      "For each missed objective question, explain why the selected option is wrong and why the correct option fits the question.",
+      "Keep each explanation concise: 3 short bullets plus 1 quick reminder.",
+      "Write like a teacher, not like an AI coach or motivational assistant.",
       'Return valid JSON only in this shape: {"answers":[{"id":"question-id","text":"..."}]}.',
       syllabusNote,
       lang
@@ -116,7 +139,7 @@ export async function POST(req: Request) {
     user: JSON.stringify({
       exam: exam || "Unknown",
       subject: subject || "Unknown",
-      questions: questions.map((q) => ({
+      questions: missingQuestions.map((q) => ({
         id: q.id,
         question: q.question,
         options: q.options.map((option, idx) => `${String.fromCharCode(65 + idx)}. ${option}`),
@@ -141,12 +164,23 @@ export async function POST(req: Request) {
   });
 
   if (!ai.value?.answers?.length) {
-    return NextResponse.json({ ok: true, answers: {} });
+    return NextResponse.json({ ok: true, answers: cachedAnswers });
   }
 
-  const answers: Record<string, string> = {};
+  const answers: Record<string, string> = { ...cachedAnswers };
+  const generatedAnswers: Record<string, string> = {};
   for (const item of ai.value.answers) {
-    answers[item.id] = item.text.slice(0, 1200);
+    const text = item.text.slice(0, 1200);
+    answers[item.id] = text;
+    generatedAnswers[item.id] = text;
+  }
+
+  if (quizId && Object.keys(generatedAnswers).length) {
+    await backend
+      .from("quizzes")
+      .update({ meta: withQuizReviewFeedback(quizMeta, answers) })
+      .eq("id", quizId)
+      .eq("created_by", user.id);
   }
 
   return NextResponse.json({ ok: true, answers });

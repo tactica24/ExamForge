@@ -278,10 +278,17 @@ async function validateTrackedSession(args: {
   return true;
 }
 
-async function lookupUserRole(dataClient: AppDataClient, userId: string) {
-  const { data } = await dataClient.from("profiles").select("role").eq("user_id", userId).maybeSingle();
-  const role = cleanText((data as Record<string, unknown> | null)?.role, 20);
-  return role ?? null;
+async function lookupUserRole(dataClient: AppDataClient, userId: string, email?: string | null) {
+  const { data: byUserId } = await dataClient.from("profiles").select("role").eq("user_id", userId).maybeSingle();
+  const roleByUserId = cleanText((byUserId as Record<string, unknown> | null)?.role, 20);
+  if (roleByUserId) return roleByUserId;
+
+  const normalizedEmail = cleanText(email, 200);
+  if (!normalizedEmail) return null;
+
+  const { data: byEmail } = await dataClient.from("profiles").select("role").eq("email", normalizedEmail).maybeSingle();
+  const roleByEmail = cleanText((byEmail as Record<string, unknown> | null)?.role, 20);
+  return roleByEmail ?? null;
 }
 
 function toAuthPayload(state: Awaited<ReturnType<typeof readAwsSessionState>>, role: string | null): AuthPayload | null {
@@ -323,7 +330,7 @@ export async function establishTrackedSessionFromTokens(args: {
     return tracked;
   }
 
-  const role = args.role ?? (await lookupUserRole(dataClient, state.subject));
+  const role = args.role ?? (await lookupUserRole(dataClient, state.subject, state.email));
   return { ok: true, user: toAuthPayload(state, role) };
 }
 
@@ -350,7 +357,7 @@ export async function createBackendServerClient() {
           return { data: { user: null }, error: null };
         }
 
-        const role = await lookupUserRole(dataClient, rawState.subject);
+        const role = await lookupUserRole(dataClient, rawState.subject, rawState.email);
         const state = await readAwsSessionState(cookieStore.get(APP_SESSION_COOKIE)?.value ?? sessionCookie, {
           cookieStore,
           role

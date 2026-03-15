@@ -14,10 +14,17 @@ export type ReviewQuestion = {
   user_index: number;
 };
 
-export function QuizReview(props: { examId?: string; examName: string; subject: string; questions: ReviewQuestion[] }) {
+export function QuizReview(props: {
+  quizId?: string;
+  examId?: string;
+  examName: string;
+  subject: string;
+  questions: ReviewQuestion[];
+  initialFeedback?: Record<string, string>;
+}) {
   const [loadingId, setLoadingId] = React.useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = React.useState(false);
-  const [ai, setAi] = React.useState<Record<string, string>>({});
+  const [ai, setAi] = React.useState<Record<string, string>>(props.initialFeedback ?? {});
 
   const wrongQuestions = React.useMemo(
     () => props.questions.filter((q) => q.correct_index !== q.user_index),
@@ -32,6 +39,9 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          quiz_id: props.quizId,
+          question_id: q.id,
+          refresh: Boolean(ai[q.id]),
           exam_id: props.examId,
           exam: props.examName,
           subject: props.subject,
@@ -52,8 +62,8 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
   }
 
   React.useEffect(() => {
-    if (!wrongQuestions.length) return;
-    if (wrongQuestions.every((q) => ai[q.id])) return;
+    const missingQuestions = wrongQuestions.filter((q) => !ai[q.id]);
+    if (!missingQuestions.length) return;
 
     let active = true;
 
@@ -64,10 +74,11 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            quiz_id: props.quizId,
             exam_id: props.examId,
             exam: props.examName,
             subject: props.subject,
-            questions: wrongQuestions.map((q) => ({
+            questions: missingQuestions.map((q) => ({
               id: q.id,
               question: q.question,
               options: q.options,
@@ -97,7 +108,7 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
     return () => {
       active = false;
     };
-  }, [wrongQuestions, ai, props.examId, props.examName, props.subject]);
+  }, [wrongQuestions, ai, props.quizId, props.examId, props.examName, props.subject]);
 
   return (
     <div className="space-y-4">
@@ -110,7 +121,7 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
             Incorrect: <span className="font-semibold">{wrongQuestions.length}</span>
           </div>
           {bulkLoading ? (
-            <div className="text-muted-foreground">Generating AI feedback for missed questions...</div>
+            <div className="text-muted-foreground">Preparing detailed feedback for missed questions...</div>
           ) : null}
         </CardContent>
       </Card>
@@ -160,17 +171,17 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
                 <>
                   {aiText ? (
                     <div className="rounded-xl border bg-card p-3 text-sm">
-                      <div className="text-xs font-medium text-muted-foreground">AI coach</div>
+                      <div className="text-xs font-medium text-muted-foreground">Detailed feedback</div>
                       <div className="mt-2 whitespace-pre-wrap">{aiText}</div>
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
-                      {bulkLoading ? "Preparing AI feedback..." : "AI feedback not ready yet."}
+                      {bulkLoading ? "Preparing detailed feedback..." : "Detailed feedback not ready yet."}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={() => explain(q)} disabled={loadingId === q.id}>
-                      {loadingId === q.id ? "Thinking..." : aiText ? "Refresh AI explanation" : "Generate AI explanation"}
+                      {loadingId === q.id ? "Thinking..." : aiText ? "Refresh explanation" : "Generate explanation"}
                     </Button>
                   </div>
                 </>

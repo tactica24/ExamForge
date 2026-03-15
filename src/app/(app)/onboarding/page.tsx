@@ -10,8 +10,7 @@ export default async function OnboardingPage() {
   } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await backend.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
-  if (String((profile as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
+  if (String((user.app_metadata as any)?.role ?? "").toLowerCase() === "admin") redirect("/admin");
 
   const { data: existingPlan } = await backend
     .from("user_plans")

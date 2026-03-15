@@ -80,11 +80,7 @@ export async function loginAction(_: unknown, formData: FormData) {
   }
 
   const user = result.data.user;
-  const { data: profile } = user?.id
-    ? await backend.from("profiles").select("role").eq("user_id", user.id).maybeSingle()
-    : { data: null };
-  const isAdmin =
-    (user?.app_metadata as any)?.role === "admin" || String((profile as any)?.role ?? "").toLowerCase() === "admin";
+  const isAdmin = String((user?.app_metadata as any)?.role ?? "").toLowerCase() === "admin";
   redirect(isAdmin ? "/admin" : "/onboarding");
 }
 
