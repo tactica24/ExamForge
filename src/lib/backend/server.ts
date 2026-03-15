@@ -3,8 +3,13 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { executeAuroraStatement, isAuroraDataConfigured } from "@/lib/aws/rds-data";
+import { clearAdminOverrideCookie, hasAdminOverrideCookie } from "@/lib/auth/admin-override";
 import { createAppDataClient, type AppDataClient } from "@/lib/backend/data-client";
-import { APP_DEVICE_COOKIE, APP_SESSION_COOKIE, APP_TRACKED_SESSION_COOKIE } from "@/lib/backend/constants";
+import {
+  APP_DEVICE_COOKIE,
+  APP_SESSION_COOKIE,
+  APP_TRACKED_SESSION_COOKIE
+} from "@/lib/backend/constants";
 import { confirmCognitoSignUp, resendCognitoConfirmationCode, signInWithCognitoPassword, signUpWithCognito, type CognitoTokenSet } from "@/lib/aws/cognito-public";
 import {
   clearAwsSessionCookie,
@@ -141,6 +146,11 @@ function clearTrackedSessionCookie(cookieStore: CookieStore) {
 function clearSessionCookies(cookieStore: CookieStore) {
   try {
     clearAwsSessionCookie(cookieStore);
+  } catch {
+    // Server Components may not allow cookie mutation.
+  }
+  try {
+    clearAdminOverrideCookie(cookieStore);
   } catch {
     // Server Components may not allow cookie mutation.
   }
@@ -387,7 +397,13 @@ export async function createBackendServerClient() {
           return { data: { user: null }, error: null };
         }
 
-        const role = await lookupUserRole(dataClient, rawState.subject, rawState.email);
+        const roleFromData = await lookupUserRole(dataClient, rawState.subject, rawState.email);
+        const role = hasAdminOverrideCookie(cookieStore, {
+          email: rawState.email,
+          subject: rawState.subject
+        })
+          ? "admin"
+          : roleFromData;
         const state = await readAwsSessionState(cookieStore.get(APP_SESSION_COOKIE)?.value ?? sessionCookie, {
           cookieStore,
           role
