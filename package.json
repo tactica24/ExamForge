@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:e2e": "cypress run",
     "format": "prettier . --check",
+    "amplify:env:write": "node scripts/amplify-write-env.mjs",
     "firebase:env:print": "node scripts/firebase-env-from-service-account.mjs",
     "firebase:role:set": "node scripts/firebase-set-role.mjs",
     "mobile:url:set": "node scripts/mobile-set-app-url.mjs",

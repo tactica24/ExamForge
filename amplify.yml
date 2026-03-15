@@ -5,6 +5,7 @@ frontend:
       commands:
         - nvm use 22 || true
         - npm ci --cache .npm-cache --prefer-offline
+        - npm run amplify:env:write
     build:
       commands:
         - npm run build
