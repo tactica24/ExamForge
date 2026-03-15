@@ -1,6 +1,7 @@
 import "server-only";
 
 import { executeAuroraStatement, isAuroraDataConfigured } from "@/lib/aws/rds-data";
+import { getServerEnv } from "@/lib/env";
 import type { createBackendServerClient } from "@/lib/backend/server";
 
 type BackendServerClient = Awaited<ReturnType<typeof createBackendServerClient>>;
@@ -23,6 +24,16 @@ function normalizeEmail(value: unknown) {
   return email || null;
 }
 
+function isBootstrapAdminEmail(email: string | null) {
+  if (!email) return false;
+
+  try {
+    return getServerEnv().ADMIN_EMAILS.includes(email);
+  } catch {
+    return false;
+  }
+}
+
 async function lookupRoleByEmailCi(email: string) {
   if (!isAuroraDataConfigured()) return null;
 
@@ -42,6 +53,9 @@ export async function resolveUserRole(
   backend: BackendServerClient,
   user: BackendSessionUser | null | undefined
 ) {
+  const normalizedEmail = normalizeEmail(user?.email);
+  if (isBootstrapAdminEmail(normalizedEmail)) return "admin";
+
   const sessionRole = normalizeRole((user?.app_metadata as Record<string, unknown> | undefined)?.role);
   if (sessionRole) return sessionRole;
 
@@ -51,14 +65,17 @@ export async function resolveUserRole(
   const roleById = normalizeRole((profileById as Record<string, unknown> | null)?.role);
   if (roleById) return roleById;
 
-  const email = normalizeEmail(user.email);
-  if (!email) return null;
+  if (!normalizedEmail) return null;
 
-  const { data: profileByEmail } = await backend.from("profiles").select("role").eq("email", email).maybeSingle();
+  const { data: profileByEmail } = await backend
+    .from("profiles")
+    .select("role")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
   const roleByEmail = normalizeRole((profileByEmail as Record<string, unknown> | null)?.role);
   if (roleByEmail) return roleByEmail;
 
-  return lookupRoleByEmailCi(email);
+  return lookupRoleByEmailCi(normalizedEmail);
 }
 
 export async function isUserAdmin(

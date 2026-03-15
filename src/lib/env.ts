@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const ServerEnvSchema = z.object({
   APP_BACKEND_PROVIDER: z.enum(["aws"]).optional(),
+  ADMIN_EMAILS: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL: z.string().min(1).optional(),
   COGNITO_REGION: z.string().min(1).optional(),
   COGNITO_USER_POOL_ID: z.string().min(1).optional(),
@@ -53,6 +54,13 @@ function normalizeHttpUrl(value: string | undefined) {
   }
 }
 
+function normalizeEmailList(value: string | undefined) {
+  return String(value ?? "")
+    .split(/[,\n;]+/g)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function getServerEnv() {
   const parsed = ServerEnvSchema.safeParse(process.env);
   if (!parsed.success) {
@@ -65,6 +73,7 @@ export function getServerEnv() {
   return {
     ...parsed.data,
     APP_BACKEND_PROVIDER: parsed.data.APP_BACKEND_PROVIDER ?? "aws",
+    ADMIN_EMAILS: normalizeEmailList(parsed.data.ADMIN_EMAILS),
     NEXT_PUBLIC_APP_URL: normalizeHttpUrl(parsed.data.NEXT_PUBLIC_APP_URL),
     COGNITO_CALLBACK_URL: normalizeHttpUrl(parsed.data.COGNITO_CALLBACK_URL),
     COGNITO_LOGOUT_URL: normalizeHttpUrl(parsed.data.COGNITO_LOGOUT_URL),
