@@ -16,7 +16,9 @@ export default async function LoginPage(props: {
   const showVerifiedHint = sp.verified === "1";
   const authError = sp.error ? decodeURIComponent(sp.error) : "";
   const email = sp.email ?? "";
-  const showConfirmationPanel = showVerifyHint || authError.toLowerCase().includes("confirm");
+  const authErrorLower = authError.toLowerCase();
+  const showConfirmationPanel =
+    showVerifyHint || authErrorLower.includes("confirm") || authErrorLower.includes("verification");
 
   return (
     <AuthCard
@@ -84,7 +86,7 @@ export default async function LoginPage(props: {
         <input type="hidden" name="next" value={next} />
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <Input id="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>

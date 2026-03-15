@@ -61,13 +61,16 @@ export async function loginAction(_: unknown, formData: FormData) {
   if (error) {
     const message = error.message.toLowerCase();
     if (message.includes("verify your email")) {
-      return { ok: false, message: error.message };
+      redirect(
+        `/login?verify=1&email=${encodeURIComponent(parsed.data.email)}&error=${encodeURIComponent(error.message)}`
+      );
     }
     if (message.includes("confirm")) {
-      return {
-        ok: false,
-        message: "Check your email for the confirmation code, verify your account, then log in."
-      };
+      redirect(
+        `/login?verify=1&email=${encodeURIComponent(parsed.data.email)}&error=${encodeURIComponent(
+          "Check your email for the confirmation code, verify your account, then log in."
+        )}`
+      );
     }
     if (message.includes("invalid login credentials")) {
       return { ok: false, message: "Invalid email or password." };
