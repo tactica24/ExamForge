@@ -21,6 +21,7 @@ create table if not exists profiles (
   timezone text,
   learning_style text,
   level text,
+  role text not null default 'user',
   subscription_tier text not null default 'free',
   display_name text,
   preferred_explanation_language text not null default 'en',
@@ -34,6 +35,9 @@ create table if not exists profiles (
   created_at text not null,
   updated_at text not null
 );
+
+alter table if exists profiles
+  add column if not exists role text not null default 'user';
 
 create unique index if not exists uq_profiles_email_ci
   on profiles (lower(email))

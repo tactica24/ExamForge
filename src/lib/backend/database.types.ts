@@ -18,12 +18,17 @@ export type ProfilesRow = {
   timezone: string | null;
   learning_style: string | null;
   level: string | null;
+  role: "admin" | "user" | string;
   subscription_tier: "free" | "pro" | string;
   display_name: string | null;
   preferred_explanation_language: string;
   low_data_mode: boolean;
   leaderboard_anonymous: boolean;
   pro_until: string | null;
+  avatar_url: string | null;
+  exam_interest_slugs: Json;
+  country: string | null;
+  state: string | null;
   created_at: string;
   updated_at: string;
 };
