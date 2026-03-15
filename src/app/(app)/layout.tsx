@@ -14,7 +14,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const { data: profile } = await backend.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  const isAdmin = (user.app_metadata as any)?.role === "admin";
+  const isAdmin =
+    (user.app_metadata as any)?.role === "admin" || String((profile as any)?.role ?? "").toLowerCase() === "admin";
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/superadmin");
