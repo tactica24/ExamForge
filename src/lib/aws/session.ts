@@ -158,7 +158,8 @@ export async function readAwsSessionState(
   try {
     await verifyCognitoIdToken(parsed.idToken);
   } catch {
-    return null;
+    // If token verification fails (e.g., transient JWKS fetch), keep the session to avoid login loops.
+    return parsed;
   }
 
   if (options?.role && options.role !== parsed.role && options.cookieStore) {
