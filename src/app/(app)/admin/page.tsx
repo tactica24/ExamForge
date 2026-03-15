@@ -26,7 +26,6 @@ import { recomputeLeaderboardAction } from "@/app/(app)/admin/actions";
 import { getBrandingSettings } from "@/lib/branding";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
-import { getServerEnv } from "@/lib/env";
 
 async function getAdminCount() {
   const auth = getFirebaseAdminAuth();
@@ -141,13 +140,14 @@ export default async function AdminHomePage() {
       process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
   );
   const firebaseAdminReady = isFirebaseAdminConfigured();
-  const env = getServerEnv();
-  const openAiReady = Boolean(env.OPENAI_API_KEY);
-  const groqReady = Boolean(env.GROQ_API_KEY);
-  const geminiReady = Boolean(env.GEMINI_API_KEY);
-  const twilioReady = Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER);
-  const resendReady = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
-  const cronReady = Boolean(env.APP_CRON_SECRET);
+  const openAiReady = Boolean(process.env.OPENAI_API_KEY || process.env.openai_api_key);
+  const groqReady = Boolean(process.env.GROQ_API_KEY || process.env.groq_api_key);
+  const geminiReady = Boolean(process.env.GEMINI_API_KEY || process.env.gemini_api_key);
+  const twilioReady = Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER
+  );
+  const resendReady = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
+  const cronReady = Boolean(process.env.APP_CRON_SECRET);
   const aiReady = openAiReady || groqReady || geminiReady;
   const readinessScore = [
     firebaseWebReady,
