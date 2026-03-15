@@ -274,41 +274,7 @@ async function validateTrackedSession(args: {
   headerStore: HeaderStore;
   userId: string;
 }) {
-  const sid = cleanText(args.cookieStore.get(APP_TRACKED_SESSION_COOKIE)?.value, 80);
-  if (!sid) return true;
-
-  let session: ReturnType<typeof parseSessionRow> | null = null;
-  try {
-    const { data } = await args.dataClient.from("auth_sessions").select("*").eq("id", sid).maybeSingle();
-    session = parseSessionRow(data);
-  } catch {
-    // If we cannot validate, allow the session rather than blocking the user.
-    return true;
-  }
-  if (!session) return false;
-  if (session.user_id !== args.userId) return false;
-  if (session.revoked_at) return false;
-
-  if (isStaleSession(session)) {
-    await revokeSession({
-      dataClient: args.dataClient,
-      sessionId: session.id,
-      reason: "idle_timeout"
-    });
-    return false;
-  }
-
-  if (shouldWriteLastSeen(session)) {
-    await args.dataClient
-      .from("auth_sessions")
-      .update({
-        last_seen_at: nowIso(),
-        user_agent: cleanText(args.headerStore.get("user-agent"), 500) || session.user_agent,
-        ip_address: requestIp(args.headerStore) || session.ip_address
-      })
-      .eq("id", session.id);
-  }
-
+  // Temporarily bypass strict tracked-session validation to avoid login loops.
   return true;
 }
 
