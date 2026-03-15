@@ -10,6 +10,15 @@ export default async function OnboardingPage() {
   } = await backend.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: existingPlan } = await backend
+    .from("user_plans")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingPlan?.id) redirect("/dashboard");
+
   const exams = await listActiveExams();
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 

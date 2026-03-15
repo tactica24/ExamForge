@@ -81,7 +81,7 @@ export async function loginAction(_: unknown, formData: FormData) {
 
   const user = result.data.user;
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
-  redirect(isAdmin ? "/admin" : "/dashboard");
+  redirect(isAdmin ? "/admin" : "/onboarding");
 }
 
 export async function confirmSignupAction(_: unknown, formData: FormData) {
