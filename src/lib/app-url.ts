@@ -1,5 +1,5 @@
 const DEFAULT_APP_URL = process.env.NODE_ENV === "production"
-  ? "https://www.acenaija.com.ng"
+  ? "https://ace-naija.com"
   : "http://localhost:3000";
 
 function toAbsoluteUrlString(value: string | undefined | null) {

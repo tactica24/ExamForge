@@ -8,7 +8,7 @@ function fallbackHostFromEnv() {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.APP_WEB_URL ??
-    (process.env.NODE_ENV === "production" ? "https://www.acenaija.com.ng" : "");
+    (process.env.NODE_ENV === "production" ? "https://ace-naija.com" : "");
   if (!appUrl) return "";
   try {
     return new URL(appUrl).host.toLowerCase();
