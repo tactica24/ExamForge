@@ -7,10 +7,8 @@ type CookieSetter = { set: (name: string, value: string, options: Record<string,
 type CookieDeleter = { delete: (name: string) => unknown };
 
 export type AwsSessionState = {
-  accessToken: string | null;
   email: string | null;
   expiresAt: string;
-  idToken: string;
   phone: string | null;
   refreshToken: string | null;
   role: string | null;
@@ -97,10 +95,8 @@ function toUserMetadata(claims: CognitoIdTokenClaims) {
 async function buildStateFromTokens(tokens: CognitoTokenSet, roleOverride?: string | null) {
   const claims = await verifyCognitoIdToken(tokens.idToken);
   return {
-    accessToken: tokens.accessToken,
     email: cleanText(claims.email),
     expiresAt: new Date((claims.exp ?? 0) * 1000).toISOString(),
-    idToken: tokens.idToken,
     phone: cleanText(claims.phone_number),
     refreshToken: tokens.refreshToken,
     role: roleOverride ?? getRoleFromClaims(claims),
@@ -153,13 +149,6 @@ export async function readAwsSessionState(
     } catch {
       return null;
     }
-  }
-
-  try {
-    await verifyCognitoIdToken(parsed.idToken);
-  } catch {
-    // If token verification fails (e.g., transient JWKS fetch), keep the session to avoid login loops.
-    return parsed;
   }
 
   if (options?.role && options.role !== parsed.role && options.cookieStore) {

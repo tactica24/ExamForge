@@ -55,7 +55,8 @@ export async function loginAction(_: unknown, formData: FormData) {
   }
 
   const backend = await createBackendServerClient();
-  const { error } = await backend.auth.signInWithPassword(parsed.data);
+  const result = await backend.auth.signInWithPassword(parsed.data);
+  const { error } = result;
   if (error) {
     const message = error.message.toLowerCase();
     if (message.includes("verify your email")) {
@@ -78,9 +79,7 @@ export async function loginAction(_: unknown, formData: FormData) {
     redirect(next);
   }
 
-  const {
-    data: { user }
-  } = await backend.auth.getUser();
+  const user = result.data.user;
   const isAdmin = (user?.app_metadata as any)?.role === "admin";
   redirect(isAdmin ? "/admin" : "/dashboard");
 }

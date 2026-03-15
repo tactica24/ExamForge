@@ -7,6 +7,18 @@ function cleanText(value: unknown) {
   return text || null;
 }
 
+function cleanHost(value: unknown) {
+  const text = cleanText(value);
+  if (!text) return null;
+
+  try {
+    const url = new URL(text.includes("://") ? text : `https://${text}`);
+    return url.host;
+  } catch {
+    return text.replace(/^https?:\/\//i, "").replace(/\/.*$/, "") || null;
+  }
+}
+
 export function getAwsBackendConfig() {
   const env = getServerEnv();
 
@@ -16,7 +28,7 @@ export function getAwsBackendConfig() {
     cognitoUserPoolId: cleanText(env.COGNITO_USER_POOL_ID),
     cognitoAppClientId: cleanText(env.COGNITO_APP_CLIENT_ID),
     cognitoAppClientSecret: cleanText(env.COGNITO_APP_CLIENT_SECRET),
-    cognitoDomain: cleanText(env.COGNITO_DOMAIN),
+    cognitoDomain: cleanHost(env.COGNITO_DOMAIN),
     cognitoCallbackUrl: cleanText(env.COGNITO_CALLBACK_URL),
     cognitoLogoutUrl: cleanText(env.COGNITO_LOGOUT_URL),
     cognitoGoogleIdpName: cleanText(env.COGNITO_GOOGLE_IDP_NAME),
