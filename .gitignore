@@ -14,3 +14,8 @@ android/local.properties
 android/.gradle
 *.jks
 *.keystore
+.env.production
+amplify.env
+.tools
+.node22
+*firebase-adminsdk-*.json
