@@ -127,8 +127,8 @@ export default async function AdminUsersPage() {
             <CardDescription>Could not load Firebase Auth users.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Add Firebase admin credentials in your AWS environment (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` recommended),
-            then redeploy.
+            Add Firebase admin credentials in your Vercel environment (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`
+            recommended), then redeploy.
           </CardContent>
         </Card>
       ) : null}

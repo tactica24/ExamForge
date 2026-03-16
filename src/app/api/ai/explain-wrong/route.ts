@@ -6,6 +6,7 @@ import { generateTextWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+import { getStoredReviewFeedback, mergeStoredReviewFeedback } from "@/lib/quizzes/review-feedback";
 
 function flattenTopics(topics: Array<{ title: string; path: string; subtopics?: string[] }>) {
   const out: string[] = [];
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
+  const quizId = String(body?.quiz_id ?? "").trim();
+  const questionId = String(body?.question_id ?? "").trim();
   const exam = String(body?.exam ?? "").trim();
   const examId = String(body?.exam_id ?? "").trim();
   const subject = String(body?.subject ?? "").trim();
@@ -62,6 +65,22 @@ export async function POST(req: Request) {
     examId.length > 120
   ) {
     return NextResponse.json({ ok: false, message: "Payload is too large or malformed." }, { status: 400 });
+  }
+
+  let quizMeta: unknown = null;
+  if (quizId) {
+    const { data: quiz } = await firebase
+      .from("quizzes")
+      .select("meta")
+      .eq("id", quizId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+    quizMeta = quiz?.meta ?? null;
+  }
+
+  const cachedAnswers = getStoredReviewFeedback(quizMeta);
+  if (questionId && cachedAnswers[questionId]) {
+    return NextResponse.json({ ok: true, answer: cachedAnswers[questionId] });
   }
 
   const prefs = await getUserAiPreferences(user.id);
@@ -93,7 +112,7 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("\n"),
     user: `Exam: ${exam || "Unknown"}\nSubject: ${subject || "Unknown"}\nQuestion: ${question}\nOptions: ${options
-      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
+      .map((option, index) => `${String.fromCharCode(65 + index)}. ${option}`)
       .join("\n")}\nUser picked: ${String.fromCharCode(65 + user_index)}\nCorrect: ${String.fromCharCode(65 + correct_index)}`,
     temperature: 0.4
   });
@@ -104,6 +123,14 @@ export async function POST(req: Request) {
       answer:
         "Compare your chosen option with the correct one, then identify the key rule or definition that makes the correct option true."
     });
+  }
+
+  if (quizId && questionId) {
+    await firebase
+      .from("quizzes")
+      .update({ meta: mergeStoredReviewFeedback(quizMeta, { [questionId]: ai.text.slice(0, 1200) }) as any })
+      .eq("id", quizId)
+      .eq("created_by", user.id);
   }
 
   return NextResponse.json({ ok: true, answer: ai.text });

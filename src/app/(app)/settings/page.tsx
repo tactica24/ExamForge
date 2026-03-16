@@ -21,7 +21,7 @@ import { ParentLinksCard } from "@/components/parent/parent-links-card";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, hasActiveProAccess, isFreeTrialActive } from "@/lib/billing/access";
 import { parseTopicsPerDay } from "@/lib/plans/pace";
 
 function toSubjects(value: unknown): string[] {
@@ -108,7 +108,10 @@ export default async function SettingsPage() {
     return subjects.some((subject) => !existingSet.has(`${exam.id}::${subject}`));
   });
   const proAccess = hasActiveProAccess(profile);
-  const freeSubjectLimitReached = !proAccess && userExamSubjects.filter((item) => item.is_active).length >= 1;
+  const freeTrialActive = isFreeTrialActive(profile);
+  const timedAccessEndsAt = getTimedAccessEndsAt(profile);
+  const timedAccessDays = getTimedAccessDaysRemaining(profile);
+  const freeSubjectLimitReached = !proAccess;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
@@ -116,6 +119,28 @@ export default async function SettingsPage() {
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Profile, subjects, and reminders.</p>
       </div>
+
+      <Card className={freeTrialActive ? "border-primary/20 bg-primary/5" : ""}>
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold">
+              Profile plan: {freeTrialActive ? "Free trial" : proAccess ? "Pro" : "Free"}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {freeTrialActive && timedAccessEndsAt
+                ? `You have ${timedAccessDays} day${timedAccessDays === 1 ? "" : "s"} left. New quizzes and new study-plan generation will require an upgrade after ${new Date(timedAccessEndsAt).toLocaleDateString()}.`
+                : proAccess
+                  ? "Your premium features are active."
+                  : "Your free trial has ended. New quizzes, new study plans, and premium study tools now require an upgrade."}
+            </div>
+          </div>
+          {!proAccess ? (
+            <Button asChild>
+              <Link href="/pricing">Upgrade</Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -252,7 +277,7 @@ export default async function SettingsPage() {
           {freeSubjectLimitReached ? (
             <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
               <p className="text-sm text-muted-foreground">
-                Free plan allows 1 exam and 1 subject only. Upgrade to Pro to add more exam-subject combinations.
+                Your free access window has ended. Upgrade to Pro to add more exam-subject combinations or generate new study plans.
               </p>
               <div className="mt-3">
                 <Button asChild size="sm">

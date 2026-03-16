@@ -141,6 +141,15 @@ async function ensurePlanForSubject(args: {
   examSlug: string;
   subject: string;
 }) {
+  const { data: accessProfile } = await args.firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", args.userId)
+    .maybeSingle();
+  if (!hasActiveProAccess(accessProfile)) {
+    return { ok: false as const, message: "Upgrade is required to generate a new study plan." };
+  }
+
   const { data: profile } = await args.firebase
     .from("profiles")
     .select("level,timezone")
@@ -260,6 +269,9 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
     .select("subscription_tier,pro_until")
     .eq("user_id", user.id)
     .maybeSingle();
+  if (!hasActiveProAccess(profile)) {
+    redirect("/pricing");
+  }
 
   let examId = parsed.data.exam_id;
   if (examId.startsWith("fallback-")) {
@@ -282,22 +294,6 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
     .eq("subject", parsed.data.subject)
     .limit(1)
     .maybeSingle();
-
-  if (!hasActiveProAccess(profile) && !existingSelection?.id) {
-    const { count } = await firebase
-      .from("user_exam_subjects")
-      .select("id", { head: true, count: "exact" })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-
-    if ((count ?? 0) >= 1) {
-      return {
-        ok: false,
-        message:
-          "Free plan allows only 1 exam and 1 subject. Upgrade to Pro to add more from /pricing."
-      };
-    }
-  }
 
   const { error } = await firebase.from("user_exam_subjects").upsert(
     {

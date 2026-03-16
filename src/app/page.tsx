@@ -7,10 +7,13 @@ import {
   CheckCircle2,
   Clock3,
   ClipboardList,
+  Gauge,
   GraduationCap,
+  LayoutDashboard,
+  MessageSquareText,
   ScrollText,
   Sparkles,
-  Users2
+  TimerReset
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,29 @@ const learnerBenefits = [
   "Learning groups for accountability, challenges, and momentum",
   "AI explanations that clarify mistakes instantly"
 ];
+
+const interfacePreviews = [
+  {
+    title: "Progress dashboard",
+    icon: LayoutDashboard,
+    eyebrow: "Live performance snapshot",
+    details: ["Daily completion: 72%", "Weak areas: Algebra, Ecology", "Next reminder: 7:00 PM"]
+  },
+  {
+    title: "Mock exam screen",
+    icon: TimerReset,
+    eyebrow: "Timed pressure practice",
+    details: ["45 questions running", "Timer and auto-submit", "Instant review after submission"]
+  },
+  {
+    title: "Study + support flow",
+    icon: MessageSquareText,
+    eyebrow: "Guided learning loop",
+    details: ["Today's topic ready", "Practice after every lesson", "Quick support and WhatsApp help"]
+  }
+];
+
+const learnerSpotlights = ["Ada, WAEC candidate", "Musa, JAMB retaker", "Favour, ICAN student"];
 
 export default function HomePage() {
   return (
@@ -115,6 +141,71 @@ export default function HomePage() {
               </div>
             </div>
           </Card>
+        </section>
+
+        <section className="mx-auto mt-16 max-w-6xl">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">See the app before you start</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                A quick look at the dashboard, mock flow, and the day-to-day study experience.
+              </p>
+            </div>
+            <Badge variant="outline" className="rounded-full">Real workflow preview</Badge>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+            <div className="grid gap-4 md:grid-cols-3">
+              {interfacePreviews.map((preview) => {
+                const Icon = preview.icon;
+
+                return (
+                  <Card key={preview.title} className="overflow-hidden border-primary/20 p-5">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-[0.2em]">
+                        {preview.eyebrow}
+                      </Badge>
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <div className="mt-4 text-sm font-semibold">{preview.title}</div>
+                    <div className="mt-4 rounded-2xl border bg-muted/20 p-4">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>ACE NAIJA</span>
+                        <Gauge className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="mt-4 grid gap-2">
+                        {preview.details.map((detail) => (
+                          <div key={detail} className="rounded-xl border bg-background px-3 py-2 text-xs text-muted-foreground">
+                            {detail}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <Card className="border-primary/20 p-6">
+              <Badge variant="secondary" className="rounded-full">Learner energy</Badge>
+              <h3 className="mt-4 text-lg font-semibold">Designed for students who need clarity, not noise.</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The product is meant to feel like a steady study companion: structured, encouraging, and sharp about what to do next.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {learnerSpotlights.map((person, index) => (
+                  <div key={person} className="flex items-center gap-3 rounded-full border bg-muted/20 px-3 py-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {["A", "M", "F"][index]}
+                    </div>
+                    <div className="text-sm text-muted-foreground">{person}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
         </section>
 
         <section className="mx-auto mt-16 max-w-5xl">

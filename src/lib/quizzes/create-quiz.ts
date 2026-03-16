@@ -309,6 +309,14 @@ async function insertQuizQuestions(args: {
   if (error) throw error;
 }
 
+async function deleteQuizRecord(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  quizId: string;
+}) {
+  await args.firebase.from("quiz_questions").delete().eq("quiz_id", args.quizId);
+  await args.firebase.from("quizzes").delete().eq("id", args.quizId);
+}
+
 export async function createQuizWithQuestions(args: {
   userId: string;
   examId: string;
@@ -359,13 +367,17 @@ export async function createQuizWithQuestions(args: {
         reused_question_pool: true
       }
     });
-
-    await insertQuizQuestions({
-      firebase,
-      quizId,
-      questions: reusableQuestions.slice(0, args.questionCount)
-    });
-    return quizId;
+    try {
+      await insertQuizQuestions({
+        firebase,
+        quizId,
+        questions: reusableQuestions.slice(0, args.questionCount)
+      });
+      return quizId;
+    } catch (error) {
+      await deleteQuizRecord({ firebase, quizId });
+      throw error;
+    }
   }
 
   const quizId = await createQuizRecord({
@@ -382,59 +394,64 @@ export async function createQuizWithQuestions(args: {
     meta: args.meta
   });
 
-  let examSlug = args.examSlug;
-  if (!examSlug) {
-    const { data: exam } = await firebase.from("exams").select("slug").eq("id", args.examId).maybeSingle();
-    examSlug = exam?.slug ?? undefined;
-  }
+  try {
+    let examSlug = args.examSlug;
+    if (!examSlug) {
+      const { data: exam } = await firebase.from("exams").select("slug").eq("id", args.examId).maybeSingle();
+      examSlug = exam?.slug ?? undefined;
+    }
 
-  let syllabus: string[] | undefined = args.syllabusOverride?.length ? args.syllabusOverride : undefined;
-  if (!syllabus && examSlug) {
-    const topics = await getTopicsForExamSubject({ examId: args.examId, examSlug, subject: args.subject });
-    if (topics.length) syllabus = flattenTopics(topics);
-  }
+    let syllabus: string[] | undefined = args.syllabusOverride?.length ? args.syllabusOverride : undefined;
+    if (!syllabus && examSlug) {
+      const topics = await getTopicsForExamSubject({ examId: args.examId, examSlug, subject: args.subject });
+      if (topics.length) syllabus = flattenTopics(topics);
+    }
 
-  const generated = await generateQuestions({
-    examName: args.examName,
-    subject: args.subject,
-    topic: args.topicPath,
-    count: args.questionCount,
-    preferredLanguage: args.preferredLanguage ?? null,
-    syllabus,
-    strictSyllabus: Boolean(args.syllabusOverride?.length)
-  });
-
-  const merged = dedupeQuestions([...reusableQuestions, ...generated])
-    .filter((question) => !isPlaceholderQuestion(question))
-    .slice(0, args.questionCount);
-
-  if (merged.length < args.questionCount) {
-    const filler = fallbackQuestions({
+    const generated = await generateQuestions({
       examName: args.examName,
       subject: args.subject,
       topic: args.topicPath,
       count: args.questionCount,
-      syllabus
+      preferredLanguage: args.preferredLanguage ?? null,
+      syllabus,
+      strictSyllabus: Boolean(args.syllabusOverride?.length)
     });
-    for (const question of filler) {
-      if (merged.length >= args.questionCount) break;
-      if (isPlaceholderQuestion(question)) continue;
-      const key = questionKey(question);
-      const exists = merged.some((entry) => questionKey(entry) === key);
-      if (exists) continue;
-      merged.push(question);
+
+    const merged = dedupeQuestions([...reusableQuestions, ...generated])
+      .filter((question) => !isPlaceholderQuestion(question))
+      .slice(0, args.questionCount);
+
+    if (merged.length < args.questionCount) {
+      const filler = fallbackQuestions({
+        examName: args.examName,
+        subject: args.subject,
+        topic: args.topicPath,
+        count: args.questionCount,
+        syllabus
+      });
+      for (const question of filler) {
+        if (merged.length >= args.questionCount) break;
+        if (isPlaceholderQuestion(question)) continue;
+        const key = questionKey(question);
+        const exists = merged.some((entry) => questionKey(entry) === key);
+        if (exists) continue;
+        merged.push(question);
+      }
     }
+
+    if (!merged.length) {
+      throw new Error("Question generation failed.");
+    }
+
+    await insertQuizQuestions({
+      firebase,
+      quizId,
+      questions: merged
+    });
+
+    return quizId;
+  } catch (error) {
+    await deleteQuizRecord({ firebase, quizId });
+    throw error;
   }
-
-  if (!merged.length) {
-    throw new Error("Question generation failed.");
-  }
-
-  await insertQuizQuestions({
-    firebase,
-    quizId,
-    questions: merged
-  });
-
-  return quizId;
 }

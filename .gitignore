@@ -1,6 +1,8 @@
 node_modules
 .next
 .npm-cache
+.tools
+www
 .DS_Store
 .env
 .env.local
@@ -14,3 +16,4 @@ android/local.properties
 android/.gradle
 *.jks
 *.keystore
+*firebase-adminsdk*.json

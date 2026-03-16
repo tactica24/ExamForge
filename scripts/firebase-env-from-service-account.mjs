@@ -44,14 +44,15 @@ const normalizedRaw = JSON.stringify(parsed);
 const base64 = Buffer.from(normalizedRaw, "utf8").toString("base64");
 const privateKeyEscaped = String(parsed.private_key).replace(/\n/g, "\\n");
 
-console.log("# Paste these into your AWS hosting environment variables");
+console.log("# Paste these into your Vercel environment variables");
 console.log(`NEXT_PUBLIC_FIREBASE_PROJECT_ID=${projectId}`);
 console.log(`NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${projectId}.firebaseapp.com`);
 console.log(`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${storageBucket}`);
 console.log("NEXT_PUBLIC_FIREBASE_API_KEY=<from Firebase Web app config>");
 console.log("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<from Firebase Web app config>");
 console.log("NEXT_PUBLIC_FIREBASE_APP_ID=<from Firebase Web app config>");
-console.log("NEXT_PUBLIC_APP_URL=https://www.acenaija.com.ng");
+console.log("NEXT_PUBLIC_APP_URL=https://ace-naija.com");
+console.log("APP_WEB_URL=https://ace-naija.com");
 console.log(`FIREBASE_PROJECT_ID=${projectId}`);
 console.log(`FIREBASE_CLIENT_EMAIL=${parsed.client_email}`);
 console.log(`FIREBASE_PRIVATE_KEY=${privateKeyEscaped}`);

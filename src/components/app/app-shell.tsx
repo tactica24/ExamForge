@@ -22,6 +22,7 @@ export function AppShell(props: {
         { href: "/dashboard", label: "Dashboard" },
         { href: "/plan", label: "Plan" },
         { href: "/groups", label: "Groups" },
+        { href: "/notifications", label: "Alerts" },
         { href: "/tutor", label: "Tutor" },
         { href: "/progress", label: "Progress" },
         { href: "/leaderboard", label: "Leaderboard" },

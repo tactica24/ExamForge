@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, isFreeTrialActive } from "@/lib/billing/access";
 
 function initialsFromName(name: string) {
   return (
@@ -45,6 +46,9 @@ export default async function ProfilePage() {
 
   const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Account");
   const subscriptionTier = (profile?.subscription_tier ?? "free").toUpperCase();
+  const freeTrialActive = isFreeTrialActive(profile);
+  const timedAccessEndsAt = getTimedAccessEndsAt(profile);
+  const timedAccessDays = getTimedAccessDaysRemaining(profile);
   const isAnonymous = Boolean(profile?.leaderboard_anonymous);
 
   return (
@@ -75,9 +79,14 @@ export default async function ProfilePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">Plan: {subscriptionTier}</Badge>
+            <Badge variant="secondary">Plan: {freeTrialActive ? "FREE TRIAL" : subscriptionTier}</Badge>
             <Badge variant="secondary">{isAnonymous ? "Leaderboard: Anonymous" : "Leaderboard: Public"}</Badge>
-            {profile?.pro_until ? (
+            {freeTrialActive && timedAccessEndsAt ? (
+              <Badge variant="outline">
+                Trial ends {new Date(timedAccessEndsAt).toLocaleDateString()} • {timedAccessDays} day
+                {timedAccessDays === 1 ? "" : "s"} left
+              </Badge>
+            ) : profile?.pro_until ? (
               <Badge variant="outline">Pro until: {new Date(profile.pro_until).toLocaleDateString()}</Badge>
             ) : null}
           </div>

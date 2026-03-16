@@ -24,6 +24,7 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { recomputeLeaderboardAction } from "@/app/(app)/admin/actions";
 import { getBrandingSettings } from "@/lib/branding";
+import { parseContactRequestMessage } from "@/lib/contact/requests";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
 import { getServerEnv } from "@/lib/env";
@@ -76,6 +77,8 @@ export default async function AdminHomePage() {
     flaggedMessagesRes,
     leaderboardSnapshotRes,
     pendingSupportRes,
+    enterpriseCountRes,
+    enterpriseRequestsRes,
     adminCount
   ] = await Promise.all([
     firebase.from("profiles").select("user_id", { head: true, count: "exact" }),
@@ -112,6 +115,17 @@ export default async function AdminHomePage() {
       .limit(1)
       .maybeSingle(),
     firebase.from("contact_requests").select("id", { head: true, count: "exact" }).in("status", ["new", "in_progress"]),
+    firebase
+      .from("contact_requests")
+      .select("id", { head: true, count: "exact" })
+      .eq("source", "enterprise")
+      .in("status", ["new", "in_progress"]),
+    firebase
+      .from("contact_requests")
+      .select("id,name,email,topic,message,created_at")
+      .eq("source", "enterprise")
+      .order("created_at", { ascending: false })
+      .limit(4),
     getAdminCount()
   ]);
 
@@ -127,10 +141,12 @@ export default async function AdminHomePage() {
   const flaggedMessages = Number(flaggedRes.count ?? 0);
   const totalAttentionItems = failedNotifications + flaggedMessages;
   const pendingSupportIssues = Number(pendingSupportRes.count ?? 0);
+  const pendingEnterpriseQueries = Number(enterpriseCountRes.count ?? 0);
 
   const recentProfiles = recentProfilesRes.data ?? [];
   const failedNotificationsList = failedNotificationsRes.data ?? [];
   const flaggedMessagesList = flaggedMessagesRes.data ?? [];
+  const enterpriseRequests = enterpriseRequestsRes.data ?? [];
   const lastLeaderboardComputedAt = leaderboardSnapshotRes.data?.computed_at
     ? new Date(leaderboardSnapshotRes.data.computed_at).toLocaleString()
     : "Not computed yet";
@@ -180,7 +196,7 @@ export default async function AdminHomePage() {
       description: "Pending and resolved complaints with ownership",
       href: "/admin/support",
       metric: `${pendingSupportIssues}`,
-      detail: "Open support queue",
+      detail: `${pendingEnterpriseQueries} enterprise queries`,
       icon: MessageSquareWarning
     },
     {
@@ -312,6 +328,66 @@ export default async function AdminHomePage() {
             </Link>
           );
         })}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <MessageSquareWarning className="h-3.5 w-3.5" />
+              Enterprise queue
+            </div>
+            <CardTitle>Enterprise enquiries</CardTitle>
+            <CardDescription>Latest custom rollout and institutional requests from the public contact flow.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {enterpriseRequests.length ? (
+              enterpriseRequests.map((request: any) => {
+                const parsed = parseContactRequestMessage(request.message);
+                return (
+                  <div key={request.id} className="rounded-2xl border bg-card p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">enterprise</Badge>
+                      {request.topic ? <Badge variant="outline">{request.topic}</Badge> : null}
+                    </div>
+                    <div className="mt-3 text-sm font-semibold">
+                      {String(request.name ?? "").trim() || String(request.email ?? "").trim() || "Unnamed contact"}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {String(request.email ?? "").trim() || "No email"} |{" "}
+                      {request.created_at ? new Date(request.created_at).toLocaleString() : "Unknown time"}
+                    </div>
+                    {parsed.organization ? (
+                      <div className="mt-1 text-xs text-muted-foreground">Organization: {parsed.organization}</div>
+                    ) : null}
+                    {parsed.phone ? <div className="mt-1 text-xs text-muted-foreground">Phone: {parsed.phone}</div> : null}
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{parsed.body}</p>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                No enterprise enquiries yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              Response notes
+            </div>
+            <CardTitle>Handling guide</CardTitle>
+            <CardDescription>Keep enterprise follow-up fast and personal.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="rounded-xl border px-4 py-3">Claim the request in Support so ownership is clear.</div>
+            <div className="rounded-xl border px-4 py-3">Reply directly using the email or phone shown on the enquiry.</div>
+            <div className="rounded-xl border px-4 py-3">Resolve it after contact has been made or the enquiry is closed.</div>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">

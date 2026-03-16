@@ -14,10 +14,17 @@ export type ReviewQuestion = {
   user_index: number;
 };
 
-export function QuizReview(props: { examId?: string; examName: string; subject: string; questions: ReviewQuestion[] }) {
+export function QuizReview(props: {
+  quizId?: string;
+  examId?: string;
+  examName: string;
+  subject: string;
+  questions: ReviewQuestion[];
+  initialDetailedFeedback?: Record<string, string>;
+}) {
   const [loadingId, setLoadingId] = React.useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = React.useState(false);
-  const [ai, setAi] = React.useState<Record<string, string>>({});
+  const [ai, setAi] = React.useState<Record<string, string>>(props.initialDetailedFeedback ?? {});
 
   const wrongQuestions = React.useMemo(
     () => props.questions.filter((q) => q.correct_index !== q.user_index),
@@ -32,6 +39,8 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          quiz_id: props.quizId,
+          question_id: q.id,
           exam_id: props.examId,
           exam: props.examName,
           subject: props.subject,
@@ -63,10 +72,11 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
         const res = await fetch("/api/ai/explain-review", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            exam_id: props.examId,
-            exam: props.examName,
-            subject: props.subject,
+        body: JSON.stringify({
+          quiz_id: props.quizId,
+          exam_id: props.examId,
+          exam: props.examName,
+          subject: props.subject,
             questions: wrongQuestions.map((q) => ({
               id: q.id,
               question: q.question,
@@ -110,7 +120,7 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
             Incorrect: <span className="font-semibold">{wrongQuestions.length}</span>
           </div>
           {bulkLoading ? (
-            <div className="text-muted-foreground">Generating AI feedback for missed questions...</div>
+            <div className="text-muted-foreground">Preparing detailed feedback for missed questions...</div>
           ) : null}
         </CardContent>
       </Card>
@@ -160,17 +170,17 @@ export function QuizReview(props: { examId?: string; examName: string; subject: 
                 <>
                   {aiText ? (
                     <div className="rounded-xl border bg-card p-3 text-sm">
-                      <div className="text-xs font-medium text-muted-foreground">AI coach</div>
+                      <div className="text-xs font-medium text-muted-foreground">Detailed feedback</div>
                       <div className="mt-2 whitespace-pre-wrap">{aiText}</div>
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
-                      {bulkLoading ? "Preparing AI feedback..." : "AI feedback not ready yet."}
+                      {bulkLoading ? "Preparing detailed feedback..." : "Detailed feedback not ready yet."}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={() => explain(q)} disabled={loadingId === q.id}>
-                      {loadingId === q.id ? "Thinking..." : aiText ? "Refresh AI explanation" : "Generate AI explanation"}
+                      {loadingId === q.id ? "Thinking..." : aiText ? "Refresh explanation" : "Get detailed feedback"}
                     </Button>
                   </div>
                 </>

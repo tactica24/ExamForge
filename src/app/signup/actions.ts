@@ -1,5 +1,6 @@
 "use server";
 
+import { addDays } from "date-fns";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -86,6 +87,7 @@ export async function signupAction(_: unknown, formData: FormData) {
   const location = parsed.data.country === "Nigeria" ? `${parsed.data.state}, Nigeria` : parsed.data.country;
 
   const firebase = await createFirebaseServerClient();
+  const freeTrialEndsAt = addDays(new Date(), 3).toISOString();
   const { data, error } = await firebase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -115,6 +117,7 @@ export async function signupAction(_: unknown, formData: FormData) {
         learning_style: "visual",
         level: "beginner",
         subscription_tier: "free",
+        pro_until: freeTrialEndsAt,
         exam_interest_slugs: parsed.data.exam_interests,
         country: parsed.data.country,
         state: parsed.data.country === "Nigeria" ? parsed.data.state ?? null : null

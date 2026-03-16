@@ -13,6 +13,7 @@ import {
   reopenSupportIssueAction,
   resolveSupportIssueAction
 } from "@/app/(app)/admin/support/actions";
+import { parseContactRequestMessage } from "@/lib/contact/requests";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ type IssueRow = {
   id: string;
   name: string | null;
   email: string | null;
+  phone: string | null;
+  organization: string | null;
   topic: string | null;
   message: string;
   source: string | null;
@@ -58,12 +61,15 @@ async function selectByInBatches(args: {
 }
 
 function normalizeIssue(row: any): IssueRow {
+  const parsedMessage = parseContactRequestMessage(row.message);
   return {
     id: cleanText(row.id, 80),
     name: cleanText(row.name, 120) || null,
     email: cleanText(row.email, 180) || null,
+    phone: cleanText(parsedMessage.phone, 40) || null,
+    organization: cleanText(parsedMessage.organization, 140) || null,
     topic: cleanText(row.topic, 120) || null,
-    message: cleanText(row.message, 2000),
+    message: cleanText(parsedMessage.body, 2000),
     source: cleanText(row.source, 80) || null,
     status: cleanText(row.status, 40) || null,
     created_at: cleanText(row.created_at, 40) || null,
@@ -160,8 +166,8 @@ export default async function AdminSupportPage() {
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight">Pending and resolved user issues</h1>
             <p className="mt-2 max-w-3xl text-sm text-white/70">
-              This queue is built to reduce confusion across multiple admins. Issues can be claimed, resolved, or reopened,
-              and each item shows ownership so user challenges are handled cleanly.
+              This queue is built to reduce confusion across multiple admins. Standard support requests and enterprise
+              enquiries land here, can be claimed, resolved, or reopened, and each item shows ownership clearly.
             </p>
           </div>
           <div className="flex gap-2">
@@ -221,6 +227,7 @@ export default async function AdminSupportPage() {
                           {issue.topic ? <Badge variant="outline">{issue.topic}</Badge> : null}
                           {issue.source ? <Badge variant="outline">{issue.source}</Badge> : null}
                           {profile?.tier ? <Badge variant="outline">Tier: {profile.tier}</Badge> : null}
+                          {issue.organization ? <Badge variant="outline">{issue.organization}</Badge> : null}
                         </div>
                         <div className="text-sm font-semibold">
                           {issue.name || profile?.label || issue.email || "Unnamed contact"}
@@ -228,6 +235,7 @@ export default async function AdminSupportPage() {
                         <div className="text-xs text-muted-foreground">
                           {issue.email || "No email"} | {issue.created_at ? new Date(issue.created_at).toLocaleString() : "Unknown time"}
                         </div>
+                        {issue.phone ? <div className="text-xs text-muted-foreground">Phone: {issue.phone}</div> : null}
                         <p className="text-sm leading-6 text-muted-foreground">{issue.message}</p>
                         <div className="text-xs text-muted-foreground">
                           Owner: {issue.assigned_admin_email || "Unassigned"}
@@ -357,6 +365,7 @@ export default async function AdminSupportPage() {
                     <div className="text-xs text-muted-foreground">
                       {issue.email || "No email"} | {issue.handled_at ? new Date(issue.handled_at).toLocaleString() : "Resolved"}
                     </div>
+                    {issue.phone ? <div className="text-xs text-muted-foreground">Phone: {issue.phone}</div> : null}
                     <p className="text-sm leading-6 text-muted-foreground">{issue.message}</p>
                     <div className="rounded-xl border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                       Resolution: {issue.resolution_notes || "No resolution note added."}

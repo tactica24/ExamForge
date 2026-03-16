@@ -6,6 +6,7 @@ import { generateJsonWithFallback } from "@/lib/ai/multi";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
+import { getStoredReviewFeedback, mergeStoredReviewFeedback } from "@/lib/quizzes/review-feedback";
 
 type WrongQuestion = {
   id: string;
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ ok: false, message: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
+  const quizId = String(body?.quiz_id ?? "").trim();
   const exam = String(body?.exam ?? "").trim();
   const examId = String(body?.exam_id ?? "").trim();
   const subject = String(body?.subject ?? "").trim();
@@ -82,6 +84,24 @@ export async function POST(req: Request) {
 
   if (!questions.length) {
     return NextResponse.json({ ok: false, message: "No invalid answers supplied." }, { status: 400 });
+  }
+
+  let quizMeta: unknown = null;
+  if (quizId) {
+    const { data: quiz } = await firebase
+      .from("quizzes")
+      .select("meta")
+      .eq("id", quizId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+    quizMeta = quiz?.meta ?? null;
+  }
+
+  const cachedAnswers = getStoredReviewFeedback(quizMeta);
+  const missingQuestions = questions.filter((question) => !cachedAnswers[question.id]);
+  if (!missingQuestions.length) {
+    const answers = Object.fromEntries(questions.map((question) => [question.id, cachedAnswers[question.id]]));
+    return NextResponse.json({ ok: true, answers });
   }
 
   const prefs = await getUserAiPreferences(user.id);
@@ -100,8 +120,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const allowedIds = new Set(questions.map((q) => q.id));
-
+  const allowedIds = new Set(missingQuestions.map((question) => question.id));
   const ai = await generateJsonWithFallback<{ answers: Array<{ id: string; text: string }> }>({
     system: [
       "You are an exam prep coach.",
@@ -116,12 +135,12 @@ export async function POST(req: Request) {
     user: JSON.stringify({
       exam: exam || "Unknown",
       subject: subject || "Unknown",
-      questions: questions.map((q) => ({
-        id: q.id,
-        question: q.question,
-        options: q.options.map((option, idx) => `${String.fromCharCode(65 + idx)}. ${option}`),
-        user_pick: String.fromCharCode(65 + q.user_index),
-        correct: String.fromCharCode(65 + q.correct_index)
+      questions: missingQuestions.map((question) => ({
+        id: question.id,
+        question: question.question,
+        options: question.options.map((option, index) => `${String.fromCharCode(65 + index)}. ${option}`),
+        user_pick: String.fromCharCode(65 + question.user_index),
+        correct: String.fromCharCode(65 + question.correct_index)
       }))
     }),
     temperature: 0.35,
@@ -141,14 +160,21 @@ export async function POST(req: Request) {
   });
 
   if (!ai.value?.answers?.length) {
-    return NextResponse.json({ ok: true, answers: {} });
+    return NextResponse.json({ ok: true, answers: cachedAnswers });
   }
 
-  const answers: Record<string, string> = {};
+  const answers: Record<string, string> = { ...cachedAnswers };
   for (const item of ai.value.answers) {
     answers[item.id] = item.text.slice(0, 1200);
   }
 
+  if (quizId) {
+    await firebase
+      .from("quizzes")
+      .update({ meta: mergeStoredReviewFeedback(quizMeta, answers) as any })
+      .eq("id", quizId)
+      .eq("created_by", user.id);
+  }
+
   return NextResponse.json({ ok: true, answers });
 }
-

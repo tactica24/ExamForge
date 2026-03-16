@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 const Schema = z.object({
   exam_id: z.string().min(3),
@@ -28,6 +29,15 @@ export async function createExtraQuizAction(_: unknown, formData: FormData) {
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
+
+  const { data: accessProfile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!hasActiveProAccess(accessProfile)) {
+    redirect("/pricing");
+  }
 
   const { data: exam } = await firebase
     .from("exams")

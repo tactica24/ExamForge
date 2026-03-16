@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { redirect } from "next/navigation";
+import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 import { simpleModerate } from "@/lib/moderation/simple";
 
 const SendSchema = z.object({
@@ -36,6 +37,16 @@ function chunk<T>(items: T[], size: number) {
   return out;
 }
 
+function examAllowsSubject(exam: any, subject: string) {
+  const rawSubjects = Array.isArray(exam?.subjects) ? (exam.subjects as string[]) : [];
+  const subjects =
+    exam?.slug === "waec" || exam?.slug === "neco" || exam?.slug === "jamb"
+      ? mergeNigerianAndExamSubjects(rawSubjects)
+      : mergeUniqueSubjects(rawSubjects);
+
+  return subjects.some((candidate) => candidate.trim().toLowerCase() === subject.trim().toLowerCase());
+}
+
 export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   const parsed = SendSchema.safeParse({
     group_id: formData.get("group_id"),
@@ -48,6 +59,14 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
+
+  const { data: membership } = await firebase
+    .from("group_members")
+    .select("group_id")
+    .eq("group_id", parsed.data.group_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!membership) return { ok: false, message: "You can only message groups you belong to." };
 
   const mod = simpleModerate(parsed.data.content);
   if (!mod.ok) return { ok: false, message: "Message too long." };
@@ -75,12 +94,13 @@ export async function joinSubjectGroupAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { count: existingCount } = await firebase
-    .from("group_members")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
-  if ((existingCount ?? 0) >= 3) {
-    return { ok: false, message: "You can join up to 3 groups." };
+  const { data: exam } = await firebase
+    .from("exams")
+    .select("id,slug,subjects")
+    .eq("id", parsed.data.exam_id)
+    .maybeSingle();
+  if (!exam || !examAllowsSubject(exam, parsed.data.subject)) {
+    return { ok: false, message: "Select a valid subject group." };
   }
 
   const { data: profile } = await firebase
@@ -146,7 +166,7 @@ export async function joinSubjectGroupAction(_: unknown, formData: FormData) {
   );
   if (error) return { ok: false, message: error.message };
 
-  redirect(`/groups/${pickedGroupId}`);
+  redirect(`/groups?group=${encodeURIComponent(String(pickedGroupId))}`);
 }
 
 export async function leaveGroupAction(_: unknown, formData: FormData) {
@@ -168,14 +188,6 @@ export async function leaveGroupAction(_: unknown, formData: FormData) {
     .eq("user_id", user.id);
   if (error) return { ok: false, message: error.message };
 
-  const { count } = await firebase
-    .from("group_members")
-    .select("*", { count: "exact", head: true })
-    .eq("group_id", parsed.data.group_id);
-  if ((count ?? 0) === 0) {
-    await firebase.from("groups").delete().eq("id", parsed.data.group_id);
-  }
-
   redirect("/groups");
 }
 
@@ -192,13 +204,8 @@ export async function renameGroupAction(_: unknown, formData: FormData) {
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
-  const { data: membership } = await firebase
-    .from("group_members")
-    .select("group_id")
-    .eq("group_id", parsed.data.group_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (!membership) return { ok: false, message: "You are not a member of this group." };
+  const isAdmin = (user?.app_metadata as any)?.role === "admin";
+  if (!isAdmin) return { ok: false, message: "Only admins can rename groups." };
 
   const { error } = await firebase.from("groups").update({ name: parsed.data.name }).eq("id", parsed.data.group_id);
   if (error) return { ok: false, message: error.message };

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const ServerEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().min(1).optional(),
+  APP_WEB_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1).optional(),
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1).optional(),
@@ -60,6 +61,7 @@ export function getServerEnv() {
   return {
     ...parsed.data,
     NEXT_PUBLIC_APP_URL: normalizeHttpUrl(parsed.data.NEXT_PUBLIC_APP_URL),
+    APP_WEB_URL: normalizeHttpUrl(parsed.data.APP_WEB_URL),
     OPENAI_API_KEY: parsed.data.OPENAI_API_KEY ?? parsed.data.openai_api_key,
     GROQ_API_KEY: parsed.data.GROQ_API_KEY ?? parsed.data.groq_api_key,
     GEMINI_API_KEY: parsed.data.GEMINI_API_KEY ?? parsed.data.gemini_api_key

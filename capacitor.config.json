@@ -4,7 +4,7 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://www.acenaija.com.ng",
+    "url": "https://ace-naija.com",
     "cleartext": false
   }
 }

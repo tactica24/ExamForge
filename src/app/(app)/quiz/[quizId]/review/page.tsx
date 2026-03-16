@@ -4,6 +4,7 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuizReview } from "@/components/quiz/quiz-review";
+import { getStoredReviewFeedback } from "@/lib/quizzes/review-feedback";
 
 export default async function QuizReviewPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
@@ -51,6 +52,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
       explanation: q.explanation,
       user_index: Number(answers[idx] ?? -1)
     })) ?? [];
+  const initialDetailedFeedback = getStoredReviewFeedback(quiz.meta);
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
@@ -74,10 +76,17 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Questions</CardTitle>
-          <CardDescription>Score is ready. AI feedback is generated automatically for wrong answers.</CardDescription>
+          <CardDescription>Score is ready. Detailed feedback is reused after it has been generated once.</CardDescription>
         </CardHeader>
         <CardContent>
-          <QuizReview examId={quiz.exam_id} examName={examName} subject={quiz.subject} questions={qs as any} />
+          <QuizReview
+            quizId={quizId}
+            examId={quiz.exam_id}
+            examName={examName}
+            subject={quiz.subject}
+            questions={qs as any}
+            initialDetailedFeedback={initialDetailedFeedback}
+          />
         </CardContent>
       </Card>
     </div>

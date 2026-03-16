@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { buildContactRequestMessage } from "@/lib/contact/requests";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
 type ContactPayload = {
   name?: string;
   email?: string;
+  phone?: string;
+  organization?: string;
   topic?: string;
+  source?: string;
   message?: string;
 };
 
 const ContactSchema = z.object({
   name: z.string().trim().max(120).optional(),
   email: z.string().trim().email().max(254),
+  phone: z.string().trim().max(40).optional(),
+  organization: z.string().trim().max(140).optional(),
   topic: z.string().trim().max(120).optional(),
+  source: z.enum(["homepage", "contact", "enterprise"]).optional(),
   message: z.string().trim().min(10).max(2000)
 });
 
@@ -47,8 +54,12 @@ export async function POST(request: Request) {
       name: parsed.data.name || null,
       email: parsed.data.email,
       topic: parsed.data.topic || null,
-      message: parsed.data.message,
-      source: "homepage",
+      message: buildContactRequestMessage({
+        message: parsed.data.message,
+        phone: parsed.data.phone,
+        organization: parsed.data.organization
+      }),
+      source: parsed.data.source || "homepage",
       status: "new"
     });
     if (error) {

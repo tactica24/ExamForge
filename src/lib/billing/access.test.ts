@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import {
+  getTimedAccessDaysRemaining,
+  getTimedAccessEndsAt,
+  hasActiveProAccess,
+  isFreeTrialActive
+} from "@/lib/billing/access";
 
 describe("hasActiveProAccess", () => {
   it("returns true when subscription tier is pro", () => {
@@ -30,5 +35,17 @@ describe("hasActiveProAccess", () => {
       })
     ).toBe(false);
     expect(hasActiveProAccess(null)).toBe(false);
+  });
+
+  it("treats future timed access on free accounts as a trial", () => {
+    const future = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      isFreeTrialActive({
+        subscription_tier: "free",
+        pro_until: future
+      })
+    ).toBe(true);
+    expect(getTimedAccessEndsAt({ subscription_tier: "free", pro_until: future })).toBeInstanceOf(Date);
+    expect(getTimedAccessDaysRemaining({ subscription_tier: "free", pro_until: future })).toBeGreaterThanOrEqual(1);
   });
 });

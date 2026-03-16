@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
-import { hasActiveProAccess } from "@/lib/billing/access";
+import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, hasActiveProAccess, isFreeTrialActive } from "@/lib/billing/access";
 import { describePace } from "@/lib/plans/pace";
 
 export default async function DashboardPage() {
@@ -31,6 +31,9 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .maybeSingle();
   const proAccess = hasActiveProAccess(profile);
+  const freeTrialActive = isFreeTrialActive(profile);
+  const timedAccessEndsAt = getTimedAccessEndsAt(profile);
+  const timedAccessDays = getTimedAccessDaysRemaining(profile);
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
@@ -62,6 +65,20 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(10);
+
+  const { data: recentNotifications } = await firebase
+    .from("notifications")
+    .select("id,message,status,channel,scheduled_for,sent_at,created_at")
+    .eq("user_id", user.id)
+    .eq("channel", "in_app")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const { data: notificationPrefs } = await firebase
+    .from("notification_prefs")
+    .select("reminders,reminder_time")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const { data: userExamSubjects } = await firebase
     .from("user_exam_subjects")
@@ -100,6 +117,17 @@ export default async function DashboardPage() {
           .sort((a, b) => a.score - b.score)
           .slice(0, 3)
       : [];
+  const reminderSchedule = Array.isArray((notificationPrefs as any)?.reminders)
+    ? ((notificationPrefs as any).reminders as Array<Record<string, unknown>>)
+        .map((reminder) => ({
+          time: String(reminder?.time ?? "").trim(),
+          channel: String(reminder?.channel ?? "in_app").trim()
+        }))
+        .filter((reminder) => /^\d{2}:\d{2}$/.test(reminder.time))
+        .slice(0, 3)
+    : notificationPrefs?.reminder_time
+      ? [{ time: String(notificationPrefs.reminder_time), channel: "in_app" }]
+      : [];
 
   const displayName: string = String(profile?.display_name ?? profile?.name ?? user.email ?? "Learner");
   const paceLabel = describePace(plan.pace);
@@ -131,6 +159,23 @@ export default async function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {freeTrialActive && timedAccessEndsAt ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold">Your 3-day free access is active</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                You have {timedAccessDays} day{timedAccessDays === 1 ? "" : "s"} left before the free plan drops back to
+                one exam and one subject.
+              </div>
+            </div>
+            <Button asChild>
+              <Link href="/billing">Keep Pro active</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -243,7 +288,7 @@ export default async function DashboardPage() {
                     </div>
                   ))}
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/quiz/extra">Practice weak areas</Link>
+                    <Link href={proAccess ? "/quiz/extra" : "/pricing"}>{proAccess ? "Practice weak areas" : "Upgrade to keep practicing"}</Link>
                   </Button>
                 </div>
               </>
@@ -272,8 +317,14 @@ export default async function DashboardPage() {
                       <Badge variant="secondary">{subject}</Badge>
                       <div className="flex flex-wrap gap-2">
                         <Button asChild size="sm" variant="secondary">
-                          <Link href={`/quiz/extra?exam_id=${examId}&subject=${encodeURIComponent(subject)}`}>
-                            Practice
+                          <Link
+                            href={
+                              proAccess
+                                ? `/quiz/extra?exam_id=${examId}&subject=${encodeURIComponent(subject)}`
+                                : "/pricing"
+                            }
+                          >
+                            {proAccess ? "Practice" : "Upgrade for practice"}
                           </Link>
                         </Button>
                         <Button asChild size="sm">
@@ -298,6 +349,58 @@ export default async function DashboardPage() {
               Add subjects in settings to see your personalized practice shortcuts.
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Reminders & alerts</CardTitle>
+          <CardDescription>Study reminders appear here in-app, alongside your configured reminder windows.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+            <div className="text-sm font-semibold">Reminder schedule</div>
+            {reminderSchedule.length ? (
+              reminderSchedule.map((reminder) => (
+                <div key={`${reminder.channel}-${reminder.time}`} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{reminder.channel.replace("_", " ")}</span>
+                  <Badge variant="secondary">{reminder.time}</Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">Set reminder times in Settings to start receiving in-app study nudges.</div>
+            )}
+            <div className="grid gap-2">
+              <Button asChild variant="secondary" className="w-full">
+                <Link href="/settings">Manage reminders</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/notifications">Open notifications</Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {recentNotifications?.length ? (
+              recentNotifications.map((notification) => (
+                <div key={notification.id} className="rounded-xl border bg-card p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-medium">{notification.message}</div>
+                    <Badge variant={notification.status === "sent" ? "secondary" : "outline"}>{notification.status}</Badge>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {notification.sent_at
+                      ? `Sent ${new Date(notification.sent_at).toLocaleString()}`
+                      : `Scheduled ${new Date(notification.scheduled_for ?? notification.created_at).toLocaleString()}`}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed bg-card p-4 text-sm text-muted-foreground">
+                No in-app reminders yet. Once your reminder schedule runs, the latest study nudges will show up here.
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/contact/requests";
 
 const proBenefits = [
   "Multiple exam and subject combinations",
@@ -35,8 +36,8 @@ export default function PricingPage() {
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Choose the plan that fits your prep style</h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Start free to build your study routine. Upgrade to Pro when you want deeper practice, mock exams, and
-            stronger accountability.
+            Every new account starts with 3 days of full access. Upgrade to Pro when you want to keep the wider
+            subject range, premium practice, and stronger accountability tools active.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -44,10 +45,10 @@ export default function PricingPage() {
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>Onboarding, study plan, objective questions, and explanations</li>
-                <li>One exam + one subject only</li>
-                <li>No full mock exams</li>
-                <li>Upgrade prompt when you try to add more</li>
+                <li>First 3 days include full access across study, practice, mock exams, and groups</li>
+                <li>After the free-access window: one exam + one subject stays active</li>
+                <li>Objective questions, history, and review remain available on the free plan</li>
+                <li>Upgrade prompt appears when you try to add more subjects or premium tools</li>
               </ul>
               <div className="mt-6">
                 <Button asChild variant="secondary" className="w-full">
@@ -106,8 +107,13 @@ export default function PricingPage() {
                 </ul>
                 <div className="mt-6 grid gap-2">
                   <Button asChild variant="outline" className="w-full border-emerald-500/50 text-emerald-700 hover:bg-emerald-500/10">
-                    <a href="mailto:enterprise@examforge.app?subject=Enterprise%20Plan%20Inquiry">
+                    <Link href="/contact?intent=enterprise">
                       <MessageCircleMore className="mr-2 h-4 w-4" /> Contact us
+                    </Link>
+                  </Button>
+                  <Button asChild variant="secondary" className="w-full">
+                    <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer">
+                      <MessageCircleMore className="mr-2 h-4 w-4" /> WhatsApp us
                     </a>
                   </Button>
                 </div>

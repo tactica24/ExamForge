@@ -20,6 +20,7 @@ import {
   generatePlanTopicStudyFormatAction,
   updatePlanItemStatusAction
 } from "@/app/(app)/plan/actions";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 function normalizeRequestedFormat(value: unknown): PlanStudyFormat | null {
   const format = String(value ?? "").trim().toLowerCase();
@@ -87,7 +88,11 @@ export default async function PlanTopicPage(props: {
 
   const [{ data: exam }, { data: profile }] = await Promise.all([
     firebase.from("exams").select("name").eq("id", plan.exam_id).maybeSingle(),
-    firebase.from("profiles").select("preferred_explanation_language").eq("user_id", user.id).maybeSingle()
+    firebase
+      .from("profiles")
+      .select("preferred_explanation_language,subscription_tier,pro_until")
+      .eq("user_id", user.id)
+      .maybeSingle()
   ]);
 
   const progress = getPlanItemProgress(item.resource_links);
@@ -97,6 +102,7 @@ export default async function PlanTopicPage(props: {
   const audioNarration = assets.audio?.narration ?? "";
   const slideDeck = assets.slides;
   const preferredLanguage = profile?.preferred_explanation_language ?? "en";
+  const canCreateNewContent = hasActiveProAccess(profile);
   const fileBase = safeFileName(`${plan.subject}-${item.title}`);
   const audioDownloadUrl = `/api/plan/assets/download?item_id=${item.id}&format=audio`;
   const pptDownloadUrl = `/api/plan/assets/download?item_id=${item.id}&format=ppt`;
@@ -148,7 +154,7 @@ export default async function PlanTopicPage(props: {
         </CardContent>
       </Card>
 
-      {!locked ? (
+      {!locked && canCreateNewContent ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Study format</CardTitle>
@@ -178,6 +184,21 @@ export default async function PlanTopicPage(props: {
                 </SubmitButton>
               </div>
             </AuthFormState>
+          </CardContent>
+        </Card>
+      ) : !locked ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Study format</CardTitle>
+            <CardDescription>Your free access window has ended.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              You can still review any topic guide that is already available, but generating new text, audio, slides, or topic quizzes now requires an upgrade.
+            </div>
+            <Button asChild>
+              <Link href="/pricing">Upgrade</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : null}
@@ -355,7 +376,7 @@ export default async function PlanTopicPage(props: {
           <CardDescription>After reading, launch the quiz for this exact topic.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!locked ? (
+          {!locked && canCreateNewContent ? (
             <>
               <AuthFormState action={createPlanTopicQuizAction}>
                 <input type="hidden" name="item_id" value={item.id} />
@@ -370,6 +391,15 @@ export default async function PlanTopicPage(props: {
                 </p>
               ) : null}
             </>
+          ) : !locked ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                Topic review stays available, but generating a fresh quiz now requires an upgrade.
+              </div>
+              <Button asChild>
+                <Link href="/pricing">Upgrade</Link>
+              </Button>
+            </div>
           ) : (
             <div className="text-sm text-muted-foreground">Finish the previous topic quiz to unlock this one.</div>
           )}

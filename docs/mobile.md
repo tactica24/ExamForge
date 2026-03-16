@@ -7,7 +7,7 @@ This project ships a native iOS/Android wrapper around the Next.js web app using
 Set the hosted URL the mobile app should load:
 
 ```bash
-npm run mobile:url:set -- https://www.acenaija.com.ng
+npm run mobile:url:set -- https://ace-naija.com
 ```
 
 This updates `capacitor.config.json` and must be an `https://` URL.

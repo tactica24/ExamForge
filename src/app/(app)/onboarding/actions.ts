@@ -89,6 +89,9 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     .maybeSingle();
 
   const proAccess = hasActiveProAccess(existingProfile);
+  if (!proAccess) {
+    redirect("/pricing");
+  }
 
   const { error: profileErr } = await firebase.from("profiles").upsert({
     user_id: user.id,
@@ -112,22 +115,6 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     .eq("subject", parsed.data.subject)
     .limit(1)
     .maybeSingle();
-
-  if (!proAccess && !existingSelection?.id) {
-    const { count } = await firebase
-      .from("user_exam_subjects")
-      .select("id", { head: true, count: "exact" })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-
-    if ((count ?? 0) >= 1) {
-      return {
-        ok: false,
-        message:
-          "Free plan supports 1 exam and 1 subject only. Upgrade to Pro to switch or add more from /pricing."
-      };
-    }
-  }
 
   await firebase.from("user_exam_subjects").upsert(
     {

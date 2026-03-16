@@ -15,6 +15,7 @@ import {
 import { ensureStudyAssetsForPlanTopic } from "@/lib/plans/study-assets";
 import { findTopicSubtopics } from "@/lib/plans/topic-subtopics";
 import type { Json } from "@/lib/firebase/database.types";
+import { hasActiveProAccess } from "@/lib/billing/access";
 
 const UpdateSchema = z.object({
   item_id: z.string().uuid(),
@@ -148,6 +149,15 @@ export async function createPlanTopicQuizAction(_: unknown, formData: FormData) 
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
 
+  const { data: accessProfile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!hasActiveProAccess(accessProfile)) {
+    redirect("/pricing");
+  }
+
   const ownedTopic = await getOwnedPlanTopic({
     firebase,
     userId: user.id,
@@ -220,6 +230,15 @@ export async function generatePlanTopicStudyFormatAction(_: unknown, formData: F
     data: { user }
   } = await firebase.auth.getUser();
   if (!user) return { ok: false, message: "Not authenticated." };
+
+  const { data: accessProfile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!hasActiveProAccess(accessProfile)) {
+    redirect("/pricing");
+  }
 
   const ownedTopic = await getOwnedPlanTopic({
     firebase,
