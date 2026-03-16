@@ -72,11 +72,11 @@ export function QuizReview(props: {
         const res = await fetch("/api/ai/explain-review", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quiz_id: props.quizId,
-          exam_id: props.examId,
-          exam: props.examName,
-          subject: props.subject,
+          body: JSON.stringify({
+            quiz_id: props.quizId,
+            exam_id: props.examId,
+            exam: props.examName,
+            subject: props.subject,
             questions: wrongQuestions.map((q) => ({
               id: q.id,
               question: q.question,
@@ -107,7 +107,7 @@ export function QuizReview(props: {
     return () => {
       active = false;
     };
-  }, [wrongQuestions, ai, props.examId, props.examName, props.subject]);
+  }, [wrongQuestions, ai, props.quizId, props.examId, props.examName, props.subject]);
 
   return (
     <div className="space-y-4">

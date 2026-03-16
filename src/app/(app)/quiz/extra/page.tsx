@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { createExtraQuizAction } from "@/app/(app)/quiz/extra/actions";
