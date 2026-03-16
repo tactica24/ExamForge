@@ -35,7 +35,7 @@ export function SiteFooter() {
               <Badge variant="secondary" className="rounded-full">
                 ACE NAIJA
               </Badge>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight">Professional exam preparation for serious learners.</h2>
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight">Professional exam preparation for ambitious learners.</h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 Built to turn syllabus pressure into a structured learning path with practice, reminders, mock exams,
                 group accountability, and measurable progress.
@@ -50,6 +50,10 @@ export function SiteFooter() {
               <div className="flex items-start gap-3">
                 <PhoneCall className="mt-0.5 h-4 w-4 text-primary" />
                 <span>{SUPPORT_WHATSAPP_LABEL}</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <MessageCircle className="mt-0.5 h-4 w-4 text-primary" />
+                <span>acenaija1@gmail.com</span>
               </div>
             </div>
 

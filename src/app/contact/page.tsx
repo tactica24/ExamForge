@@ -37,6 +37,7 @@ export default async function ContactPage(props: { searchParams: Promise<{ inten
                     WhatsApp support
                   </div>
                   <div className="mt-2">Reach us directly at {SUPPORT_WHATSAPP_LABEL} for quick assistance.</div>
+                  <div className="mt-2">Email: acenaija1@gmail.com</div>
                   <a
                     href={SUPPORT_WHATSAPP_URL}
                     target="_blank"

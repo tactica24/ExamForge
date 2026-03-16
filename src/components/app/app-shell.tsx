@@ -2,6 +2,7 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { NavLink } from "@/components/app/nav-link";
 import { UserMenu } from "@/components/app/user-menu";
 import { BrandBadge } from "@/components/branding/brand-badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function AppShell(props: {
   name: string | null;
@@ -49,6 +50,7 @@ export function AppShell(props: {
             ) : null}
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <form id="logout-form" action="/logout" method="post" className="hidden" />
             <UserMenu name={props.name} avatarUrl={props.avatarUrl} isAdmin={props.isAdmin} />
           </div>

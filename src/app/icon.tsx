@@ -13,30 +13,102 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(145deg, #08314a 0%, #0f5570 45%, #16a4a4 100%)"
+          background: "radial-gradient(circle at top, #f7fbff 0%, #dce7f2 46%, #c5d6e6 100%)"
         }}
       >
         <div
           style={{
-            width: 364,
-            height: 364,
-            borderRadius: 110,
-            background: "rgba(255,255,255,0.16)",
-            border: "1px solid rgba(255,255,255,0.3)",
+            width: 420,
+            height: 420,
+            borderRadius: "50%",
+            border: "14px solid #d4af37",
+            background: "linear-gradient(180deg, #ffffff 0%, #eef5fb 100%)",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 36px 95px rgba(2, 18, 32, 0.38)"
+            position: "relative",
+            boxShadow: "0 30px 90px rgba(10, 30, 60, 0.16)"
           }}
         >
-          <svg width="232" height="232" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="6" y="6" width="52" height="52" rx="16" fill="#0B4B69" />
-            <rect x="14.5" y="17" width="35" height="30" rx="6" fill="#F7FBFF" fillOpacity="0.97" />
-            <path d="M22 24H42" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M22 31H36" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M22 38H42" stroke="#0E3A50" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M40 26L45.5 31.5L40 37" stroke="#14B8A6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <div
+            style={{
+              position: "absolute",
+              top: 34,
+              fontSize: 58,
+              color: "#c79a1b",
+              lineHeight: 1
+            }}
+          >
+            {"\u265B"}
+          </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              color: "#123d66"
+            }}
+          >
+            <div style={{ fontSize: 82, fontWeight: 800, letterSpacing: 4, lineHeight: 0.95 }}>ACE</div>
+            <div style={{ fontSize: 60, fontWeight: 800, letterSpacing: 6, lineHeight: 1 }}>NAIJA</div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
+              gap: 10
+            }}
+          >
+            <div
+              style={{
+                width: 96,
+                height: 74,
+                borderBottomLeftRadius: 90,
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 28,
+                background: "linear-gradient(180deg, #245c96 0%, #123d66 100%)",
+                transform: "skewY(8deg)"
+              }}
+            />
+            <div
+              style={{
+                width: 36,
+                height: 112,
+                clipPath: "polygon(50% 0%, 100% 38%, 68% 38%, 68% 100%, 32% 100%, 32% 38%, 0% 38%)",
+                background: "linear-gradient(180deg, #3b8f52 0%, #1f6d38 100%)"
+              }}
+            />
+            <div
+              style={{
+                width: 96,
+                height: 74,
+                borderBottomRightRadius: 90,
+                borderTopRightRadius: 12,
+                borderTopLeftRadius: 28,
+                background: "linear-gradient(180deg, #3f9b58 0%, #2b7b43 100%)",
+                transform: "skewY(-8deg)"
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              position: "absolute",
+              bottom: 42,
+              fontSize: 28,
+              fontWeight: 700,
+              letterSpacing: 2,
+              color: "#123d66"
+            }}
+          >
+            Academic Excellence
+          </div>
         </div>
       </div>
     ),

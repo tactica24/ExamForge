@@ -20,9 +20,7 @@ export function SiteHeader() {
           </Link>
         </nav>
         <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-          <div className="hidden sm:flex">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
           <Button asChild variant="secondary" size="sm">
             <Link href="/login">Log in</Link>
           </Button>

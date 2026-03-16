@@ -32,7 +32,7 @@ const faqItems = [
   {
     question: "Can schools or large cohorts use the platform?",
     answer:
-      "Yes. Use the enterprise contact option to tell us about your rollout needs, reporting expectations, or support workflow. Those requests are tracked separately inside the admin support queue."
+      "Yes. Use the enterprise contact option to tell us about your rollout needs, reporting expectations, or support workflow."
   }
 ];
 

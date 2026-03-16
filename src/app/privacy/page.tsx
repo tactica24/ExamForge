@@ -67,33 +67,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">4) Legal bases and consent</h2>
-            <p className="text-sm text-muted-foreground">
-              Depending on jurisdiction, we rely on contract performance, legitimate interests, consent,
-              and legal obligations. Optional communication channels can be managed in your notification settings.
-            </p>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">5) Sharing, processors, and transfers</h2>
-            <p className="text-sm text-muted-foreground">
-              We use trusted processors for infrastructure, authentication, storage, payments, messaging,
-              and email delivery. We do not sell personal data. Cross-border processing may occur with safeguards
-              appropriate for the applicable legal framework.
-            </p>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">6) Security and retention</h2>
-            <p className="text-sm text-muted-foreground">
-              We use technical and organizational controls (for example, access restrictions, transport security,
-              and monitoring). Data is retained only as long as needed for service delivery, compliance,
-              dispute handling, and security operations.
-            </p>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">7) Your rights and requests</h2>
+            <h2 className="text-lg font-semibold tracking-tight">4) Your rights and requests</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {rights.map((item) => (
                 <li key={item}>{item}</li>
@@ -106,7 +80,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">8) Policy updates</h2>
+            <h2 className="text-lg font-semibold tracking-tight">5) Policy updates</h2>
             <p className="text-sm text-muted-foreground">
               We may update this policy as features, laws, or operational requirements evolve.
               Material updates will be reflected on this page with an updated effective date.

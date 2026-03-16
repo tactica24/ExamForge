@@ -43,15 +43,6 @@ export default function AboutPage() {
               </Card>
             ))}
           </div>
-
-          <Card className="p-6 sm:p-8">
-            <div className="max-w-3xl">
-              <div className="text-lg font-semibold">The standard we are aiming for</div>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                ACE NAIJA is meant to feel like a serious learning companion: clear enough for first-time users, structured enough for focused learners, and practical enough for schools and cohorts that need reliable exam support. Every part of the product is meant to reduce confusion, wasted time, and avoidable failure.
-              </p>
-            </div>
-          </Card>
         </div>
       </main>
       <SiteFooter />
