@@ -259,7 +259,9 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Subjects</CardTitle>
-          <CardDescription>Add exam subjects to personalize plans and objective question recommendations.</CardDescription>
+          <CardDescription>
+            Add one exam at a time, then tick the subjects you want to study under it.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -290,7 +292,7 @@ export default async function SettingsPage() {
               <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
               <div className="mt-4">
                 <SubmitButton type="submit" pendingText="Adding..." className="w-full sm:w-auto" disabled={!hasMoreExamSubjects}>
-                  Add subject
+                  Save exam subjects
                 </SubmitButton>
               </div>
             </AuthFormState>

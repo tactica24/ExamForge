@@ -131,7 +131,7 @@ export async function updateProfileAction(_: unknown, formData: FormData) {
 const AddExamSubjectSchema = z.object({
   exam_id: z.string().min(3),
   exam_slug: z.string().min(2),
-  subject: z.string().trim().min(2).max(120)
+  subjects: z.array(z.string().trim().min(2).max(120)).min(1).max(7)
 });
 
 async function ensurePlanForSubject(args: {
@@ -247,13 +247,13 @@ async function ensurePlanForSubject(args: {
 export async function addExamSubjectAction(_: unknown, formData: FormData) {
   const selectionReady = String(formData.get("selection_ready") ?? "").trim();
   if (!selectionReady) {
-    return { ok: false, message: "Select an exam and subject." };
+    return { ok: false, message: "Select an exam and at least one subject." };
   }
 
   const parsed = AddExamSubjectSchema.safeParse({
     exam_id: String(formData.get("exam_id") ?? "").trim(),
     exam_slug: String(formData.get("exam_slug") ?? "").trim(),
-    subject: String(formData.get("subject") ?? "").trim()
+    subjects: formData.getAll("subjects").map((value) => String(value).trim()).filter(Boolean)
   });
 
   if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
@@ -286,45 +286,64 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
     }
   }
 
-  const { data: existingSelection } = await firebase
-    .from("user_exam_subjects")
-    .select("id")
+  const { data: existingProfile } = await firebase
+    .from("profiles")
+    .select("exam_interest_slugs")
     .eq("user_id", user.id)
-    .eq("exam_id", examId)
-    .eq("subject", parsed.data.subject)
-    .limit(1)
     .maybeSingle();
 
+  const examInterestSlugs = Array.isArray(existingProfile?.exam_interest_slugs)
+    ? Array.from(
+        new Set([...existingProfile.exam_interest_slugs.map((item: any) => String(item)), parsed.data.exam_slug])
+      )
+    : [parsed.data.exam_slug];
+
+  await firebase.from("profiles").update({ exam_interest_slugs: examInterestSlugs }).eq("user_id", user.id);
+
   const { error } = await firebase.from("user_exam_subjects").upsert(
-    {
+    parsed.data.subjects.map((subject) => ({
       user_id: user.id,
       exam_id: examId,
-      subject: parsed.data.subject,
+      subject,
       is_active: true
-    },
+    })),
     { onConflict: "user_id,exam_id,subject" }
   );
 
   if (error) return { ok: false, message: error.message };
 
-  const plan = await ensurePlanForSubject({
-    firebase,
-    userId: user.id,
-    examId,
-    examSlug: parsed.data.exam_slug,
-    subject: parsed.data.subject
-  });
+  const createdSubjects: string[] = [];
+  const planFailures: string[] = [];
 
-  if (!plan.ok) {
+  for (const subject of parsed.data.subjects) {
+    const plan = await ensurePlanForSubject({
+      firebase,
+      userId: user.id,
+      examId,
+      examSlug: parsed.data.exam_slug,
+      subject
+    });
+
+    if (!plan.ok) {
+      planFailures.push(`${subject}: ${plan.message}`);
+      continue;
+    }
+
+    if (plan.created) createdSubjects.push(subject);
+  }
+
+  if (planFailures.length) {
     return {
       ok: true,
-      message: `Subject added. Plan auto-generation failed: ${plan.message}`
+      message: `Subjects saved. Some plans still need attention: ${planFailures.join(" | ")}`
     };
   }
 
   return {
     ok: true,
-    message: plan.created ? "Subject added and study plan generated." : "Subject added. Existing study plan kept."
+    message: createdSubjects.length
+      ? `Added ${parsed.data.subjects.length} subject${parsed.data.subjects.length === 1 ? "" : "s"} and generated the new study plan${createdSubjects.length === 1 ? "" : "s"}.`
+      : `Added ${parsed.data.subjects.length} subject${parsed.data.subjects.length === 1 ? "" : "s"}. Existing study plans were kept.`
   };
 }
 

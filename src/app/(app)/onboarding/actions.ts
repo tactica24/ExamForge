@@ -10,14 +10,10 @@ import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
 import { claimReferralForUser } from "@/lib/referrals/claim";
 
-const ExamSubjectSelectionSchema = z.object({
+const OnboardingSchema = z.object({
   exam_id: z.string().min(3),
   exam_slug: z.string().min(2),
   subjects: z.array(z.string().trim().min(2)).min(1).max(7)
-});
-
-const OnboardingSchema = z.object({
-  exam_subjects: z.array(ExamSubjectSelectionSchema).min(1).max(3)
 });
 
 async function ensurePlanForSubject(args: {
@@ -103,23 +99,16 @@ async function ensurePlanForSubject(args: {
 }
 
 export async function completeOnboardingAction(_: unknown, formData: FormData) {
-  const rawSelections = String(formData.get("exam_subjects") ?? "").trim();
-  let examSubjects: unknown = [];
-
-  try {
-    examSubjects = rawSelections ? JSON.parse(rawSelections) : [];
-  } catch {
-    examSubjects = [];
-  }
-
   const parsed = OnboardingSchema.safeParse({
-    exam_subjects: examSubjects
+    exam_id: String(formData.get("exam_id") ?? "").trim(),
+    exam_slug: String(formData.get("exam_slug") ?? "").trim(),
+    subjects: formData.getAll("subjects").map((value) => String(value).trim()).filter(Boolean)
   });
 
   if (!parsed.success) {
     return {
       ok: false,
-      message: "Select at least one exam and at least one subject for each selected exam."
+      message: "Select one exam and at least one subject to continue."
     };
   }
 
@@ -135,11 +124,15 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const examInterestSlugs = parsed.data.exam_subjects.map((entry) => entry.exam_slug);
   const accessProfile = existingProfile ?? {
     subscription_tier: "free",
     pro_until: addDays(new Date(), 3).toISOString()
   };
+  const examInterestSlugs = Array.isArray((existingProfile as any)?.exam_interest_slugs)
+    ? Array.from(
+        new Set([...(existingProfile as any).exam_interest_slugs.map((item: any) => String(item)), parsed.data.exam_slug])
+      )
+    : [parsed.data.exam_slug];
 
   const { error: profileErr } = await firebase.from("profiles").upsert({
     user_id: user.id,
@@ -158,35 +151,33 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
   });
   if (profileErr) return { ok: false, message: profileErr.message };
 
-  for (const selection of parsed.data.exam_subjects) {
-    let examId = selection.exam_id;
-    if (examId.startsWith("fallback-")) {
-      try {
-        examId = await ensureSeedExamExists({ slug: selection.exam_slug });
-      } catch {
-        return {
-          ok: false,
-          message:
-            "Seed data requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY then try again."
-        };
-      }
+  let examId = parsed.data.exam_id;
+  if (examId.startsWith("fallback-")) {
+    try {
+      examId = await ensureSeedExamExists({ slug: parsed.data.exam_slug });
+    } catch {
+      return {
+        ok: false,
+        message:
+          "Seed data requires Firebase admin credentials. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY then try again."
+      };
     }
+  }
 
-    for (const subject of selection.subjects) {
-      try {
-        await ensurePlanForSubject({
-          firebase,
-          userId: user.id,
-          examId,
-          examSlug: selection.exam_slug,
-          subject
-        });
-      } catch (error) {
-        return {
-          ok: false,
-          message: error instanceof Error ? error.message : "Could not create your study plans right now."
-        };
-      }
+  for (const subject of parsed.data.subjects) {
+    try {
+      await ensurePlanForSubject({
+        firebase,
+        userId: user.id,
+        examId,
+        examSlug: parsed.data.exam_slug,
+        subject
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Could not create your study plan right now."
+      };
     }
   }
 

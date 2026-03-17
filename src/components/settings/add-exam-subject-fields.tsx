@@ -17,6 +17,8 @@ type ExistingSelection = {
   subject: string;
 };
 
+const MAX_SUBJECTS = 7;
+
 function isNigerianCoreExam(slug: string) {
   return slug === "waec" || slug === "neco" || slug === "jamb";
 }
@@ -49,13 +51,7 @@ export function AddExamSubjectFields(props: { exams: ExamOption[]; existingSelec
   );
 
   const [examId, setExamId] = React.useState(selectableExams[0]?.id ?? "");
-
-  const availableSubjects = React.useMemo(() => {
-    if (!examId) return [];
-    return (subjectsByExamId.get(examId) ?? []).filter((subject) => !selectedSet.has(`${examId}::${subject}`));
-  }, [examId, selectedSet, subjectsByExamId]);
-
-  const [subject, setSubject] = React.useState(availableSubjects[0] ?? "");
+  const [selectedSubjects, setSelectedSubjects] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!selectableExams.length) {
@@ -67,15 +63,24 @@ export function AddExamSubjectFields(props: { exams: ExamOption[]; existingSelec
     }
   }, [selectableExams, examId]);
 
+  const availableSubjects = React.useMemo(() => {
+    if (!examId) return [];
+    return (subjectsByExamId.get(examId) ?? []).filter((subject) => !selectedSet.has(`${examId}::${subject}`));
+  }, [examId, selectedSet, subjectsByExamId]);
+
   React.useEffect(() => {
-    if (!availableSubjects.length) {
-      if (subject) setSubject("");
-      return;
-    }
-    if (!availableSubjects.includes(subject)) {
-      setSubject(availableSubjects[0] ?? "");
-    }
-  }, [availableSubjects, subject]);
+    setSelectedSubjects((current) => current.filter((subject) => availableSubjects.includes(subject)));
+  }, [availableSubjects]);
+
+  function toggleSubject(subject: string) {
+    setSelectedSubjects((current) => {
+      if (current.includes(subject)) {
+        return current.filter((item) => item !== subject);
+      }
+      if (current.length >= MAX_SUBJECTS) return current;
+      return [...current, subject];
+    });
+  }
 
   const selectedExam = selectableExams.find((exam) => exam.id === examId);
   const disabled = !selectableExams.length || !availableSubjects.length;
@@ -85,8 +90,6 @@ export function AddExamSubjectFields(props: { exams: ExamOption[]; existingSelec
       <div className="space-y-2 sm:col-span-2">
         <input type="hidden" name="exam_id" value="" />
         <input type="hidden" name="exam_slug" value="" />
-        <input type="hidden" name="subject" value="" />
-        <input type="hidden" name="selection_ready" value="" />
         <p className="text-sm text-muted-foreground">
           You have already added all available exam-subject combinations.
         </p>
@@ -95,7 +98,7 @@ export function AddExamSubjectFields(props: { exams: ExamOption[]; existingSelec
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="settings_exam_id">Exam</Label>
         <Select value={examId} onValueChange={setExamId} disabled={!selectableExams.length}>
@@ -113,25 +116,45 @@ export function AddExamSubjectFields(props: { exams: ExamOption[]; existingSelec
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="settings_subject">Subject</Label>
-        <Select value={subject} onValueChange={setSubject} disabled={!availableSubjects.length}>
-          <SelectTrigger id="settings_subject">
-            <SelectValue placeholder={availableSubjects.length ? "Select subject" : "No subject left for this exam"} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableSubjects.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>{selectedExam?.name ?? "Exam"} subjects</Label>
+        {availableSubjects.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {availableSubjects.map((subject) => {
+              const checked = selectedSubjects.includes(subject);
+              const subjectDisabled = !checked && selectedSubjects.length >= MAX_SUBJECTS;
+
+              return (
+                <label
+                  key={subject}
+                  className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                    checked ? "border-primary bg-primary/5" : "border-border/70 bg-card"
+                  } ${subjectDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                >
+                  <input
+                    type="checkbox"
+                    name="subjects"
+                    className="mt-1 h-4 w-4 accent-black"
+                    value={subject}
+                    checked={checked}
+                    disabled={subjectDisabled}
+                    onChange={() => toggleSubject(subject)}
+                  />
+                  <div className="text-sm font-medium">{subject}</div>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No subjects left for this exam.</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Selected: {selectedSubjects.length}/{MAX_SUBJECTS}
+        </p>
       </div>
 
       <input type="hidden" name="exam_id" value={examId} />
       <input type="hidden" name="exam_slug" value={selectedExam?.slug ?? ""} />
-      <input type="hidden" name="subject" value={subject} />
-      <input type="hidden" name="selection_ready" value={disabled ? "" : "1"} />
+      <input type="hidden" name="selection_ready" value={!disabled && selectedSubjects.length ? "1" : ""} />
     </div>
   );
 }

@@ -6,20 +6,12 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { completeOnboardingAction } from "@/app/(app)/onboarding/actions";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 type ExamRow = Database["public"]["Tables"]["exams"]["Row"];
 
-type ExamSelection = {
-  exam_id: string;
-  exam_slug: string;
-  subjects: string[];
-};
-
-const MAX_EXAMS = 3;
-const MAX_SUBJECTS_PER_EXAM = 7;
+const MAX_SUBJECTS = 7;
 
 function toSubjectList(value: ExamRow["subjects"]): string[] {
   return Array.isArray(value) ? (value as unknown as string[]) : [];
@@ -34,100 +26,72 @@ function subjectsForExam(exam: ExamRow | null | undefined) {
   return mergeUniqueSubjects(base);
 }
 
-function buildInitialSelections(exams: ExamRow[], preferredExamSlugs: string[]) {
-  const preferred = exams.filter((exam) => preferredExamSlugs.includes(exam.slug)).slice(0, MAX_EXAMS);
-  return preferred.map((exam) => ({
-    exam_id: exam.id,
-    exam_slug: exam.slug,
-    subjects: []
-  }));
+function getInitialExamId(exams: ExamRow[], preferredExamSlugs: string[]) {
+  const preferred = exams.find((exam) => preferredExamSlugs.includes(exam.slug));
+  return preferred?.id ?? exams[0]?.id ?? "";
 }
 
 export function OnboardingWizard(props: {
   exams: ExamRow[];
   preferredExamSlugs?: string[];
 }) {
-  const [selections, setSelections] = React.useState<ExamSelection[]>(() =>
-    buildInitialSelections(props.exams, props.preferredExamSlugs ?? [])
+  const [examId, setExamId] = React.useState(() =>
+    getInitialExamId(props.exams, props.preferredExamSlugs ?? [])
   );
+  const [selectedSubjects, setSelectedSubjects] = React.useState<string[]>([]);
 
-  const examById = React.useMemo(
-    () => new Map(props.exams.map((exam) => [exam.id, exam])),
-    [props.exams]
+  const selectedExam = React.useMemo(
+    () => props.exams.find((exam) => exam.id === examId) ?? null,
+    [props.exams, examId]
   );
+  const availableSubjects = React.useMemo(() => subjectsForExam(selectedExam), [selectedExam]);
 
-  const selectedExamIds = React.useMemo(
-    () => new Set(selections.map((selection) => selection.exam_id)),
-    [selections]
-  );
+  React.useEffect(() => {
+    setSelectedSubjects((current) => current.filter((subject) => availableSubjects.includes(subject)));
+  }, [availableSubjects]);
 
-  function toggleExam(exam: ExamRow) {
-    setSelections((current) => {
-      const exists = current.some((item) => item.exam_id === exam.id);
-      if (exists) {
-        return current.filter((item) => item.exam_id !== exam.id);
+  function toggleSubject(subject: string) {
+    setSelectedSubjects((current) => {
+      if (current.includes(subject)) {
+        return current.filter((item) => item !== subject);
       }
-      if (current.length >= MAX_EXAMS) return current;
-      return [
-        ...current,
-        {
-          exam_id: exam.id,
-          exam_slug: exam.slug,
-          subjects: []
-        }
-      ];
+      if (current.length >= MAX_SUBJECTS) return current;
+      return [...current, subject];
     });
   }
 
-  function updateSubjects(examId: string, values: string[]) {
-    setSelections((current) =>
-      current.map((item) =>
-        item.exam_id === examId
-          ? {
-              ...item,
-              subjects: values.slice(0, MAX_SUBJECTS_PER_EXAM)
-            }
-          : item
-      )
-    );
-  }
-
-  const canSubmit =
-    selections.length > 0 &&
-    selections.every((selection) => selection.subjects.length >= 1 && selection.subjects.length <= MAX_SUBJECTS_PER_EXAM);
+  const canSubmit = Boolean(selectedExam?.id) && selectedSubjects.length > 0 && selectedSubjects.length <= MAX_SUBJECTS;
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Choose your exams and subjects</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Choose your first exam</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Select up to 3 exams, then choose up to 7 subjects for each one. We will build your study plans from that.
+          Pick one exam and the subjects you want to start with. You can add more exams later from Settings.
         </p>
       </div>
 
       <AuthFormState action={completeOnboardingAction}>
-        <input type="hidden" name="exam_subjects" value={JSON.stringify(selections)} />
-
         <Card className="space-y-4 p-5 sm:p-6">
-          <div className="text-sm font-medium">1) Select exams</div>
+          <div className="text-sm font-medium">1) Select an exam</div>
           <div className="grid gap-3 sm:grid-cols-2">
             {props.exams.map((exam) => {
-              const checked = selectedExamIds.has(exam.id);
-              const disabled = !checked && selections.length >= MAX_EXAMS;
+              const checked = exam.id === examId;
 
               return (
                 <label
                   key={exam.id}
                   className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
                     checked ? "border-primary bg-primary/5" : "border-border/70 bg-card"
-                  } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                  } cursor-pointer`}
                 >
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="exam_id"
                     className="mt-1 h-4 w-4 accent-black"
                     checked={checked}
-                    disabled={disabled}
-                    onChange={() => toggleExam(exam)}
+                    onChange={() => setExamId(exam.id)}
+                    value={exam.id}
                   />
                   <div>
                     <div className="text-sm font-semibold">{exam.name}</div>
@@ -137,47 +101,53 @@ export function OnboardingWizard(props: {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Selected: {selections.length}/{MAX_EXAMS}
-          </p>
+
+          <input type="hidden" name="exam_slug" value={selectedExam?.slug ?? ""} />
         </Card>
 
-        {selections.map((selection, index) => {
-          const exam = examById.get(selection.exam_id);
-          const subjects = subjectsForExam(exam);
-
-          return (
-            <Card key={selection.exam_id} className="space-y-4 p-5 sm:p-6">
-              <div className="text-sm font-medium">
-                {index + 2}) {exam?.name ?? "Exam"} subjects
-              </div>
+        <Card className="space-y-4 p-5 sm:p-6">
+          <div className="text-sm font-medium">2) Choose up to 7 subjects</div>
+          {selectedExam ? (
+            <>
               <div className="space-y-2">
-                <Label htmlFor={`subjects-${selection.exam_id}`}>Select up to 7 subjects</Label>
-                <NativeSelect
-                  id={`subjects-${selection.exam_id}`}
-                  multiple
-                  value={selection.subjects}
-                  onChange={(event) => {
-                    const values = Array.from(event.target.selectedOptions).map((option) => option.value);
-                    updateSubjects(selection.exam_id, values);
-                  }}
-                  className="h-40"
-                >
-                  {subjects.map((subject) => (
-                    <option key={subject} value={subject}>
-                      {subject}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <Label>{selectedExam.name} subjects</Label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {availableSubjects.map((subject) => {
+                    const checked = selectedSubjects.includes(subject);
+                    const disabled = !checked && selectedSubjects.length >= MAX_SUBJECTS;
+
+                    return (
+                      <label
+                        key={subject}
+                        className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                          checked ? "border-primary bg-primary/5" : "border-border/70 bg-card"
+                        } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                      >
+                        <input
+                          type="checkbox"
+                          name="subjects"
+                          className="mt-1 h-4 w-4 accent-black"
+                          value={subject}
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => toggleSubject(subject)}
+                        />
+                        <div className="text-sm font-medium">{subject}</div>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Selected: {selection.subjects.length}/{MAX_SUBJECTS_PER_EXAM}. On desktop, use Ctrl/Cmd to select multiple.
+                  Selected: {selectedSubjects.length}/{MAX_SUBJECTS}
                 </p>
               </div>
-            </Card>
-          );
-        })}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Select an exam first.</p>
+          )}
+        </Card>
 
-        <SubmitButton type="submit" className="w-full" pendingText="Creating your study plans..." disabled={!canSubmit}>
+        <SubmitButton type="submit" className="w-full" pendingText="Creating your study plan..." disabled={!canSubmit}>
           Continue to dashboard
         </SubmitButton>
       </AuthFormState>
