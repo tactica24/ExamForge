@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { listActiveExams } from "@/lib/exams/list";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
+import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 
 export default async function OnboardingPage() {
   const firebase = await createFirebaseServerClient();
@@ -10,6 +11,9 @@ export default async function OnboardingPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
+  const existingPlan = await getActivePlanForUser(user.id);
+  if (existingPlan) redirect("/dashboard");
+
   const exams = await listActiveExams();
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 
@@ -17,31 +21,10 @@ export default async function OnboardingPage() {
     ? metadata.exam_interests.map((item) => String(item)).filter(Boolean)
     : [];
 
-  const initialName = typeof metadata.first_name === "string" && metadata.first_name.trim().length > 0
-    ? metadata.first_name
-    : typeof metadata.name === "string"
-      ? metadata.name
-      : "";
-
-  const initialPhone = typeof metadata.phone === "string"
-    ? metadata.phone
-    : typeof user.phone === "string"
-      ? user.phone
-      : "";
-
-  const initialCountry = typeof metadata.country === "string" && metadata.country.trim().length > 0
-    ? metadata.country
-    : "Nigeria";
-  const initialState = typeof metadata.state === "string" ? metadata.state : "";
-
   return (
     <OnboardingWizard
       exams={exams}
       preferredExamSlugs={preferredExamSlugs}
-      initialName={initialName}
-      initialPhone={initialPhone}
-      initialCountry={initialCountry}
-      initialState={initialState}
     />
   );
 }
