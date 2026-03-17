@@ -41,9 +41,7 @@ jobs:
           cp -r public release/public
           tar -czf ace-naija-standalone.tar.gz -C release .
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ace-naija-standalone
-          path: ace-naija-standalone.tar.gz
-          retention-days: 7
+      - name: Summarize packaged build
+        run: |
+          echo "Standalone package created:" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh ace-naija-standalone.tar.gz >> "$GITHUB_STEP_SUMMARY"
