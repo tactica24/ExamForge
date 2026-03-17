@@ -27,7 +27,8 @@ export function AppShell(props: {
         { href: "/tutor", label: "Tutor" },
         { href: "/progress", label: "Progress" },
         { href: "/leaderboard", label: "Leaderboard" },
-        { href: "/mock-exam", label: "Mock" }
+        { href: "/mock-exam", label: "Mock" },
+        { href: "/careers", label: "Careers" }
       ];
 
   const brandLabel = props.isAdmin ? "ACE NAIJA Admin" : "ACE NAIJA";

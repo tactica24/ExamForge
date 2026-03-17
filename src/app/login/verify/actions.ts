@@ -39,5 +39,5 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
   });
   if (error) return { ok: false, message: error.message };
 
-  redirect("/onboarding");
+  redirect("/dashboard");
 }

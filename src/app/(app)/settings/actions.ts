@@ -258,6 +258,8 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
 
   if (!parsed.success) return { ok: false, message: "Invalid exam subject selection." };
 
+  const redirectTo = String(formData.get("redirect_to") ?? "").trim();
+
   const firebase = await createFirebaseServerClient();
   const {
     data: { user }
@@ -337,6 +339,10 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
       ok: true,
       message: `Subjects saved. Some plans still need attention: ${planFailures.join(" | ")}`
     };
+  }
+
+  if (redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+    redirect(redirectTo);
   }
 
   return {

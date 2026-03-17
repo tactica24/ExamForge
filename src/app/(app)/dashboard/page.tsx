@@ -14,6 +14,10 @@ import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
 import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, hasActiveProAccess, isFreeTrialActive } from "@/lib/billing/access";
 import { describePace } from "@/lib/plans/pace";
+import { AuthFormState } from "@/components/auth/auth-form-state";
+import { SubmitButton } from "@/components/form/submit-button";
+import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
+import { addExamSubjectAction } from "@/app/(app)/settings/actions";
 
 export default async function DashboardPage() {
   const firebase = await createFirebaseServerClient();
@@ -22,18 +26,95 @@ export default async function DashboardPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const plan = await getActivePlanForUser(user.id);
-  if (!plan) redirect("/onboarding");
+  const [plan, profileRes, userExamSubjectsRes, exams] = await Promise.all([
+    getActivePlanForUser(user.id),
+    firebase
+      .from("profiles")
+      .select("name,display_name,avatar_url,subscription_tier,pro_until")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    firebase
+      .from("user_exam_subjects")
+      .select("exam_id,subject,is_active")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    listActiveExams()
+  ]);
 
-  const { data: profile } = await firebase
-    .from("profiles")
-    .select("name,display_name,avatar_url,subscription_tier,pro_until")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const profile = profileRes.data;
   const proAccess = hasActiveProAccess(profile);
   const freeTrialActive = isFreeTrialActive(profile);
   const timedAccessEndsAt = getTimedAccessEndsAt(profile);
   const timedAccessDays = getTimedAccessDaysRemaining(profile);
+  const userExamSubjects = userExamSubjectsRes.data ?? [];
+  const examOptions = exams.map((exam) => ({
+    id: exam.id,
+    slug: exam.slug,
+    name: exam.name,
+    subjects: Array.isArray(exam.subjects) ? (exam.subjects as string[]) : []
+  }));
+  const existingSelections = userExamSubjects.map((item) => ({ examId: item.exam_id, subject: item.subject }));
+
+  if (!plan) {
+    const displayName = String(profile?.display_name ?? profile?.name ?? user.email ?? "Learner");
+
+    return (
+      <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome, {displayName}. Choose your first exam and subjects to create your study plan.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/careers">Browse careers</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/settings">Open settings</Link>
+            </Button>
+          </div>
+        </div>
+
+        {freeTrialActive && timedAccessEndsAt ? (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold">Your 3-day free access is active</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  You have {timedAccessDays} day{timedAccessDays === 1 ? "" : "s"} left. Start with one exam now, then add more later from Settings.
+                </div>
+              </div>
+              <Button asChild>
+                <Link href="/pricing">See upgrade options</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Add your exam subjects</CardTitle>
+            <CardDescription>
+              Pick one exam, tick the subjects you want, and we will build your first study plan immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <AuthFormState action={addExamSubjectAction}>
+              <input type="hidden" name="redirect_to" value="/dashboard" />
+              <AddExamSubjectFields exams={examOptions} existingSelections={existingSelections} />
+              <div className="mt-4">
+                <SubmitButton type="submit" pendingText="Creating your plan..." className="w-full sm:w-auto">
+                  Save exam subjects
+                </SubmitButton>
+              </div>
+            </AuthFormState>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
@@ -80,13 +161,6 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const { data: userExamSubjects } = await firebase
-    .from("user_exam_subjects")
-    .select("exam_id,subject,is_active")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const exams = await listActiveExams();
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
   const subjectsByExam = (userExamSubjects ?? []).reduce((acc: Record<string, string[]>, item: any) => {
     if (!item?.exam_id || !item?.subject) return acc;

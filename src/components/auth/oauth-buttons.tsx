@@ -32,7 +32,7 @@ export function OAuthButtons() {
   async function start(provider: "google") {
     try {
       const firebase = createFirebaseBrowserClient();
-      const redirectTo = `${window.location.origin}/onboarding`;
+      const redirectTo = `${window.location.origin}/dashboard`;
       const { error } = await firebase.auth.signInWithOAuth({
         provider,
         options: {

@@ -141,7 +141,7 @@ export function createFirebaseBrowserClient() {
     auth: {
       async signInWithOAuth(args: { provider: "google"; options?: { redirectTo?: string } }) {
         const auth = getFirebaseBrowserAuth();
-        const fallbackTarget = `${window.location.origin}/onboarding`;
+        const fallbackTarget = `${window.location.origin}/dashboard`;
         const redirectTarget = toSafeRedirectTarget(args.options?.redirectTo, fallbackTarget);
 
         try {
@@ -185,7 +185,7 @@ export function createFirebaseBrowserClient() {
           const session = await establishSessionFromIdToken(idToken);
           if (session.error) return { handled: true, error: session.error };
 
-          const fallbackTarget = `${window.location.origin}/onboarding`;
+          const fallbackTarget = `${window.location.origin}/dashboard`;
           let redirectTo = fallbackTarget;
           try {
             const stored = window.sessionStorage.getItem(OAUTH_REDIRECT_TARGET_KEY);

@@ -19,7 +19,7 @@ export default async function PlanPage() {
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
-  if (!plan) redirect("/onboarding");
+  if (!plan) redirect("/dashboard");
 
   const start = format(new Date(), "yyyy-MM-dd");
   const end = format(addDays(new Date(), 13), "yyyy-MM-dd");
@@ -128,7 +128,7 @@ export default async function PlanPage() {
               );
             })
           ) : (
-            <div className="text-sm text-muted-foreground">No upcoming items. Create a plan in onboarding.</div>
+            <div className="text-sm text-muted-foreground">No upcoming items yet. Add exam subjects from your dashboard or settings to start learning.</div>
           )}
         </CardContent>
       </Card>

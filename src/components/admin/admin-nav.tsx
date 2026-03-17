@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  BriefcaseBusiness,
   BookOpenCheck,
   LayoutDashboard,
   Megaphone,
@@ -19,7 +20,8 @@ const ICONS: Record<string, LucideIcon> = {
   users: Users,
   support: MessageSquareWarning,
   referrals: Megaphone,
-  ops: Activity
+  ops: Activity,
+  careers: BriefcaseBusiness
 };
 
 const ITEMS = [
@@ -28,6 +30,7 @@ const ITEMS = [
   { href: "/admin/users", label: "Users", description: "Access and support", icon: "users" },
   { href: "/admin/support", label: "Support", description: "Pending and resolved issues", icon: "support" },
   { href: "/admin/referrals", label: "Referrals", description: "Campaign performance", icon: "referrals" },
+  { href: "/admin/careers", label: "Careers", description: "Catalog generation", icon: "careers" },
   { href: "/admin/ops", label: "Ops", description: "Queues and reliability", icon: "ops" }
 ] as const;
 
@@ -35,7 +38,7 @@ export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="grid gap-2 md:grid-cols-6">
+    <nav className="grid gap-2 md:grid-cols-7">
       {ITEMS.map((item) => {
         const Icon = ICONS[item.icon];
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

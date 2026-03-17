@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, BellDot, BookOpenCheck, CreditCard, LifeBuoy, LogOut, Megaphone, Settings, Shield, User, Users } from "lucide-react";
+import { Activity, BellDot, BookOpenCheck, BriefcaseBusiness, CreditCard, LifeBuoy, LogOut, Megaphone, Settings, Shield, User, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -62,6 +62,11 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
             <DropdownMenuItem asChild>
               <Link href="/admin/referrals" className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4" /> Referral campaigns
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/careers" className="flex items-center gap-2">
+                <BriefcaseBusiness className="h-4 w-4" /> Careers catalog
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

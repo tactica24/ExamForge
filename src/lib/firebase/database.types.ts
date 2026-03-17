@@ -54,6 +54,28 @@ export type ExamsRow = {
 export type ExamsInsert = Partial<ExamsRow> & { slug: string; name: string; country_code: string };
 export type ExamsUpdate = Partial<ExamsRow>;
 
+export type CareersRow = {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  courses: Json;
+  workplaces: Json;
+  jamb_subjects: Json;
+  keywords: Json;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+export type CareersInsert = Partial<CareersRow> & {
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+};
+export type CareersUpdate = Partial<CareersRow>;
+
 export type SyllabiRow = {
   id: string;
   exam_id: string;
@@ -423,6 +445,7 @@ export type Database = {
   public: {
     Tables: {
       app_settings: TableDef<AppSettingsRow, AppSettingsInsert, AppSettingsUpdate>;
+      careers: TableDef<CareersRow, CareersInsert, CareersUpdate>;
       profiles: TableDef<ProfilesRow, ProfilesInsert, ProfilesUpdate>;
       profile_public: TableDef<ProfilePublicRow, ProfilePublicInsert, ProfilePublicUpdate>;
       exams: TableDef<ExamsRow, ExamsInsert, ExamsUpdate>;

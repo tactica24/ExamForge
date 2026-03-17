@@ -197,12 +197,12 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
           <CardHeader>
             <CardTitle>No groups yet</CardTitle>
             <CardDescription>
-              Choose group mode during onboarding or add another subject in settings to get matched automatically.
+              Add another subject in settings or switch a future plan into group mode to get matched automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/onboarding">Start onboarding</Link>
+              <Link href="/settings">Open settings</Link>
             </Button>
           </CardContent>
         </Card>

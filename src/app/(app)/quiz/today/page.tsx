@@ -11,7 +11,7 @@ export default async function QuizTodayPage() {
   if (!user) redirect("/login");
 
   const plan = await getActivePlanForUser(user.id);
-  if (!plan) redirect("/onboarding");
+  if (!plan) redirect("/dashboard");
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: item } = await firebase
