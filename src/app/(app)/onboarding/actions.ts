@@ -9,7 +9,6 @@ import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { matchOrCreateGroup } from "@/lib/groups/match";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
-import { hasActiveProAccess } from "@/lib/billing/access";
 import { claimReferralForUser } from "@/lib/referrals/claim";
 
 const OnboardingSchema = z.object({
@@ -96,10 +95,6 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
     subscription_tier: "free",
     pro_until: addDays(new Date(), 3).toISOString()
   };
-
-  if (!hasActiveProAccess(accessProfile)) {
-    redirect("/pricing");
-  }
 
   const location =
     parsed.data.country === "Nigeria" && parsed.data.state
