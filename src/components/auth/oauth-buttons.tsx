@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { sanitizeNextPath } from "@/lib/auth/redirects";
 import { createFirebaseBrowserClient } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 
-export function OAuthButtons() {
+export function OAuthButtons(props: { nextPath?: string | null }) {
   React.useEffect(() => {
     let mounted = true;
 
@@ -32,7 +33,8 @@ export function OAuthButtons() {
   async function start(provider: "google") {
     try {
       const firebase = createFirebaseBrowserClient();
-      const redirectTo = `${window.location.origin}/dashboard`;
+      const nextPath = sanitizeNextPath(props.nextPath) ?? "/dashboard";
+      const redirectTo = `${window.location.origin}${nextPath}`;
       const { error } = await firebase.auth.signInWithOAuth({
         provider,
         options: {

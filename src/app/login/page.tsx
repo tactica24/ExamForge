@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { sanitizeNextPath } from "@/lib/auth/redirects";
 
 export default async function LoginPage(props: { searchParams: Promise<{ next?: string; verify?: string; verified?: string }> }) {
   const sp = await props.searchParams;
-  const next = sp.next ?? "";
+  const next = sanitizeNextPath(sp.next) ?? "";
   const showVerifyHint = sp.verify === "1";
   const showVerifiedHint = sp.verified === "1";
 
@@ -36,7 +37,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
           Account created. Check your email and confirm your account, then log in.
         </div>
       ) : null}
-      <OAuthButtons />
+      <OAuthButtons nextPath={next} />
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
         <div className="text-xs text-muted-foreground">or</div>

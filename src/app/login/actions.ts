@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { getPostAuthPath } from "@/lib/auth/flow";
+import { sanitizeNextPath } from "@/lib/auth/redirects";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -11,20 +13,6 @@ const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8)
 });
-
-function sanitizeNextPath(input: string) {
-  const next = String(input ?? "").trim();
-  if (!next.startsWith("/")) return null;
-  if (next.startsWith("//")) return null;
-  if (next.includes("\\") || next.includes("\r") || next.includes("\n")) return null;
-
-  try {
-    const parsed = new URL(next, "http://localhost");
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return null;
-  }
-}
 
 export async function loginAction(_: unknown, formData: FormData) {
   const headerStore = await headers();
@@ -65,14 +53,20 @@ export async function loginAction(_: unknown, formData: FormData) {
     return { ok: false, message: error.message };
   }
 
-  const next = sanitizeNextPath(String(formData.get("next") ?? ""));
-  if (next) {
-    redirect(next);
-  }
-
   const {
     data: { user }
   } = await firebase.auth.getUser();
-  const isAdmin = (user?.app_metadata as any)?.role === "admin";
-  redirect(isAdmin ? "/admin" : "/dashboard");
+  if (!user) {
+    return {
+      ok: false,
+      message: "Login succeeded, but we could not load your account details. Please try again."
+    };
+  }
+
+  const redirectPath = await getPostAuthPath({
+    firebase,
+    user,
+    nextPath: sanitizeNextPath(String(formData.get("next") ?? ""))
+  });
+  redirect(redirectPath);
 }

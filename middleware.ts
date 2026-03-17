@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   const session = request.cookies.get(FIREBASE_SESSION_COOKIE)?.value;
   if (!session) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", nextUrl.pathname);
+    loginUrl.searchParams.set("next", `${nextUrl.pathname}${nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 

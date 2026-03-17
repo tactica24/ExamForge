@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/app/app-shell";
 import { OfflineWarmCache } from "@/components/offline/offline-warm-cache";
 import { OfflineSync } from "@/components/offline/offline-sync";
+import { getUserAppState } from "@/lib/auth/flow";
+import { resolvePostAuthPath } from "@/lib/auth/redirects";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,17 +15,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  const isAdmin = (user.app_metadata as any)?.role === "admin";
+  const { profile, isAdmin, hasCompletedOnboarding } = await getUserAppState({
+    firebase,
+    user
+  });
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname") ?? "";
-  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/superadmin");
+  const resolvedPath = pathname
+    ? resolvePostAuthPath({
+        isAdmin,
+        hasCompletedOnboarding,
+        nextPath: pathname
+      })
+    : null;
 
-  if (isAdmin && pathname && !isAdminRoute) {
-    redirect("/admin");
-  }
-  if (!isAdmin && isAdminRoute) {
-    redirect("/dashboard");
+  if (pathname && resolvedPath && resolvedPath !== pathname) {
+    redirect(resolvedPath);
   }
 
   return (

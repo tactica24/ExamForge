@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { getPostAuthPath } from "@/lib/auth/flow";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
@@ -39,5 +40,14 @@ export async function verifyOtpAction(_: unknown, formData: FormData) {
   });
   if (error) return { ok: false, message: error.message };
 
-  redirect("/dashboard");
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+  if (!user) return { ok: false, message: "OTP verified, but we could not load your account." };
+
+  const redirectPath = await getPostAuthPath({
+    firebase,
+    user
+  });
+  redirect(redirectPath);
 }
