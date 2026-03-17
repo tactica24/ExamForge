@@ -1,6 +1,7 @@
 import "server-only";
 
 import { addDays } from "date-fns";
+import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { resolvePostAuthPath } from "@/lib/auth/redirects";
@@ -142,12 +143,8 @@ export async function hasCompletedOnboarding(args: {
   firebase: FirebaseServerClient;
   userId: string;
 }) {
-  const [subjectsResult, plansResult] = await Promise.all([
-    args.firebase.from("user_exam_subjects").select("id").eq("user_id", args.userId).limit(1).maybeSingle(),
-    args.firebase.from("user_plans").select("id").eq("user_id", args.userId).limit(1).maybeSingle()
-  ]);
-
-  return Boolean(subjectsResult.data?.id || plansResult.data?.id);
+  const activePlan = await getActivePlanForUser(args.userId);
+  return Boolean(activePlan);
 }
 
 export async function getUserAppState(args: {

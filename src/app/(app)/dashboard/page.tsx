@@ -56,9 +56,7 @@ export default async function DashboardPage() {
   const existingSelections = userExamSubjects.map((item) => ({ examId: item.exam_id, subject: item.subject }));
 
   if (!plan) {
-    if (!userExamSubjects.length) {
-      redirect("/onboarding");
-    }
+    redirect("/onboarding");
 
     const displayName = String(profile?.display_name ?? profile?.name ?? user.email ?? "Learner");
 
