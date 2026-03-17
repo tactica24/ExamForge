@@ -14,6 +14,58 @@ function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | n
   return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
 }
 
+async function ensurePlanHasItems(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  plan: any;
+}) {
+  const { data: existingItems } = await args.firebase
+    .from("plan_items")
+    .select("id")
+    .eq("plan_id", args.plan.id);
+  if (existingItems?.length) return args.plan;
+
+  const { data: exam } = await args.firebase
+    .from("exams")
+    .select("id,slug")
+    .eq("id", args.plan.exam_id)
+    .maybeSingle();
+  if (!exam?.id || !exam?.slug) return args.plan;
+
+  const startDate =
+    typeof args.plan.start_date === "string" && args.plan.start_date
+      ? args.plan.start_date
+      : formatISO(new Date(), { representation: "date" });
+
+  const topics = await getTopicsForExamSubject({
+    examId: args.plan.exam_id,
+    examSlug: exam.slug,
+    subject: args.plan.subject
+  }).catch(() => []);
+
+  const items = generatePlanItemsFromTopics({
+    topics,
+    pace: args.plan.pace ?? "steady",
+    startDate,
+    targetDate: args.plan.target_date ?? null
+  });
+
+  if (!items.length) return args.plan;
+
+  await args.firebase.from("plan_items").insert(
+    items.map((item) => ({
+      plan_id: args.plan.id,
+      scheduled_for: item.scheduled_for,
+      day_index: item.day_index,
+      topic_path: item.topic_path,
+      title: item.title,
+      resource_links: item.resource_links,
+      status: "todo"
+    }))
+  );
+
+  return args.plan;
+}
+
 async function createFallbackPlanForLatestSelection(args: {
   firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   userId: string;
@@ -91,6 +143,9 @@ export async function getActivePlanForUser(userId: string) {
 
   const plan = sortNewestFirst(plans)?.[0] ?? null;
 
-  if (plan) return plan;
-  return createFallbackPlanForLatestSelection({ firebase, userId });
+  if (plan) return ensurePlanHasItems({ firebase, plan });
+
+  const fallbackPlan = await createFallbackPlanForLatestSelection({ firebase, userId });
+  if (!fallbackPlan) return null;
+  return ensurePlanHasItems({ firebase, plan: fallbackPlan });
 }

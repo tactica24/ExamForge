@@ -8,6 +8,12 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
+import {
+  listPlanItemsForDate,
+  listRecentInAppNotifications,
+  listRecentQuizResults,
+  listUserExamSubjects
+} from "@/lib/app/user-study-data";
 import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
@@ -29,11 +35,10 @@ export default async function DashboardPage() {
       .select("name,display_name,avatar_url,subscription_tier,pro_until")
       .eq("user_id", user.id)
       .maybeSingle(),
-    firebase
-      .from("user_exam_subjects")
-      .select("exam_id,subject,is_active")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false }),
+    listUserExamSubjects({
+      firebase,
+      userId: user.id
+    }),
     listActiveExams()
   ]);
 
@@ -42,7 +47,7 @@ export default async function DashboardPage() {
   const freeTrialActive = isFreeTrialActive(profile);
   const timedAccessEndsAt = getTimedAccessEndsAt(profile);
   const timedAccessDays = getTimedAccessDaysRemaining(profile);
-  const userExamSubjects = userExamSubjectsRes.data ?? [];
+  const userExamSubjects = userExamSubjectsRes ?? [];
 
   if (!plan) {
     redirect("/onboarding");
@@ -51,11 +56,35 @@ export default async function DashboardPage() {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
-  const { data: gamificationData, error: gamificationErr } = await firebase
-    .from("user_gamification")
-    .select("streak_count,total_xp,level,badges")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: gamificationData, error: gamificationErr }, todayItems, recentResults, recentNotifications, { data: notificationPrefs }] =
+    await Promise.all([
+      firebase
+        .from("user_gamification")
+        .select("streak_count,total_xp,level,badges")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      listPlanItemsForDate({
+        firebase,
+        planId: plan.id,
+        scheduledFor: todayStr
+      }),
+      listRecentQuizResults({
+        firebase,
+        userId: user.id,
+        limit: 10
+      }),
+      listRecentInAppNotifications({
+        firebase,
+        userId: user.id,
+        limit: 5
+      }),
+      firebase
+        .from("notification_prefs")
+        .select("reminders,reminder_time")
+        .eq("user_id", user.id)
+        .maybeSingle()
+    ]);
+
   const gamification = gamificationErr ? null : gamificationData;
 
   const streak = gamification?.streak_count ?? 0;
@@ -64,34 +93,6 @@ export default async function DashboardPage() {
   const nextLevelAt = level * 100;
   const levelProgress = Math.min(100, Math.round((totalXp / Math.max(1, nextLevelAt)) * 100));
   const badgesCount = Array.isArray(gamification?.badges) ? (gamification?.badges as any[]).length : 0;
-
-  const { data: todayItems } = await firebase
-    .from("plan_items")
-    .select("*")
-    .eq("plan_id", plan.id)
-    .eq("scheduled_for", todayStr)
-    .order("day_index", { ascending: true });
-
-  const { data: recentResults } = await firebase
-    .from("user_quiz_results")
-    .select("score,total,created_at,quiz_id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: recentNotifications } = await firebase
-    .from("notifications")
-    .select("id,message,status,channel,scheduled_for,sent_at,created_at")
-    .eq("user_id", user.id)
-    .eq("channel", "in_app")
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  const { data: notificationPrefs } = await firebase
-    .from("notification_prefs")
-    .select("reminders,reminder_time")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
   const subjectsByExam = (userExamSubjects ?? []).reduce((acc: Record<string, string[]>, item: any) => {

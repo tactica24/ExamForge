@@ -16,6 +16,7 @@ import { ensureStudyAssetsForPlanTopic } from "@/lib/plans/study-assets";
 import { findTopicSubtopics } from "@/lib/plans/topic-subtopics";
 import type { Json } from "@/lib/firebase/database.types";
 import { hasActiveProAccess } from "@/lib/billing/access";
+import { listPlanItemsForPlan } from "@/lib/app/user-study-data";
 
 const UpdateSchema = z.object({
   item_id: z.string().uuid(),
@@ -75,15 +76,12 @@ async function isPlanItemLocked(args: {
   planId: string;
   itemId: string;
 }) {
-  const { data: items } = await args.firebase
-    .from("plan_items")
-    .select("id,scheduled_for,day_index,status,resource_links,created_at")
-    .eq("plan_id", args.planId)
-    .order("scheduled_for", { ascending: true })
-    .order("day_index", { ascending: true })
-    .order("created_at", { ascending: true });
+  const ordered = await listPlanItemsForPlan({
+    firebase: args.firebase,
+    planId: args.planId,
+    columns: "id,scheduled_for,day_index,status,resource_links,created_at"
+  });
 
-  const ordered = items ?? [];
   const idx = ordered.findIndex((row: any) => String(row?.id ?? "") === args.itemId);
   if (idx <= 0) return { locked: false, firstIncompleteId: null };
 

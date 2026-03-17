@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { addDays, differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
+import { listPlanItemsForPlan, listPlanItemsInWindow } from "@/lib/app/user-study-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,21 +25,20 @@ export default async function PlanPage() {
   const start = format(new Date(), "yyyy-MM-dd");
   const end = format(addDays(new Date(), 13), "yyyy-MM-dd");
 
-  const { data: items } = await firebase
-    .from("plan_items")
-    .select("*")
-    .eq("plan_id", plan.id)
-    .gte("scheduled_for", start)
-    .lte("scheduled_for", end)
-    .order("scheduled_for", { ascending: true });
-  const { data: orderedItems } = await firebase
-    .from("plan_items")
-    .select("id,scheduled_for,day_index,status,resource_links,created_at")
-    .eq("plan_id", plan.id)
-    .order("scheduled_for", { ascending: true })
-    .order("day_index", { ascending: true })
-    .order("created_at", { ascending: true });
-  const ordered = orderedItems ?? [];
+  const [items, ordered] = await Promise.all([
+    listPlanItemsInWindow({
+      firebase,
+      planId: plan.id,
+      start,
+      end
+    }),
+    listPlanItemsForPlan({
+      firebase,
+      planId: plan.id,
+      columns: "id,scheduled_for,day_index,status,resource_links,created_at"
+    })
+  ]);
+
   let firstIncompleteId: string | null = null;
   for (const row of ordered) {
     const completed = isPlanItemQuizCompleted(row?.resource_links) || row?.status === "done";
@@ -70,7 +70,7 @@ export default async function PlanPage() {
           <CardDescription>Open each topic to study the breakdown before taking the quiz.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {items?.length ? (
+          {items.length ? (
             items.map((item) => {
               const hasLesson = Boolean(getPlanItemLesson(item.resource_links));
               const isCompleted = isPlanItemQuizCompleted(item.resource_links) || item.status === "done";

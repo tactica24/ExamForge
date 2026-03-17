@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { StudyAudioPlayer } from "@/components/plan/study-audio-player";
 import { StudySlidesPlayer } from "@/components/plan/study-slides-player";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { listPlanItemsForPlan } from "@/lib/app/user-study-data";
 import {
   getPlanItemLesson,
   getPlanItemLessonAssets,
@@ -70,15 +71,12 @@ export default async function PlanTopicPage(props: {
     .maybeSingle();
   if (!plan) redirect("/plan");
 
-  const { data: orderedItems } = await firebase
-    .from("plan_items")
-    .select("id,scheduled_for,day_index,status,resource_links,created_at")
-    .eq("plan_id", plan.id)
-    .order("scheduled_for", { ascending: true })
-    .order("day_index", { ascending: true })
-    .order("created_at", { ascending: true });
+  const ordered = await listPlanItemsForPlan({
+    firebase,
+    planId: plan.id,
+    columns: "id,scheduled_for,day_index,status,resource_links,created_at"
+  });
 
-  const ordered = orderedItems ?? [];
   const idx = ordered.findIndex((row: any) => String(row?.id ?? "") === item.id);
   const firstIncomplete = ordered.slice(0, Math.max(idx, 0)).find((row: any) => {
     const completed = isPlanItemQuizCompleted(row?.resource_links) || row?.status === "done";

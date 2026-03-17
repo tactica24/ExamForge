@@ -8,10 +8,9 @@ export async function listActiveExams() {
   const { data, error } = await firebase
     .from("exams")
     .select("*")
-    .eq("is_active", true)
-    .order("name", { ascending: true });
+    .eq("is_active", true);
 
   if (error) return getFallbackExams();
   if (!data?.length) return getFallbackExams();
-  return data;
+  return [...data].sort((left, right) => String(left?.name ?? "").localeCompare(String(right?.name ?? "")));
 }

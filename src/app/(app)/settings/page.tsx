@@ -20,6 +20,11 @@ import { ReferralCard } from "@/components/referrals/referral-card";
 import { ParentLinksCard } from "@/components/parent/parent-links-card";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { AddExamSubjectFields } from "@/components/settings/add-exam-subject-fields";
+import {
+  getLatestUserPlanSummary,
+  listActiveParentLinks,
+  listUserExamSubjects
+} from "@/lib/app/user-study-data";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, hasActiveProAccess, isFreeTrialActive } from "@/lib/billing/access";
 import { parseTopicsPerDay } from "@/lib/plans/pace";
@@ -35,36 +40,29 @@ export default async function SettingsPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, prefsRes, parentLinksRes, userSubjectsRes, exams, latestPlanRes] = await Promise.all([
+  const [profileRes, prefsRes, parentLinks, userExamSubjects, exams, latestPlan] = await Promise.all([
     firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
-    firebase
-      .from("parent_links")
-      .select("token,label,created_at,revoked_at")
-      .eq("user_id", user.id)
-      .eq("revoked_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    firebase
-      .from("user_exam_subjects")
-      .select("exam_id,subject,is_active,created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false }),
+    listActiveParentLinks({
+      firebase,
+      userId: user.id,
+      limit: 5
+    }),
+    listUserExamSubjects({
+      firebase,
+      userId: user.id
+    }),
     listActiveExams(),
-    firebase
-      .from("user_plans")
-      .select("pace")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    getLatestUserPlanSummary({
+      firebase,
+      userId: user.id,
+      columns: "pace,created_at"
+    })
   ]);
 
   const profile = profileRes.data;
   const prefs = prefsRes.data;
-  const parentLinks = parentLinksRes.data ?? [];
-  const userExamSubjects = userSubjectsRes.data ?? [];
-  const topicsPerDayDefault = parseTopicsPerDay(latestPlanRes.data?.pace ?? "steady", 1);
+  const topicsPerDayDefault = parseTopicsPerDay(latestPlan?.pace ?? "steady", 1);
 
   const channel = Array.isArray(prefs?.channels) ? String((prefs?.channels as any[])[0] ?? "in_app") : "in_app";
   const prefsObj = (prefs as any) ?? {};
