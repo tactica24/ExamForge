@@ -1,3 +1,5 @@
+import { getAppUrl } from "@/lib/app-url";
+
 type HeaderReader = Pick<Headers, "get">;
 
 function normalizeHost(headers: HeaderReader) {
@@ -5,13 +7,8 @@ function normalizeHost(headers: HeaderReader) {
 }
 
 function fallbackHostFromEnv() {
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.APP_WEB_URL ??
-    (process.env.NODE_ENV === "production" ? "https://ace-naija.com" : "");
-  if (!appUrl) return "";
   try {
-    return new URL(appUrl).host.toLowerCase();
+    return new URL(getAppUrl()).host.toLowerCase();
   } catch {
     return "";
   }

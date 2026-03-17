@@ -34,7 +34,10 @@ export function resolvePostAuthPath(args: {
   }
 
   if (!args.hasCompletedOnboarding) {
-    return "/onboarding";
+    if (nextPath === "/onboarding") {
+      return "/onboarding";
+    }
+    return "/dashboard";
   }
 
   if (nextPath && nextPath !== "/onboarding" && !isAdminPath(nextPath) && !isAuthPath(nextPath)) {

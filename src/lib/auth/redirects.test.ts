@@ -35,12 +35,19 @@ describe("resolvePostAuthPath", () => {
     ).toBe("/admin");
   });
 
-  it("sends new learners to onboarding before anything else", () => {
+  it("sends new learners into the dashboard/onboarding flow first", () => {
     expect(
       resolvePostAuthPath({
         isAdmin: false,
         hasCompletedOnboarding: false,
         nextPath: "/plan"
+      })
+    ).toBe("/dashboard");
+    expect(
+      resolvePostAuthPath({
+        isAdmin: false,
+        hasCompletedOnboarding: false,
+        nextPath: "/onboarding"
       })
     ).toBe("/onboarding");
   });
