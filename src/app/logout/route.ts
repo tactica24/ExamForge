@@ -4,6 +4,18 @@ import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/r
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { getAppOrigin } from "@/lib/app-url";
 
+async function performLogout() {
+  const firebase = await createFirebaseServerClient();
+  await firebase.auth.signOut();
+  return NextResponse.redirect(new URL("/", getAppOrigin()), {
+    status: 303
+  });
+}
+
+export async function GET() {
+  return performLogout();
+}
+
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request.headers)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -21,9 +33,5 @@ export async function POST(request: Request) {
     });
   }
 
-  const firebase = await createFirebaseServerClient();
-  await firebase.auth.signOut();
-  return NextResponse.redirect(new URL("/", getAppOrigin()), {
-    status: 303
-  });
+  return performLogout();
 }

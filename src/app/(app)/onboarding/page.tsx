@@ -29,7 +29,10 @@ export default async function OnboardingPage() {
       ? user.phone
       : "";
 
-  const initialLocation = typeof metadata.location === "string" ? metadata.location : "";
+  const initialCountry = typeof metadata.country === "string" && metadata.country.trim().length > 0
+    ? metadata.country
+    : "Nigeria";
+  const initialState = typeof metadata.state === "string" ? metadata.state : "";
 
   return (
     <OnboardingWizard
@@ -37,7 +40,8 @@ export default async function OnboardingPage() {
       preferredExamSlugs={preferredExamSlugs}
       initialName={initialName}
       initialPhone={initialPhone}
-      initialLocation={initialLocation}
+      initialCountry={initialCountry}
+      initialState={initialState}
     />
   );
 }

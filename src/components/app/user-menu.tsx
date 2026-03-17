@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Activity, BellDot, BookOpenCheck, CreditCard, LifeBuoy, LogOut, Megaphone, Settings, Shield, User, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -15,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function UserMenu(props: { name: string | null; avatarUrl?: string | null; isAdmin: boolean }) {
-  const [signingOut, setSigningOut] = useState(false);
   const initials =
     props.name
       ?.split(" ")
@@ -102,49 +100,12 @@ export function UserMenu(props: { name: string | null; avatarUrl?: string | null
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={signingOut}
-          onSelect={async (e) => {
-            e.preventDefault();
-            if (signingOut) return;
-
-            try {
-              setSigningOut(true);
-              const response = await fetch("/logout", {
-                method: "POST",
-                headers: {
-                  Accept: "text/html,application/xhtml+xml"
-                },
-                credentials: "same-origin"
-              });
-
-              if (response.redirected) {
-                window.location.assign(response.url);
-                return;
-              }
-
-              if (response.ok) {
-                window.location.assign("/");
-                return;
-              }
-            } catch {
-              // Fall back to the hidden form submit below.
-            }
-
-            const form = document.getElementById("logout-form") as HTMLFormElement | null;
-            if (!form) {
-              window.location.assign("/");
-              return;
-            }
-            if (typeof (form as any).requestSubmit === "function") (form as any).requestSubmit();
-            else form.submit();
-          }}
-          className="text-destructive focus:text-destructive"
-        >
-          <LogOut className="h-4 w-4" /> {signingOut ? "Logging out..." : "Log out"}
+        <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+          <a href="/logout" className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" /> Log out
+          </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-

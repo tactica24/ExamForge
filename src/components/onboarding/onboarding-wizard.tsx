@@ -8,8 +8,10 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { completeOnboardingAction } from "@/app/(app)/onboarding/actions";
+import { nigeriaStateOptions } from "@/data/location-options";
 import { mergeNigerianAndExamSubjects, mergeUniqueSubjects } from "@/data/subjects";
 
 type ExamRow = Database["public"]["Tables"]["exams"]["Row"];
@@ -17,9 +19,19 @@ type ExamRow = Database["public"]["Tables"]["exams"]["Row"];
 const learningStyles = [
   { value: "visual", label: "Visual (diagrams, charts)" },
   { value: "auditory", label: "Auditory (listen and repeat)" },
-  { value: "reading", label: "Reading/Writing (notes, summaries)" },
-  { value: "kinesthetic", label: "Kinesthetic (practice + drills)" }
+  { value: "reading", label: "Reading/Writing (notes, summaries)" }
 ];
+
+const onboardingCountryOptions = [
+  "Nigeria",
+  "Ghana",
+  "Benin",
+  "Togo",
+  "Cote d'Ivoire",
+  "Liberia",
+  "Sierra Leone",
+  "Senegal"
+] as const;
 
 function toSubjectList(value: ExamRow["subjects"]): string[] {
   return Array.isArray(value) ? (value as unknown as string[]) : [];
@@ -50,7 +62,8 @@ export function OnboardingWizard(props: {
   preferredExamSlugs?: string[];
   initialName?: string;
   initialPhone?: string;
-  initialLocation?: string;
+  initialCountry?: string;
+  initialState?: string;
 }) {
   const initialExam = React.useMemo(() => {
     return getInitialExam(props.exams, props.preferredExamSlugs ?? []);
@@ -66,6 +79,12 @@ export function OnboardingWizard(props: {
   const [level, setLevel] = React.useState<string>("beginner");
   const [mode, setMode] = React.useState<string>("solo");
   const [pace, setPace] = React.useState<string>("steady");
+  const [country, setCountry] = React.useState<string>(
+    onboardingCountryOptions.includes((props.initialCountry as (typeof onboardingCountryOptions)[number]) ?? "Nigeria")
+      ? (props.initialCountry as string)
+      : "Nigeria"
+  );
+  const [state, setState] = React.useState<string>(props.initialState ?? "");
 
   const subjects = React.useMemo(() => {
     const exam = props.exams.find((item) => item.id === examId);
@@ -76,6 +95,12 @@ export function OnboardingWizard(props: {
     if (!subjects.length) return;
     if (!subjects.includes(subject)) setSubject(subjects[0] ?? "");
   }, [subjects, subject]);
+
+  React.useEffect(() => {
+    if (country !== "Nigeria" && state) {
+      setState("");
+    }
+  }, [country, state]);
 
   const defaultStart = formatISO(new Date(), { representation: "date" });
   const defaultTarget = formatISO(addDays(new Date(), 90), { representation: "date" });
@@ -102,13 +127,28 @@ export function OnboardingWizard(props: {
               <Input id="phone" name="phone" type="tel" placeholder="+234 801 234 5678" defaultValue={props.initialPhone ?? ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input id="location" name="location" placeholder="City, Country" defaultValue={props.initialLocation ?? ""} />
+              <Label htmlFor="country">Country</Label>
+              <NativeSelect id="country" name="country" value={country} onChange={(e) => setCountry(e.target.value)} required>
+                {onboardingCountryOptions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input id="timezone" name="timezone" defaultValue="Africa/Lagos" />
-            </div>
+            {country === "Nigeria" ? (
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <NativeSelect id="state" name="state" value={state} onChange={(e) => setState(e.target.value)} required>
+                  <option value="">Select state</option>
+                  {nigeriaStateOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            ) : null}
           </div>
         </Card>
 
