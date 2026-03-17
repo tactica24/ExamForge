@@ -5,17 +5,25 @@ import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | null | undefined) {
+  return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
+}
+
 async function createFallbackPlanForLatestSelection(args: {
   firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   userId: string;
 }) {
-  const { data: selection } = await args.firebase
+  const { data: selections } = await args.firebase
     .from("user_exam_subjects")
     .select("exam_id,subject,created_at")
-    .eq("user_id", args.userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", args.userId);
+
+  const selection = sortNewestFirst(selections)?.[0] ?? null;
 
   if (!selection?.exam_id || !selection?.subject) return null;
 
@@ -76,13 +84,12 @@ async function createFallbackPlanForLatestSelection(args: {
 
 export async function getActivePlanForUser(userId: string) {
   const firebase = await createFirebaseServerClient();
-  const { data: plan } = await firebase
+  const { data: plans } = await firebase
     .from("user_plans")
     .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", userId);
+
+  const plan = sortNewestFirst(plans)?.[0] ?? null;
 
   if (plan) return plan;
   return createFallbackPlanForLatestSelection({ firebase, userId });

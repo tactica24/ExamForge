@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { getActivePlanForUser } from "@/lib/app/get-active-plan";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
@@ -16,6 +17,15 @@ const OnboardingSchema = z.object({
   subjects: z.array(z.string().trim().min(2)).min(1).max(7)
 });
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | null | undefined) {
+  return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
+}
+
 async function ensurePlanForSubject(args: {
   firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   userId: string;
@@ -23,7 +33,7 @@ async function ensurePlanForSubject(args: {
   examSlug: string;
   subject: string;
 }) {
-  await args.firebase.from("user_exam_subjects").upsert(
+  const { error: selectionErr } = await args.firebase.from("user_exam_subjects").upsert(
     {
       user_id: args.userId,
       exam_id: args.examId,
@@ -32,16 +42,16 @@ async function ensurePlanForSubject(args: {
     },
     { onConflict: "user_id,exam_id,subject" }
   );
+  if (selectionErr) throw new Error(selectionErr.message);
 
-  const { data: existingPlan } = await args.firebase
+  const { data: existingPlans } = await args.firebase
     .from("user_plans")
     .select("*")
     .eq("user_id", args.userId)
     .eq("exam_id", args.examId)
-    .eq("subject", args.subject)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("subject", args.subject);
+
+  const existingPlan = sortNewestFirst(existingPlans)?.[0] ?? null;
 
   let plan = existingPlan;
   if (!plan) {
@@ -194,6 +204,14 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
       path: "/",
       maxAge: 0
     });
+  }
+
+  const activePlan = await getActivePlanForUser(user.id);
+  if (!activePlan) {
+    return {
+      ok: false,
+      message: "We saved your subjects, but could not finish opening your dashboard yet. Please try again."
+    };
   }
 
   redirect("/dashboard");
