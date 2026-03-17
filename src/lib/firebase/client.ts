@@ -70,6 +70,7 @@ async function establishSessionFromIdToken(idToken: string) {
   const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({ idToken })
   });
 
