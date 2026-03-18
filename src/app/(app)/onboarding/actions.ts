@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
+import { FREE_TRIAL_DAYS } from "@/lib/billing/access";
 import { getTopicsForExamSubject } from "@/lib/syllabi/get";
 import { generatePlanItemsFromTopics } from "@/lib/plans/generate";
 import { ensureSeedExamExists } from "@/lib/seed/ensure";
@@ -136,7 +137,7 @@ export async function completeOnboardingAction(_: unknown, formData: FormData) {
 
   const accessProfile = existingProfile ?? {
     subscription_tier: "free",
-    pro_until: addDays(new Date(), 3).toISOString()
+    pro_until: addDays(new Date(), FREE_TRIAL_DAYS).toISOString()
   };
   const examInterestSlugs = Array.isArray((existingProfile as any)?.exam_interest_slugs)
     ? Array.from(

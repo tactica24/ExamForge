@@ -36,7 +36,7 @@ export default function PricingPage() {
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Choose the plan that fits your prep style</h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Every new account starts with 3 days of full access. Upgrade to Pro when you want to keep the wider
+            Every new account starts with 7 days of full access. Upgrade to Pro when you want to keep the wider
             subject range, premium practice, and stronger accountability tools active.
           </p>
 
@@ -45,7 +45,7 @@ export default function PricingPage() {
               <div className="text-sm font-medium">Free</div>
               <div className="mt-2 text-3xl font-semibold">N0</div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <li>First 3 days include full access across study, practice, mock exams, and groups</li>
+                <li>First 7 days include full access across study, practice, mock exams, and groups</li>
                 <li>After the free-access window: one exam + one subject stays active</li>
                 <li>Objective questions, history, and review remain available on the free plan</li>
                 <li>Upgrade prompt appears when you try to add more subjects or premium tools</li>

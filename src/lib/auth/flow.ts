@@ -2,6 +2,7 @@ import "server-only";
 
 import { addDays } from "date-fns";
 import { getActivePlanForUser } from "@/lib/app/get-active-plan";
+import { FREE_TRIAL_DAYS } from "@/lib/billing/access";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { resolvePostAuthPath } from "@/lib/auth/redirects";
@@ -127,7 +128,7 @@ export async function ensureProfileForUser(args: {
     preferred_explanation_language: cleanText(metadata.preferred_explanation_language, 20) || "en",
     low_data_mode: false,
     leaderboard_anonymous: false,
-    pro_until: addDays(new Date(), 3).toISOString(),
+    pro_until: addDays(new Date(), FREE_TRIAL_DAYS).toISOString(),
     country: cleanText(metadata.country, 80) || null,
     state: cleanText(metadata.state, 80) || null,
     exam_interest_slugs: examInterestSlugs.length ? examInterestSlugs : undefined

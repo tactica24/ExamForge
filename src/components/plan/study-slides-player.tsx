@@ -48,11 +48,6 @@ export function StudySlidesPlayer(props: {
             <li key={`${point}-${pointIndex}`}>{point}</li>
           ))}
         </ul>
-        {current.visual_suggestions ? (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Visual cue: <span className="font-medium text-foreground">{current.visual_suggestions}</span>
-          </p>
-        ) : null}
 
         {visual ? (
           <div className="mt-4 rounded-lg border border-border/70 bg-card/70 p-3">

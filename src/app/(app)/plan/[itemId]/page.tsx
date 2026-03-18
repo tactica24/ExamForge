@@ -308,14 +308,6 @@ export default async function PlanTopicPage(props: {
                     </ul>
                   ) : null}
 
-                  {visual.prompt ? (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Visual prompt: <span className="font-medium text-foreground">{visual.prompt}</span>
-                    </p>
-                  ) : null}
-                  {visual.alt_text ? (
-                    <p className="mt-1 text-[11px] text-muted-foreground">Alt text: {visual.alt_text}</p>
-                  ) : null}
                 </div>
               );
             })}

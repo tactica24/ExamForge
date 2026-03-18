@@ -26,28 +26,9 @@ import { recomputeLeaderboardAction } from "@/app/(app)/admin/actions";
 import { getBrandingSettings } from "@/lib/branding";
 import { parseContactRequestMessage } from "@/lib/contact/requests";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getFirebaseAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/admin-app";
+import { getAdminUserDirectory } from "@/lib/firebase/admin-users";
 import { getServerEnv } from "@/lib/env";
-
-async function getAdminCount() {
-  const auth = getFirebaseAdminAuth();
-  if (!auth) return null;
-
-  let count = 0;
-  let pageToken: string | undefined;
-  let page = 0;
-
-  do {
-    const result = await auth.listUsers(1000, pageToken);
-    for (const entry of result.users) {
-      if (entry.customClaims?.role === "admin") count += 1;
-    }
-    pageToken = result.pageToken;
-    page += 1;
-  } while (pageToken && page < 20);
-
-  return count;
-}
 
 function ratio(value: number, total: number) {
   if (!total) return 0;
@@ -63,6 +44,7 @@ export default async function AdminHomePage() {
   const branding = await getBrandingSettings();
 
   const [
+    adminDirectory,
     usersCountRes,
     examsCountRes,
     syllabiCountRes,
@@ -78,9 +60,9 @@ export default async function AdminHomePage() {
     leaderboardSnapshotRes,
     pendingSupportRes,
     enterpriseCountRes,
-    enterpriseRequestsRes,
-    adminCount
+    enterpriseRequestsRes
   ] = await Promise.all([
+    getAdminUserDirectory({ firebase }),
     firebase.from("profiles").select("user_id", { head: true, count: "exact" }),
     firebase.from("exams").select("id", { head: true, count: "exact" }),
     firebase.from("syllabi").select("id", { head: true, count: "exact" }),
@@ -125,12 +107,11 @@ export default async function AdminHomePage() {
       .select("id,name,email,topic,message,created_at")
       .eq("source", "enterprise")
       .order("created_at", { ascending: false })
-      .limit(4),
-    getAdminCount()
+      .limit(4)
   ]);
 
-  const totalUsers = Number(usersCountRes.count ?? 0);
-  const totalAdmins = Number(adminCount ?? 0);
+  const totalUsers = adminDirectory.ok ? adminDirectory.totalUsers : Number(usersCountRes.count ?? 0);
+  const totalAdmins = adminDirectory.ok ? adminDirectory.totalAdmins : 0;
   const totalExams = Number(examsCountRes.count ?? 0);
   const totalSyllabi = Number(syllabiCountRes.count ?? 0);
   const totalQuizzes = Number(quizzesCountRes.count ?? 0);
@@ -143,7 +124,7 @@ export default async function AdminHomePage() {
   const pendingSupportIssues = Number(pendingSupportRes.count ?? 0);
   const pendingEnterpriseQueries = Number(enterpriseCountRes.count ?? 0);
 
-  const recentProfiles = recentProfilesRes.data ?? [];
+  const recentProfiles = adminDirectory.ok ? adminDirectory.users.slice(0, 6) : recentProfilesRes.data ?? [];
   const failedNotificationsList = failedNotificationsRes.data ?? [];
   const flaggedMessagesList = flaggedMessagesRes.data ?? [];
   const enterpriseRequests = enterpriseRequestsRes.data ?? [];
@@ -239,7 +220,7 @@ export default async function AdminHomePage() {
               <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                 <div className="text-xs uppercase tracking-[0.22em] text-white/60">Workspace load</div>
                 <div className="mt-2 text-3xl font-semibold">{totalUsers}</div>
-                <div className="mt-1 text-sm text-white/70">Learner profiles being managed</div>
+                <div className="mt-1 text-sm text-white/70">Live learner accounts being managed</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                 <div className="text-xs uppercase tracking-[0.22em] text-white/60">Attention items</div>

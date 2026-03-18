@@ -11,7 +11,7 @@ import { AuthFormState } from "@/components/auth/auth-form-state";
 import { SubmitButton } from "@/components/form/submit-button";
 import { requireAdmin } from "@/app/(app)/admin/guard";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { getFirebaseAdminAuth } from "@/lib/firebase/admin-app";
+import { getAdminUserDirectory, type AdminDirectoryUser } from "@/lib/firebase/admin-users";
 import {
   setUserRoleAction,
   setUserRoleByEmailAction,
@@ -20,65 +20,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type AdminUserRow = {
-  user_id: string;
-  email: string | null;
-  name: string | null;
-  display_name: string | null;
-  subscription_tier: string | null;
-  created_at: string | null;
-  role: "admin" | "user";
-};
-
-async function getRoleMap() {
-  const auth = getFirebaseAdminAuth();
-  if (!auth) return { ok: false as const, roleByUid: new Map<string, "admin" | "user">() };
-
-  const roleByUid = new Map<string, "admin" | "user">();
-  let pageToken: string | undefined;
-  let page = 0;
-
-  do {
-    const result = await auth.listUsers(1000, pageToken);
-    result.users.forEach((entry) => {
-      const role = entry.customClaims?.role === "admin" ? "admin" : "user";
-      roleByUid.set(entry.uid, role);
-    });
-    pageToken = result.pageToken;
-    page += 1;
-  } while (pageToken && page < 20);
-
-  return { ok: true as const, roleByUid };
-}
-
 export default async function AdminUsersPage() {
   const { user, isAdmin } = await requireAdmin();
   if (!user) redirect("/login");
   if (!isAdmin) redirect("/admin");
 
   const firebase = await createFirebaseServerClient();
-  const { data: profiles } = await firebase
-    .from("profiles")
-    .select("user_id,email,name,display_name,subscription_tier,created_at")
-    .order("created_at", { ascending: false })
-    .limit(300);
-
-  const roles = await getRoleMap();
-  const roleByUid = roles.roleByUid;
-
-  const users: AdminUserRow[] = (profiles ?? []).map((profile: any) => ({
-    user_id: String(profile.user_id),
-    email: profile.email ? String(profile.email) : null,
-    name: profile.name ? String(profile.name) : null,
-    display_name: profile.display_name ? String(profile.display_name) : null,
-    subscription_tier: profile.subscription_tier ? String(profile.subscription_tier) : null,
-    created_at: profile.created_at ? String(profile.created_at) : null,
-    role: roleByUid.get(String(profile.user_id)) ?? "user"
-  }));
-
-  const totalUsers = users.length;
-  const totalAdmins = users.filter((entry) => entry.role === "admin").length;
-  const totalPro = users.filter((entry) => (entry.subscription_tier ?? "").toLowerCase() === "pro").length;
+  const directory = await getAdminUserDirectory({ firebase });
+  const users: AdminDirectoryUser[] = directory.ok ? directory.users.slice(0, 300) : [];
+  const totalUsers = directory.ok ? directory.totalUsers : 0;
+  const totalAdmins = directory.ok ? directory.totalAdmins : 0;
+  const totalPro = directory.ok ? directory.totalPro : 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -120,7 +72,7 @@ export default async function AdminUsersPage() {
         </div>
       </div>
 
-      {!roles.ok ? (
+      {!directory.ok ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Admin configuration required</CardTitle>
@@ -208,7 +160,7 @@ export default async function AdminUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Recent signups</CardTitle>
-          <CardDescription>Newest profiles appear first.</CardDescription>
+          <CardDescription>Newest live Firebase accounts appear first.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {users.length ? (

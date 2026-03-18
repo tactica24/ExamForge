@@ -17,6 +17,21 @@ function chunk<T>(items: T[], size: number) {
   return out;
 }
 
+function looksLikeInternalPrompt(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!text) return false;
+  if (text.length > 90) return true;
+  return /system instructions|return valid json|topic lesson json|^you are\b|```|create .*diagram|generate .*json/i.test(text);
+}
+
+function getGroupDisplayName(group: any) {
+  const subject = String(group?.subject ?? "Subject").trim() || "Subject";
+  const fallback = `${subject} group`;
+  const rawName = String(group?.name ?? "").trim();
+  if (!rawName || looksLikeInternalPrompt(rawName)) return fallback;
+  return rawName;
+}
+
 export default async function GroupsPage(props: { searchParams: Promise<{ group?: string }> }) {
   const searchParams = await props.searchParams;
   const firebase = await createFirebaseServerClient();
@@ -126,7 +141,7 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold">{group.name ?? group.subject}</div>
+                          <div className="truncate text-sm font-semibold">{getGroupDisplayName(group)}</div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             {group.subject} • {describePace(group.pace)}
                           </div>
@@ -149,7 +164,7 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
                 <CardHeader className="border-b bg-muted/20">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <CardTitle className="text-base">{selectedGroup.name ?? selectedGroup.subject}</CardTitle>
+                      <CardTitle className="text-base">{getGroupDisplayName(selectedGroup)}</CardTitle>
                       <CardDescription>
                         {selectedGroup.subject} • {describePace(selectedGroup.pace)} • {selectedGroup.level} •{" "}
                         {groupMemberCounts.get(String(selectedGroup.id)) ?? 0}/15 members

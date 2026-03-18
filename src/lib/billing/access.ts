@@ -4,6 +4,7 @@ type AccessProfile = {
 } | null | undefined;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+export const FREE_TRIAL_DAYS = 7;
 
 function getTier(profile: AccessProfile) {
   return String(profile?.subscription_tier ?? "").trim().toLowerCase();

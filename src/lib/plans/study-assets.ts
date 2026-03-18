@@ -82,6 +82,11 @@ function makeAudioNarration(lesson: PlanLesson): PlanAudioLesson {
   };
 }
 
+function buildVisualStudyCue(visual: PlanLesson["visual_aids"][number]) {
+  const cue = cleanText([visual.explanation, ...visual.bullets.slice(0, 2)].join(" "), 220);
+  return cue || cleanText(`Focus on how this ${visual.kind} reinforces the main exam idea.`, 220);
+}
+
 function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: PlanLesson }): PlanSlideDeck {
   const { lesson } = args;
   const overviewPoints = splitSentences(lesson.overview, 4);
@@ -169,7 +174,7 @@ function makeSlideDeck(args: { topicTitle: string; subject: string; lesson: Plan
     slide_number: baseSlides.length + index + 1,
     title: `Visual aid: ${visual.title}`,
     content: [visual.explanation, ...visual.bullets.slice(0, 3)],
-    visual_suggestions: visual.prompt || `Use a ${visual.kind} to explain this idea clearly.`,
+    visual_suggestions: buildVisualStudyCue(visual),
     narration: cleanText([visual.explanation, ...visual.bullets].join(" "), 900),
     visual
   }));

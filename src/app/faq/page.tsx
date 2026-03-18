@@ -12,7 +12,7 @@ const faqItems = [
   {
     question: "Do new users really get a free trial?",
     answer:
-      "Yes. Every new user gets 3 days of full access after signup. When that window ends, new premium actions like extra quiz generation and fresh study-plan generation require an upgrade."
+      "Yes. Every new user gets 7 days of full access after signup. When that window ends, new premium actions like extra quiz generation and fresh study-plan generation require an upgrade."
   },
   {
     question: "What happens after the free trial ends?",

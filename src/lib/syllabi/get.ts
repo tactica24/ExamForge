@@ -403,6 +403,20 @@ export async function getTopicsForExamSubject(args: { examId: string; examSlug: 
     return existingTopics;
   }
 
+  const seedFallback = getFallbackTopics(args.examSlug, args.subject);
+  if (seedFallback?.length) {
+    await persistTopics({
+      examId: args.examId,
+      subject: args.subject,
+      topics: seedFallback,
+      source: "seed_fallback",
+      sourceMeta: {
+        seeded: true
+      }
+    });
+    return seedFallback;
+  }
+
   const ai = await generateAiTopics({ examSlug: args.examSlug, subject: args.subject });
   if (ai.topics?.length) {
     await persistTopics({

@@ -129,6 +129,8 @@ async function makePptBuffer(args: {
   for (const slide of args.slides.slice(0, 10)) {
     const page = pptx.addSlide();
     page.background = { color: "F8FAFC" };
+    const hasVisual = Boolean(slide.visual);
+    const contentWidth = hasVisual ? 7.15 : 11.2;
 
     page.addShape(pptx.ShapeType.roundRect, {
       x: 0.45,
@@ -160,7 +162,7 @@ async function makePptBuffer(args: {
       page.addText(points as any, {
         x: 0.8,
         y: 1.1,
-        w: 7.15,
+        w: contentWidth,
         h: 4.1,
         fontSize: 15,
         color: "243B53",
@@ -241,25 +243,6 @@ async function makePptBuffer(args: {
           });
         }
       }
-    } else {
-      page.addShape(pptx.ShapeType.roundRect, {
-        x: 8.1,
-        y: 1.05,
-        w: 4.2,
-        h: 4.45,
-        fill: { color: "FFFFFF" },
-        line: { color: "D9E2EC" }
-      });
-      page.addText(slide.visual_suggestions || "Visual cue", {
-        x: 8.35,
-        y: 1.3,
-        w: 3.7,
-        h: 3.6,
-        fontSize: 11,
-        color: "627D98",
-        breakLine: true,
-        valign: "top"
-      });
     }
   }
 

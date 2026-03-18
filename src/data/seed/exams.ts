@@ -98,6 +98,99 @@ export const seedSyllabiNG: SeedSyllabus[] = [
       { title: "Task 1 Reports", path: "Task 1", subtopics: ["Charts", "Maps", "Processes"] },
       { title: "Task 2 Essays", path: "Task 2", subtopics: ["Opinion", "Discussion", "Problem/Solution"] }
     ]
+  },
+  {
+    exam_slug: "ican",
+    subject: "Foundation Level",
+    topics: [
+      {
+        title: "Financial Reporting Fundamentals",
+        path: "Financial Reporting Fundamentals",
+        subtopics: ["Accounting concepts", "Books of entry", "Trial balance"]
+      },
+      {
+        title: "Quantitative Techniques",
+        path: "Quantitative Techniques",
+        subtopics: ["Percentages", "Ratios", "Business maths"]
+      },
+      {
+        title: "Business and Commercial Law Basics",
+        path: "Business and Commercial Law Basics",
+        subtopics: ["Contracts", "Agency", "Company basics"]
+      },
+      {
+        title: "Economics and Business Environment",
+        path: "Economics and Business Environment",
+        subtopics: ["Demand and supply", "Market structures", "Public policy"]
+      },
+      {
+        title: "Management and Governance Basics",
+        path: "Management and Governance Basics",
+        subtopics: ["Planning", "Control", "Ethics"]
+      }
+    ]
+  },
+  {
+    exam_slug: "ican",
+    subject: "Skills Level",
+    topics: [
+      {
+        title: "Financial Accounting and Reporting",
+        path: "Financial Accounting and Reporting",
+        subtopics: ["Preparation of accounts", "Adjustments", "Statement analysis"]
+      },
+      {
+        title: "Taxation",
+        path: "Taxation",
+        subtopics: ["Personal tax", "Company tax", "VAT basics"]
+      },
+      {
+        title: "Audit and Assurance",
+        path: "Audit and Assurance",
+        subtopics: ["Audit evidence", "Internal control", "Audit reports"]
+      },
+      {
+        title: "Performance and Cost Management",
+        path: "Performance and Cost Management",
+        subtopics: ["Cost behaviour", "Budgeting", "Variance analysis"]
+      },
+      {
+        title: "Public Sector and Finance",
+        path: "Public Sector and Finance",
+        subtopics: ["Government budgeting", "Public revenue", "Accountability"]
+      }
+    ]
+  },
+  {
+    exam_slug: "ican",
+    subject: "Professional Level",
+    topics: [
+      {
+        title: "Strategic Financial Reporting",
+        path: "Strategic Financial Reporting",
+        subtopics: ["Group accounts", "Interpretation", "Disclosure issues"]
+      },
+      {
+        title: "Strategic Financial Management",
+        path: "Strategic Financial Management",
+        subtopics: ["Investment appraisal", "Risk", "Funding decisions"]
+      },
+      {
+        title: "Advanced Audit and Governance",
+        path: "Advanced Audit and Governance",
+        subtopics: ["Professional ethics", "Assurance strategy", "Corporate governance"]
+      },
+      {
+        title: "Public Finance and Policy",
+        path: "Public Finance and Policy",
+        subtopics: ["Fiscal policy", "Public expenditure", "Accountability systems"]
+      },
+      {
+        title: "Case Study and Advisory Skills",
+        path: "Case Study and Advisory Skills",
+        subtopics: ["Analysis", "Recommendation writing", "Professional judgement"]
+      }
+    ]
   }
 ];
 

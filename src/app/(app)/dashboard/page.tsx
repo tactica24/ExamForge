@@ -18,7 +18,13 @@ import { cn } from "@/lib/utils";
 import { listActiveExams } from "@/lib/exams/list";
 import { isPlanItemQuizCompleted } from "@/lib/plans/content";
 import { CheckCircle2 } from "lucide-react";
-import { getTimedAccessDaysRemaining, getTimedAccessEndsAt, hasActiveProAccess, isFreeTrialActive } from "@/lib/billing/access";
+import {
+  FREE_TRIAL_DAYS,
+  getTimedAccessDaysRemaining,
+  getTimedAccessEndsAt,
+  hasActiveProAccess,
+  isFreeTrialActive
+} from "@/lib/billing/access";
 import { describePace } from "@/lib/plans/pace";
 
 export default async function DashboardPage() {
@@ -171,7 +177,7 @@ export default async function DashboardPage() {
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold">Your 3-day free access is active</div>
+              <div className="text-sm font-semibold">Your {FREE_TRIAL_DAYS}-day free access is active</div>
               <div className="mt-1 text-sm text-muted-foreground">
                 You have {timedAccessDays} day{timedAccessDays === 1 ? "" : "s"} left before the free plan drops back to
                 one exam and one subject.
