@@ -50,19 +50,24 @@ export async function createExtraQuizAction(_: unknown, formData: FormData) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const quizId = await createQuizWithQuestions({
-    userId: user.id,
-    examId: parsed.data.exam_id,
-    examName: exam?.name ?? "Exam",
-    examSlug: exam?.slug ?? parsed.data.exam_slug,
-    subject: parsed.data.subject,
-    topicPath: parsed.data.topic_path?.trim() ? parsed.data.topic_path.trim() : `Practice: ${parsed.data.subject}`,
-    quizType: "extra",
-    difficulty: parsed.data.difficulty,
-    questionCount: 10,
-    preferredLanguage: profile?.preferred_explanation_language ?? "en",
-    meta: { source: "weak_area" }
-  });
+  let quizId: string;
+  try {
+    quizId = await createQuizWithQuestions({
+      userId: user.id,
+      examId: parsed.data.exam_id,
+      examName: exam?.name ?? "Exam",
+      examSlug: exam?.slug ?? parsed.data.exam_slug,
+      subject: parsed.data.subject,
+      topicPath: parsed.data.topic_path?.trim() ? parsed.data.topic_path.trim() : `Practice: ${parsed.data.subject}`,
+      quizType: "extra",
+      difficulty: parsed.data.difficulty,
+      questionCount: 10,
+      preferredLanguage: profile?.preferred_explanation_language ?? "en",
+      meta: { source: "weak_area" }
+    });
+  } catch (_error: unknown) {
+    return { ok: false, message: "Could not generate extra practice right now. Please try again." };
+  }
 
   redirect(`/quiz/${quizId}`);
 }

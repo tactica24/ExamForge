@@ -126,10 +126,9 @@ export async function listActiveParentLinks(args: {
   const { data } = await args.firebase
     .from("parent_links")
     .select("token,label,created_at,revoked_at")
-    .eq("user_id", args.userId)
-    .eq("revoked_at", null);
+    .eq("user_id", args.userId);
 
-  return sortCreatedAtDesc(data).slice(0, args.limit ?? 5);
+  return sortCreatedAtDesc((data ?? []).filter((item: any) => !item?.revoked_at)).slice(0, args.limit ?? 5);
 }
 
 export async function getLatestUserPlanSummary(args: {

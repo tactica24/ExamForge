@@ -66,7 +66,9 @@ export default async function CareerDetailPage(props: { params: Promise<{ slug: 
           <Card>
             <CardHeader>
               <CardTitle className="text-base">JAMB subject combination</CardTitle>
-              <CardDescription>Use this as a reliable planning guide before registration.</CardDescription>
+              <CardDescription>
+                Use this as a guide only, kindly confirm from Jamb official handbook before registration.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {career.jamb_subjects.map((subject) => (

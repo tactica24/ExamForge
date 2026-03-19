@@ -109,7 +109,7 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Groups</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Subject rooms are created automatically. Once a room fills up with 15 members, the next room opens on its own.
+            Subject rooms are created automatically.
           </p>
         </div>
         <Button asChild variant="secondary" className="w-full sm:w-auto">
@@ -212,7 +212,7 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
           <CardHeader>
             <CardTitle>No groups yet</CardTitle>
             <CardDescription>
-              Add another subject in settings or switch a future plan into group mode to get matched automatically.
+              Add another subject in settings or switch one of your subjects to group mode to get matched automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>

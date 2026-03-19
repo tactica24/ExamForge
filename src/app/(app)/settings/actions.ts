@@ -3,6 +3,7 @@
 import { randomBytes } from "crypto";
 import { formatISO } from "date-fns";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { syncProfilePublic } from "@/lib/profile/public";
 import { redirect } from "next/navigation";
@@ -132,6 +133,13 @@ const AddExamSubjectSchema = z.object({
   exam_id: z.string().min(3),
   exam_slug: z.string().min(2),
   subjects: z.array(z.string().trim().min(2).max(120)).min(1).max(7)
+});
+
+const UpdateSubjectModeSchema = z.object({
+  exam_id: z.string().min(3),
+  exam_slug: z.string().min(2),
+  subject: z.string().trim().min(2).max(120),
+  mode: z.enum(["solo", "group"])
 });
 
 async function ensurePlanForSubject(args: {
@@ -353,6 +361,111 @@ export async function addExamSubjectAction(_: unknown, formData: FormData) {
   };
 }
 
+export async function updateSubjectModeAction(_: unknown, formData: FormData) {
+  const parsed = UpdateSubjectModeSchema.safeParse({
+    exam_id: String(formData.get("exam_id") ?? "").trim(),
+    exam_slug: String(formData.get("exam_slug") ?? "").trim(),
+    subject: String(formData.get("subject") ?? "").trim(),
+    mode: String(formData.get("mode") ?? "").trim().toLowerCase()
+  });
+
+  if (!parsed.success) return { ok: false, message: "Invalid subject mode update." };
+
+  const firebase = await createFirebaseServerClient();
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+  if (!user) return { ok: false, message: "Not authenticated." };
+
+  const { data: profile } = await firebase
+    .from("profiles")
+    .select("subscription_tier,pro_until,level,timezone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (parsed.data.mode === "group" && !hasActiveProAccess(profile)) {
+    redirect("/pricing");
+  }
+
+  let { data: plans } = await firebase
+    .from("user_plans")
+    .select("id,pace")
+    .eq("user_id", user.id)
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject)
+    .order("created_at", { ascending: false });
+
+  if (!plans?.length) {
+    const ensured = await ensurePlanForSubject({
+      firebase,
+      userId: user.id,
+      examId: parsed.data.exam_id,
+      examSlug: parsed.data.exam_slug,
+      subject: parsed.data.subject
+    });
+
+    if (!ensured.ok) {
+      return { ok: false, message: ensured.message };
+    }
+
+    const refreshed = await firebase
+      .from("user_plans")
+      .select("id,pace")
+      .eq("user_id", user.id)
+      .eq("exam_id", parsed.data.exam_id)
+      .eq("subject", parsed.data.subject)
+      .order("created_at", { ascending: false });
+    plans = refreshed.data ?? [];
+  }
+
+  if (!plans?.length) {
+    return { ok: false, message: "Could not find a study plan for this subject yet." };
+  }
+
+  const { error: updateErr } = await firebase
+    .from("user_plans")
+    .update({ mode: parsed.data.mode })
+    .eq("user_id", user.id)
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+  if (updateErr) return { ok: false, message: updateErr.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/groups");
+
+  if (parsed.data.mode === "group") {
+    let groupId: string;
+    try {
+      groupId = await matchOrCreateGroup({
+        userId: user.id,
+        examId: parsed.data.exam_id,
+        subject: parsed.data.subject,
+        pace: String((plans[0] as any)?.pace ?? "steady"),
+        level: profile?.level ?? "beginner",
+        timezone: profile?.timezone ?? "Africa/Lagos"
+      });
+    } catch (error: any) {
+      return { ok: false, message: error?.message ?? "Could not create or join the subject group right now." };
+    }
+
+    redirect(`/groups?group=${encodeURIComponent(String(groupId))}`);
+  }
+
+  const { data: groups } = await firebase
+    .from("groups")
+    .select("id")
+    .eq("exam_id", parsed.data.exam_id)
+    .eq("subject", parsed.data.subject);
+
+  const groupIds = (groups ?? []).map((row: any) => String(row?.id ?? "").trim()).filter(Boolean);
+  if (groupIds.length) {
+    const { error: leaveErr } = await firebase.from("group_members").delete().eq("user_id", user.id).in("group_id", groupIds);
+    if (leaveErr) return { ok: false, message: leaveErr.message };
+  }
+
+  redirect("/settings");
+}
+
 const ReminderSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/),
   channel: z.enum(["in_app", "sms", "whatsapp", "email"]),
@@ -431,7 +544,9 @@ export async function createParentLinkAction(_: unknown, formData: FormData) {
     const { error } = await firebase.from("parent_links").insert({
       token,
       user_id: user.id,
-      label
+      label,
+      revoked_at: null,
+      last_viewed_at: null
     });
     if (!error) {
       inserted = true;
@@ -440,6 +555,7 @@ export async function createParentLinkAction(_: unknown, formData: FormData) {
   }
   if (!inserted) return { ok: false, message: "Could not create parent link right now. Please try again." };
 
+  revalidatePath("/settings");
   redirect("/settings");
 }
 

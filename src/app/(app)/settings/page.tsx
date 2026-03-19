@@ -13,6 +13,7 @@ import { SubmitButton } from "@/components/form/submit-button";
 import {
   addExamSubjectAction,
   createParentLinkAction,
+  updateSubjectModeAction,
   updateNotificationPrefsAction,
   updateProfileAction
 } from "@/app/(app)/settings/actions";
@@ -40,7 +41,7 @@ export default async function SettingsPage() {
   } = await firebase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, prefsRes, parentLinks, userExamSubjects, exams, latestPlan] = await Promise.all([
+  const [profileRes, prefsRes, parentLinks, userExamSubjects, exams, latestPlan, userPlansRes] = await Promise.all([
     firebase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     firebase.from("notification_prefs").select("*").eq("user_id", user.id).maybeSingle(),
     listActiveParentLinks({
@@ -57,7 +58,8 @@ export default async function SettingsPage() {
       firebase,
       userId: user.id,
       columns: "pace,created_at"
-    })
+    }),
+    firebase.from("user_plans").select("exam_id,subject,mode,created_at").eq("user_id", user.id).order("created_at", { ascending: false })
   ]);
 
   const profile = profileRes.data;
@@ -90,12 +92,19 @@ export default async function SettingsPage() {
     : "coach";
 
   const examNameById = new Map(exams.map((exam) => [exam.id, exam.name]));
+  const examSlugById = new Map(exams.map((exam) => [exam.id, exam.slug]));
   const examOptions = exams.map((exam) => ({
     id: exam.id,
     slug: exam.slug,
     name: exam.name,
     subjects: toSubjects(exam.subjects)
   }));
+  const subjectModeByKey = new Map<string, "solo" | "group">();
+  for (const plan of userPlansRes.data ?? []) {
+    const key = `${String((plan as any)?.exam_id ?? "")}::${String((plan as any)?.subject ?? "")}`;
+    if (!key || subjectModeByKey.has(key)) continue;
+    subjectModeByKey.set(key, (plan as any)?.mode === "group" ? "group" : "solo");
+  }
   const existingSelections = userExamSubjects.map((item) => ({ examId: item.exam_id, subject: item.subject }));
   const existingSet = new Set(existingSelections.map((item) => `${item.examId}::${item.subject}`));
   const hasMoreExamSubjects = examOptions.some((exam) => {
@@ -110,6 +119,9 @@ export default async function SettingsPage() {
   const timedAccessEndsAt = getTimedAccessEndsAt(profile);
   const timedAccessDays = getTimedAccessDaysRemaining(profile);
   const freeSubjectLimitReached = !proAccess;
+  const learningStyleValue = ["visual", "auditory", "reading"].includes(String(profile?.learning_style ?? "").toLowerCase())
+    ? String(profile?.learning_style).toLowerCase()
+    : "visual";
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
@@ -181,11 +193,10 @@ export default async function SettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Learning style</Label>
-                <NativeSelect name="learning_style" defaultValue={profile?.learning_style ?? "visual"}>
+                <NativeSelect name="learning_style" defaultValue={learningStyleValue}>
                   <option value="visual">Visual</option>
                   <option value="auditory">Auditory</option>
                   <option value="reading">Reading/Writing</option>
-                  <option value="kinesthetic">Kinesthetic</option>
                 </NativeSelect>
               </div>
               <div className="space-y-2">
@@ -208,7 +219,7 @@ export default async function SettingsPage() {
                 <p className="text-xs text-muted-foreground">Applies to new and existing study plans.</p>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>Preferred explanation language (AI only)</Label>
+                <Label>Preferred explanation language</Label>
                 <NativeSelect
                   name="preferred_explanation_language"
                   defaultValue={profile?.preferred_explanation_language ?? "en"}
@@ -258,17 +269,50 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Subjects</CardTitle>
           <CardDescription>
-            Add one exam at a time, then tick the subjects you want to study under it.
+            Add one exam at a time, then set each subject to solo or group mode.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-3">
             {userExamSubjects.length ? (
-              userExamSubjects.map((item) => (
-                <Badge key={`${item.exam_id}-${item.subject}`} variant={item.is_active ? "secondary" : "outline"}>
-                  {examNameById.get(item.exam_id) ?? "Exam"}: {item.subject}
-                </Badge>
-              ))
+              userExamSubjects.map((item) => {
+                const currentMode = subjectModeByKey.get(`${item.exam_id}::${item.subject}`) ?? "solo";
+                const nextMode = currentMode === "group" ? "solo" : "group";
+
+                return (
+                  <div
+                    key={`${item.exam_id}-${item.subject}`}
+                    className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {examNameById.get(item.exam_id) ?? "Exam"}: {item.subject}
+                        </span>
+                        <Badge variant={currentMode === "group" ? "default" : item.is_active ? "secondary" : "outline"}>
+                          {currentMode === "group" ? "Group" : "Solo"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {currentMode === "group"
+                          ? "This subject joins a shared room automatically."
+                          : "This subject stays private until you switch it to group mode."}
+                      </p>
+                    </div>
+                    <div className="sm:min-w-[170px]">
+                      <AuthFormState action={updateSubjectModeAction}>
+                        <input type="hidden" name="exam_id" value={item.exam_id} />
+                        <input type="hidden" name="exam_slug" value={examSlugById.get(item.exam_id) ?? ""} />
+                        <input type="hidden" name="subject" value={item.subject} />
+                        <input type="hidden" name="mode" value={nextMode} />
+                        <SubmitButton type="submit" pendingText="Saving..." className="w-full sm:w-auto" variant="outline">
+                          Switch to {nextMode}
+                        </SubmitButton>
+                      </AuthFormState>
+                    </div>
+                  </div>
+                );
+              })
             ) : (
               <div className="text-sm text-muted-foreground">No subjects selected yet. Add one below.</div>
             )}
@@ -361,9 +405,6 @@ export default async function SettingsPage() {
                   <option value="streak">Streak motivation</option>
                 </NativeSelect>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Use E.164 format for WhatsApp destinations (example: +2348012345678) and enable consent before delivery.
-              </p>
             </div>
 
             <div className="mt-4">
