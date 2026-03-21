@@ -20,6 +20,74 @@ function normalizeText(value: unknown, maxLength: number) {
     .slice(0, maxLength);
 }
 
+function toFormalEnglish(text: string) {
+  return text
+    .replace(/\bcan't\b/gi, "cannot")
+    .replace(/\bwon't\b/gi, "will not")
+    .replace(/\bdon't\b/gi, "do not")
+    .replace(/\bdoesn't\b/gi, "does not")
+    .replace(/\bdidn't\b/gi, "did not")
+    .replace(/\bisn't\b/gi, "is not")
+    .replace(/\baren't\b/gi, "are not")
+    .replace(/\bwasn't\b/gi, "was not")
+    .replace(/\bweren't\b/gi, "were not")
+    .replace(/\bshouldn't\b/gi, "should not")
+    .replace(/\bcouldn't\b/gi, "could not")
+    .replace(/\bwouldn't\b/gi, "would not")
+    .replace(/\bhasn't\b/gi, "has not")
+    .replace(/\bhaven't\b/gi, "have not")
+    .replace(/\bhadn't\b/gi, "had not")
+    .replace(/\bit's\b/gi, "it is")
+    .replace(/\bthat's\b/gi, "that is")
+    .replace(/\bthere's\b/gi, "there is")
+    .replace(/\bhere's\b/gi, "here is")
+    .replace(/\bwhat's\b/gi, "what is")
+    .replace(/\bwho's\b/gi, "who is")
+    .replace(/\blet's\b/gi, "let us")
+    .replace(/\byou're\b/gi, "you are")
+    .replace(/\bwe're\b/gi, "we are")
+    .replace(/\bthey're\b/gi, "they are")
+    .replace(/\bi'm\b/gi, "I am")
+    .replace(/\bI've\b/gi, "I have")
+    .replace(/\byou've\b/gi, "you have")
+    .replace(/\bwe've\b/gi, "we have")
+    .replace(/\bthey've\b/gi, "they have")
+    .replace(/\bI'll\b/gi, "I will")
+    .replace(/\byou'll\b/gi, "you will")
+    .replace(/\bwe'll\b/gi, "we will")
+    .replace(/\bthey'll\b/gi, "they will")
+    .replace(/\bit'll\b/gi, "it will")
+    .replace(/\b(\w+)'re\b/gi, "$1 are")
+    .replace(/\b(\w+)'ve\b/gi, "$1 have")
+    .replace(/\b(\w+)'ll\b/gi, "$1 will")
+    .replace(/\b(\w+)'d\b/gi, "$1 would");
+}
+
+function formalizeLessonDraft(draft: LessonDraft): LessonDraft {
+  return {
+    overview: toFormalEnglish(draft.overview),
+    breakdown: draft.breakdown.map((section) => ({
+      heading: toFormalEnglish(section.heading),
+      explanation: toFormalEnglish(section.explanation)
+    })),
+    examples: draft.examples.map((example) => ({
+      question: toFormalEnglish(example.question),
+      walkthrough: toFormalEnglish(example.walkthrough),
+      answer: toFormalEnglish(example.answer)
+    })),
+    common_mistakes: draft.common_mistakes.map((point) => toFormalEnglish(point)),
+    recap: draft.recap.map((point) => toFormalEnglish(point)),
+    visual_aids: draft.visual_aids.map((visual) => ({
+      ...visual,
+      title: toFormalEnglish(visual.title),
+      explanation: toFormalEnglish(visual.explanation),
+      alt_text: toFormalEnglish(visual.alt_text),
+      prompt: toFormalEnglish(visual.prompt),
+      bullets: visual.bullets.map((bullet) => toFormalEnglish(bullet))
+    }))
+  };
+}
+
 function normalizeLessonDraft(value: unknown): LessonDraft | null {
   const normalized = normalizePlanLesson({
     ...(typeof value === "object" && value ? (value as Record<string, unknown>) : {}),
@@ -31,14 +99,14 @@ function normalizeLessonDraft(value: unknown): LessonDraft | null {
 
   if (!normalized) return null;
 
-  return {
+  return formalizeLessonDraft({
     overview: normalized.overview,
     breakdown: normalized.breakdown,
     examples: normalized.examples,
     common_mistakes: normalized.common_mistakes,
     recap: normalized.recap,
     visual_aids: normalized.visual_aids
-  };
+  });
 }
 
 type VisualPolicy = {
@@ -327,6 +395,8 @@ export async function generatePlanLesson(args: {
     '{"lesson":{"overview":"string","breakdown":[{"heading":"string","explanation":"string"}],"examples":[{"question":"string","walkthrough":"string","answer":"string"}],"common_mistakes":["string"],"recap":["string"],"visual_aids":[{"kind":"diagram|graph|illustration","title":"string","explanation":"string","alt_text":"string","prompt":"string","bullets":["string"],"points":[{"label":"string","value":42}]}]}}',
     "Teach for comprehension, not speed-writing. Explanations must be elaborate, practical, and exam-focused.",
     "Each breakdown explanation should be detailed enough to feel like a mini-lesson, not a short note.",
+    "Use formal written English only. Do not use contractions, slang, shorthand, or informal abbreviations.",
+    "Spell out ideas completely. Every sentence should read like polished instructional writing.",
     subtopics.length
       ? `Primary focus subtopics for this session: ${subtopics.join(", ")}. Give dedicated breakdown coverage to each.`
       : "If subtopics are missing, infer likely subtopic blocks and teach them clearly.",

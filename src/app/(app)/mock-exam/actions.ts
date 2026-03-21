@@ -49,9 +49,15 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
 
   const { data: exam } = await firebase
     .from("exams")
-    .select("name,slug")
+    .select("name,slug,subjects")
     .eq("id", parsed.data.exam_id)
     .maybeSingle();
+  if (!exam) {
+    return {
+      ok: false,
+      message: "The selected exam could not be found."
+    };
+  }
 
   const { data: plan } = await firebase
     .from("user_plans")
@@ -92,24 +98,33 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     };
   }
 
-  const quizId = await createQuizWithQuestions({
-    userId: user.id,
-    examId: parsed.data.exam_id,
-    examName: exam?.name ?? "Exam",
-    examSlug: exam?.slug ?? parsed.data.exam_slug,
-    subject: parsed.data.subject,
-    topicPath: `Mock exam: ${parsed.data.subject}`,
-    quizType: "mock",
-    difficulty: parsed.data.difficulty,
-    questionCount: parsed.data.question_count,
-    preferredLanguage: profile?.preferred_explanation_language ?? "en",
-    syllabusOverride: uniqueTopics,
-    meta: {
-      duration_sec: parsed.data.duration_min * 60,
-      question_count: parsed.data.question_count,
-      completed_topics: uniqueTopics
-    }
-  });
+  let quizId: string;
+  try {
+    quizId = await createQuizWithQuestions({
+      userId: user.id,
+      examId: parsed.data.exam_id,
+      examName: exam.name ?? "Exam",
+      examSlug: exam.slug ?? parsed.data.exam_slug,
+      subject: parsed.data.subject,
+      topicPath: `Mock exam: ${parsed.data.subject}`,
+      quizType: "mock",
+      difficulty: parsed.data.difficulty,
+      questionCount: parsed.data.question_count,
+      preferredLanguage: profile?.preferred_explanation_language ?? "en",
+      syllabusOverride: uniqueTopics,
+      meta: {
+        duration_sec: parsed.data.duration_min * 60,
+        question_count: parsed.data.question_count,
+        completed_topics: uniqueTopics
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create the mock exam right now.";
+    return {
+      ok: false,
+      message
+    };
+  }
 
   redirect(`/mock-exam/${quizId}`);
 }

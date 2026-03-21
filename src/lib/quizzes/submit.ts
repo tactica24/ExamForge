@@ -20,6 +20,16 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
 
   const firebase = await createFirebaseServerClient();
 
+  const { data: quiz, error: quizErr } = await firebase
+    .from("quizzes")
+    .select("id,created_by,exam_id,subject,topic_path,quiz_type,meta")
+    .eq("id", args.quizId)
+    .maybeSingle();
+  if (quizErr || !quiz) return { ok: false as const, message: quizErr?.message ?? "Quiz not found." };
+  if (String(quiz.created_by ?? "") !== args.userId) {
+    return { ok: false as const, message: "Quiz not found." };
+  }
+
   const dayStart = startOfDay(new Date()).toISOString();
   const { data: existing } = await firebase
     .from("user_quiz_results")
@@ -32,17 +42,14 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
     .maybeSingle();
 
   if (existing) {
+    const completion = await syncPlanTopicCompletion({
+      firebase,
+      userId: args.userId,
+      quizId: args.quizId,
+      quizMeta: quiz.meta
+    });
+    if (!completion.ok) return completion;
     return { ok: true as const, score: existing.score, total: existing.total, duplicate: true as const };
-  }
-
-  const { data: quiz, error: quizErr } = await firebase
-    .from("quizzes")
-    .select("id,created_by,exam_id,subject,topic_path,quiz_type,meta")
-    .eq("id", args.quizId)
-    .maybeSingle();
-  if (quizErr || !quiz) return { ok: false as const, message: quizErr?.message ?? "Quiz not found." };
-  if (String(quiz.created_by ?? "") !== args.userId) {
-    return { ok: false as const, message: "Quiz not found." };
   }
 
   const { data: qs, error: qErr } = await firebase
@@ -65,47 +72,13 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   });
   if (error) return { ok: false as const, message: error.message };
 
-  const meta = (quiz.meta ?? {}) as Record<string, any>;
-  const planItemId = String(meta.plan_item_id ?? "").trim();
-  if (planItemId) {
-    const { data: planItem } = await firebase
-      .from("plan_items")
-      .select("id,plan_id,status,resource_links")
-      .eq("id", planItemId)
-      .maybeSingle();
-
-    if (planItem?.id) {
-      const { data: ownedPlan } = await firebase
-        .from("user_plans")
-        .select("id")
-        .eq("id", planItem.plan_id)
-        .eq("user_id", args.userId)
-        .maybeSingle();
-
-      if (!ownedPlan) {
-        return { ok: false as const, message: "Quiz not found." };
-      }
-
-      const progress = getPlanItemProgress(planItem.resource_links);
-      const nextProgress = {
-        quiz: {
-          completed: true,
-          completed_at: new Date().toISOString(),
-          last_quiz_id: args.quizId,
-          attempts: Math.max(progress.quiz.attempts, Number(meta.plan_item_attempt ?? 0), 0)
-        }
-      };
-
-      const nextLinks = withPlanItemProgress(planItem.resource_links, nextProgress);
-      await firebase
-        .from("plan_items")
-        .update({
-          status: "done",
-          resource_links: nextLinks as Json
-        })
-        .eq("id", planItemId);
-    }
-  }
+  const completion = await syncPlanTopicCompletion({
+    firebase,
+    userId: args.userId,
+    quizId: args.quizId,
+    quizMeta: quiz.meta
+  });
+  if (!completion.ok) return completion;
 
   await syncProfilePublic({ userId: args.userId }).catch(() => {});
 
@@ -157,4 +130,61 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
     weak: weak ?? undefined,
     gamification
   };
+}
+
+async function syncPlanTopicCompletion(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  userId: string;
+  quizId: string;
+  quizMeta: unknown;
+}) {
+  const meta = (args.quizMeta ?? {}) as Record<string, any>;
+  const planItemId = String(meta.plan_item_id ?? "").trim();
+  if (!planItemId) return { ok: true as const };
+
+  const { data: planItem } = await args.firebase
+    .from("plan_items")
+    .select("id,plan_id,status,resource_links")
+    .eq("id", planItemId)
+    .maybeSingle();
+
+  if (!planItem?.id) {
+    return { ok: false as const, message: "Linked study-plan topic was not found." };
+  }
+
+  const { data: ownedPlan } = await args.firebase
+    .from("user_plans")
+    .select("id")
+    .eq("id", planItem.plan_id)
+    .eq("user_id", args.userId)
+    .maybeSingle();
+
+  if (!ownedPlan) {
+    return { ok: false as const, message: "Quiz not found." };
+  }
+
+  const progress = getPlanItemProgress(planItem.resource_links);
+  const nextProgress = {
+    quiz: {
+      completed: true,
+      completed_at: new Date().toISOString(),
+      last_quiz_id: args.quizId,
+      attempts: Math.max(progress.quiz.attempts, Number(meta.plan_item_attempt ?? 0), 1)
+    }
+  };
+
+  const nextLinks = withPlanItemProgress(planItem.resource_links, nextProgress);
+  const { error } = await args.firebase
+    .from("plan_items")
+    .update({
+      status: "done",
+      resource_links: nextLinks as Json
+    })
+    .eq("id", planItemId);
+
+  if (error) {
+    return { ok: false as const, message: "Quiz was submitted, but the study-plan topic could not be updated." };
+  }
+
+  return { ok: true as const };
 }

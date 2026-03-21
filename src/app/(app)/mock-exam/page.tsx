@@ -55,6 +55,32 @@ export default async function MockExamStartPage(props: { searchParams: Promise<{
   }
 
   const exams = await listActiveExams();
+  if (!exams.length) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Mock exam</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mock exams are temporarily unavailable because no active exams are configured.
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Service unavailable</CardTitle>
+            <CardDescription>
+              Study plans and topic practice remain available while mock-exam configuration is being restored.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/plan">Return to study plan</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">

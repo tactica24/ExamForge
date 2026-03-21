@@ -21,9 +21,9 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
   const [showExplanation, setShowExplanation] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const q = props.questions[current]!;
+  const q = props.questions[current] ?? null;
   const answeredAll = answers.every((a) => a >= 0);
-  const selected = answers[current] >= 0;
+  const selected = current >= 0 && current < answers.length ? answers[current] >= 0 : false;
 
   React.useEffect(() => {
     setShowExplanation(false);
@@ -55,12 +55,37 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
       }
       router.push(`/quiz/${props.quizId}/review`);
     } catch (e: any) {
-      enqueueQuizSubmission({ quizId: props.quizId, answers });
-      toast.message("Saved offline. We'll sync when you're back online.");
-      router.push("/dashboard");
+      if (!navigator.onLine) {
+        enqueueQuizSubmission({ quizId: props.quizId, answers });
+        toast.message("Saved offline. We will sync when you are back online.");
+        router.push("/dashboard");
+        return;
+      }
+      toast.error(e?.message ?? "Could not save your result. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (!q) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>{props.title}</CardTitle>
+            <CardDescription>This quiz is unavailable right now.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The quiz questions could not be loaded. Please return to your study plan and start the quiz again.
+            </p>
+            <Button type="button" onClick={() => router.push("/plan")}>
+              Return to study plan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

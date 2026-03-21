@@ -18,7 +18,7 @@ export async function matchOrCreateGroup(args: {
   level: string;
   timezone: string;
   groupName?: string;
-}) {
+}): Promise<string> {
   const firebase = await createFirebaseServerClient();
 
   const { data: groups } = await firebase
@@ -68,7 +68,15 @@ export async function matchOrCreateGroup(args: {
       .select("id")
       .single();
     if (createErr) throw createErr;
-    pickedGroupId = created.id;
+    const createdGroupId = String((created as any)?.id ?? "").trim();
+    if (!createdGroupId) {
+      throw new Error("Could not determine the new group identifier.");
+    }
+    pickedGroupId = createdGroupId;
+  }
+
+  if (!pickedGroupId) {
+    throw new Error("Could not determine a valid study group.");
   }
 
   await firebase.from("group_members").upsert(
