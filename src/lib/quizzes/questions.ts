@@ -334,6 +334,7 @@ export async function generateQuestions(args: {
   syllabus?: string[];
   strictSyllabus?: boolean;
 }): Promise<GeneratedQuestion[]> {
+  const targetCount = Math.max(1, Math.min(100, Math.trunc(args.count || 1)));
   const lang = languageInstruction(args.preferredLanguage);
   const syllabusHint =
     args.syllabus && args.syllabus.length
@@ -361,7 +362,7 @@ export async function generateQuestions(args: {
     exam: args.examName,
     subject: args.subject,
     topic: args.topic,
-    count: args.count,
+    count: targetCount,
     format: {
       questions: [
         {
@@ -379,7 +380,8 @@ export async function generateQuestions(args: {
       'Choose the correct indirect speech form of: "..."'
     ],
     constraints: [
-      `Return exactly ${args.count} unique questions.`,
+      `Return exactly ${targetCount} unique questions.`,
+      "If any question would be duplicated or weak, replace it instead of returning fewer items.",
       "No exam/subject prefix in question stems.",
       "No meta stem wording (no advice-style questions).",
       "Options must be plausible and unique.",
@@ -397,18 +399,18 @@ export async function generateQuestions(args: {
     temperature: 0.4,
     validate: (parsed) => {
       const cleaned = normalizeQuestions(parsed);
-      if (!cleaned.length) return null;
-      return { questions: cleaned };
+      if (cleaned.length < targetCount) return null;
+      return { questions: cleaned.slice(0, targetCount) };
     }
   });
 
   const cleaned = response.value?.questions ?? [];
-  if (cleaned.length) return cleaned.slice(0, args.count);
+  if (cleaned.length >= targetCount) return cleaned.slice(0, targetCount);
   return fallbackQuestions({
     examName: args.examName,
     topic: args.topic,
     subject: args.subject,
-    count: args.count,
+    count: targetCount,
     syllabus: args.syllabus
   });
 }

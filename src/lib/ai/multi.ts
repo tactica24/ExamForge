@@ -3,7 +3,7 @@ import "server-only";
 import { getServerEnv } from "@/lib/env";
 import { getOpenAIClient } from "@/lib/ai/openai";
 
-type AiProvider = "openai" | "groq" | "gemini";
+type AiProvider = "groq" | "gemini" | "openai";
 
 type ProviderRunArgs = {
   system: string;
@@ -82,8 +82,8 @@ function trimError(error: unknown) {
 function providerOrder() {
   const env = getServerEnv();
   const providers: AiProvider[] = [];
-  if (env.GEMINI_API_KEY) providers.push("gemini");
   if (env.GROQ_API_KEY) providers.push("groq");
+  if (env.GEMINI_API_KEY) providers.push("gemini");
   if (env.OPENAI_API_KEY) providers.push("openai");
   return providers;
 }
@@ -374,9 +374,9 @@ async function runGemini(args: ProviderRunArgs): Promise<ProviderRunResult> {
 }
 
 async function runProvider(provider: AiProvider, args: ProviderRunArgs): Promise<ProviderRunResult> {
-  if (provider === "openai") return runOpenAi(args);
   if (provider === "groq") return runGroq(args);
-  return runGemini(args);
+  if (provider === "gemini") return runGemini(args);
+  return runOpenAi(args);
 }
 
 export async function generateTextWithFallback(args: ProviderRunArgs): Promise<AiTextResult> {
