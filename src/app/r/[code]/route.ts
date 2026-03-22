@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAppOrigin } from "@/lib/app-url";
 
-export async function GET(_: Request, props: { params: Promise<{ code: string }> }) {
+export async function GET(request: Request, props: { params: Promise<{ code: string }> }) {
   const { code } = await props.params;
-  const res = NextResponse.redirect(new URL("/signup", getAppOrigin()));
+  const res = NextResponse.redirect(new URL("/signup", request.url));
   res.cookies.set("ref_code", String(code).toUpperCase(), {
     httpOnly: true,
     sameSite: "lax",

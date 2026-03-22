@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { buildRateLimitKeyFromRequest, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
-import { getAppOrigin } from "@/lib/app-url";
 
-async function performLogout() {
+async function performLogout(request?: Request) {
   const firebase = await createFirebaseServerClient();
   await firebase.auth.signOut();
-  return NextResponse.redirect(new URL("/", getAppOrigin()), {
+  const target = request ? new URL("/", request.url) : new URL("/", "http://localhost");
+  return NextResponse.redirect(target, {
     status: 303
   });
 }
 
-export async function GET() {
-  return performLogout();
+export async function GET(request: Request) {
+  return performLogout(request);
 }
 
 export async function POST(request: Request) {
@@ -33,5 +33,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return performLogout();
+  return performLogout(request);
 }

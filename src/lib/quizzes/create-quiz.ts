@@ -403,19 +403,34 @@ export async function createQuizWithQuestions(args: {
 
     let syllabus: string[] | undefined = args.syllabusOverride?.length ? args.syllabusOverride : undefined;
     if (!syllabus && examSlug) {
-      const topics = await getTopicsForExamSubject({ examId: args.examId, examSlug, subject: args.subject });
-      if (topics.length) syllabus = flattenTopics(topics);
+      try {
+        const topics = await getTopicsForExamSubject({ examId: args.examId, examSlug, subject: args.subject });
+        if (topics.length) syllabus = flattenTopics(topics);
+      } catch {
+        syllabus = undefined;
+      }
     }
 
-    const generated = await generateQuestions({
-      examName: args.examName,
-      subject: args.subject,
-      topic: args.topicPath,
-      count: args.questionCount,
-      preferredLanguage: args.preferredLanguage ?? null,
-      syllabus,
-      strictSyllabus: Boolean(args.syllabusOverride?.length)
-    });
+    let generated: GeneratedQuestion[] = [];
+    try {
+      generated = await generateQuestions({
+        examName: args.examName,
+        subject: args.subject,
+        topic: args.topicPath,
+        count: args.questionCount,
+        preferredLanguage: args.preferredLanguage ?? null,
+        syllabus,
+        strictSyllabus: Boolean(args.syllabusOverride?.length)
+      });
+    } catch {
+      generated = fallbackQuestions({
+        examName: args.examName,
+        subject: args.subject,
+        topic: args.topicPath,
+        count: args.questionCount,
+        syllabus
+      });
+    }
 
     const merged = dedupeQuestions([...reusableQuestions, ...generated])
       .filter((question) => !isPlaceholderQuestion(question))
