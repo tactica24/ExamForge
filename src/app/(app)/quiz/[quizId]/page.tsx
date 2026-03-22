@@ -17,16 +17,17 @@ async function loadQuizQuestionsWithRetry(args: {
     const { data: questions } = await args.firebase
       .from("quiz_questions")
       .select("id,question,options,explanation")
-      .eq("quiz_id", args.quizId)
-      .order("id", { ascending: true });
+      .eq("quiz_id", args.quizId);
 
     const safeQuestions =
-      questions?.map((q) => ({
-        id: q.id,
-        question: q.question,
-        options: Array.isArray(q.options) ? (q.options as any[]).map(String) : [],
-        explanation: q.explanation
-      })) ?? [];
+      (questions ?? [])
+        .map((q) => ({
+          id: q.id,
+          question: q.question,
+          options: Array.isArray(q.options) ? (q.options as any[]).map(String) : [],
+          explanation: q.explanation
+        }))
+        .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
     if (safeQuestions.length) return safeQuestions;
     if (attempt < 2) await wait(300 * (attempt + 1));

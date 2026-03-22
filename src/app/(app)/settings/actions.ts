@@ -142,6 +142,15 @@ const UpdateSubjectModeSchema = z.object({
   mode: z.enum(["solo", "group"])
 });
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | null | undefined) {
+  return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
+}
+
 async function ensurePlanForSubject(args: {
   firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   userId: string;
@@ -164,25 +173,24 @@ async function ensurePlanForSubject(args: {
     .eq("user_id", args.userId)
     .maybeSingle();
 
-  const { data: existingPlan } = await args.firebase
+  const { data: existingPlans } = await args.firebase
     .from("user_plans")
-    .select("id")
+    .select("id,created_at")
     .eq("user_id", args.userId)
     .eq("exam_id", args.examId)
-    .eq("subject", args.subject)
-    .limit(1)
-    .maybeSingle();
+    .eq("subject", args.subject);
+
+  const existingPlan = sortNewestFirst(existingPlans)[0] ?? null;
 
   if (existingPlan?.id) return { ok: true as const, created: false as const };
 
-  const { data: templatePlan } = await args.firebase
+  const { data: templatePlans } = await args.firebase
     .from("user_plans")
-    .select("mode,pace,start_date,target_date")
+    .select("mode,pace,start_date,target_date,created_at")
     .eq("user_id", args.userId)
-    .eq("exam_id", args.examId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("exam_id", args.examId);
+
+  const templatePlan = sortNewestFirst(templatePlans)[0] ?? null;
 
   const mode = (templatePlan?.mode as "solo" | "group" | undefined) ?? "solo";
   const pace = (templatePlan?.pace as string | undefined) ?? "steady";
@@ -387,13 +395,13 @@ export async function updateSubjectModeAction(_: unknown, formData: FormData) {
     redirect("/pricing");
   }
 
-  let { data: plans } = await firebase
+  const { data: planRows } = await firebase
     .from("user_plans")
-    .select("id,pace")
+    .select("id,pace,created_at")
     .eq("user_id", user.id)
     .eq("exam_id", parsed.data.exam_id)
-    .eq("subject", parsed.data.subject)
-    .order("created_at", { ascending: false });
+    .eq("subject", parsed.data.subject);
+  let plans = sortNewestFirst(planRows);
 
   if (!plans?.length) {
     const ensured = await ensurePlanForSubject({
@@ -410,12 +418,11 @@ export async function updateSubjectModeAction(_: unknown, formData: FormData) {
 
     const refreshed = await firebase
       .from("user_plans")
-      .select("id,pace")
+      .select("id,pace,created_at")
       .eq("user_id", user.id)
       .eq("exam_id", parsed.data.exam_id)
-      .eq("subject", parsed.data.subject)
-      .order("created_at", { ascending: false });
-    plans = refreshed.data ?? [];
+      .eq("subject", parsed.data.subject);
+    plans = sortNewestFirst(refreshed.data);
   }
 
   if (!plans?.length) {

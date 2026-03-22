@@ -17,6 +17,15 @@ const Schema = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium")
 });
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | null | undefined) {
+  return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
+}
+
 export async function startMockExamAction(_: unknown, formData: FormData) {
   const parsed = Schema.safeParse({
     exam_id: formData.get("exam_id"),
@@ -59,15 +68,13 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     };
   }
 
-  const { data: plan } = await firebase
+  const { data: plans } = await firebase
     .from("user_plans")
-    .select("id")
+    .select("id,created_at")
     .eq("user_id", user.id)
     .eq("exam_id", parsed.data.exam_id)
-    .eq("subject", parsed.data.subject)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("subject", parsed.data.subject);
+  const plan = sortNewestFirst(plans)[0] ?? null;
   if (!plan?.id) {
     return {
       ok: false,
@@ -82,8 +89,7 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     .select("topic_path,title,status,resource_links,scheduled_for")
     .eq("plan_id", plan.id)
     .gte("scheduled_for", start)
-    .lte("scheduled_for", end)
-    .order("scheduled_for", { ascending: true });
+    .lte("scheduled_for", end);
 
   const completedTopics = (recentItems ?? [])
     .filter((item: any) => isPlanItemQuizCompleted(item?.resource_links) || item?.status === "done")

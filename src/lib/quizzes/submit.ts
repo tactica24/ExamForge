@@ -14,6 +14,11 @@ const SubmitSchema = z.object({
   answers: z.array(z.number().int().min(0).max(3)).min(1).max(200)
 });
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export async function submitQuiz(args: { userId: string; quizId: string; answers: number[] }) {
   const parsed = SubmitSchema.safeParse({ quiz_id: args.quizId, answers: args.answers });
   if (!parsed.success) return { ok: false as const, message: "Invalid submission." };
@@ -31,15 +36,15 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   }
 
   const dayStart = startOfDay(new Date()).toISOString();
-  const { data: existing } = await firebase
+  const { data: existingResults } = await firebase
     .from("user_quiz_results")
     .select("id,score,total,created_at")
     .eq("user_id", args.userId)
     .eq("quiz_id", args.quizId)
-    .gte("created_at", dayStart)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .gte("created_at", dayStart);
+  const existing =
+    [...(existingResults ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at))[0] ??
+    null;
 
   if (existing) {
     const completion = await syncPlanTopicCompletion({
@@ -55,11 +60,12 @@ export async function submitQuiz(args: { userId: string; quizId: string; answers
   const { data: qs, error: qErr } = await firebase
     .from("quiz_questions")
     .select("id,correct_index")
-    .eq("quiz_id", args.quizId)
-    .order("id", { ascending: true });
+    .eq("quiz_id", args.quizId);
   if (qErr) return { ok: false as const, message: qErr.message };
 
-  const correct = (qs ?? []).map((q) => q.correct_index);
+  const correct = [...(qs ?? [])]
+    .sort((left, right) => String(left.id).localeCompare(String(right.id)))
+    .map((q) => q.correct_index);
   const total = correct.length;
   const score = correct.reduce((acc, ci, idx) => acc + (args.answers[idx] === ci ? 1 : 0), 0);
 

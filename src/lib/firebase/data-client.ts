@@ -81,6 +81,24 @@ function asError(error: unknown): DbError {
   return { message: error instanceof Error ? error.message : "firebase_query_failed" };
 }
 
+function shouldFallbackToInMemory(error: unknown) {
+  if (ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) return true;
+
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (!message) return false;
+
+  return [
+    "Unsupported firestore filter:",
+    "Unsupported firestore order:",
+    "The query requires an index",
+    "You can create it here:",
+    "The query requires multiple indexes",
+    "inequality filter property and first sort order must be the same",
+    "order by clause cannot contain more fields after the key",
+    "INVALID_ARGUMENT"
+  ].some((snippet) => message.includes(snippet));
+}
+
 function getByPath(obj: Record<string, any>, path: string): unknown {
   if (!path.includes(".")) return obj[path];
   const parts = path.split(".");
@@ -299,7 +317,7 @@ async function loadRowsWithQuery(
     const snapshot = await query.get();
     return mapSnapshotToRows(snapshot, table);
   } catch (error) {
-    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
+    if (!shouldFallbackToInMemory(error)) throw error;
 
     const snapshot = await db.collection(table).get();
     let rows = mapSnapshotToRows(snapshot, table);
@@ -319,7 +337,7 @@ async function countRowsWithFilters(db: Firestore | null, table: string, filters
     const count = Number(aggregate?.data()?.count ?? 0);
     if (Number.isFinite(count)) return count;
   } catch (error) {
-    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
+    if (!shouldFallbackToInMemory(error)) throw error;
   }
 
   const snapshot = await db.collection(table).get();
@@ -369,7 +387,7 @@ async function resolveDocIdByConflict(
     const snapshot = await query.limit(1).get();
     if (!snapshot.empty) return snapshot.docs[0].id;
   } catch (error) {
-    if (!ALLOW_IN_MEMORY_FIRESTORE_FALLBACK) throw error;
+    if (!shouldFallbackToInMemory(error)) throw error;
   }
 
   const rows = await loadRows(db, table);

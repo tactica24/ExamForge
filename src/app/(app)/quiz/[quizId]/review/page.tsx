@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { QuizReview } from "@/components/quiz/quiz-review";
 import { getStoredReviewFeedback } from "@/lib/quizzes/review-feedback";
 
+function toCreatedAtMs(value: unknown) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export default async function QuizReviewPage(props: { params: Promise<{ quizId: string }> }) {
   const { quizId } = await props.params;
   const firebase = await createFirebaseServerClient();
@@ -44,14 +49,13 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
   const { data: exam } = await firebase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
   const examName = exam?.name ?? "Exam";
 
-  const { data: result } = await firebase
+  const { data: results } = await firebase
     .from("user_quiz_results")
     .select("answers,score,total,created_at")
     .eq("user_id", user.id)
-    .eq("quiz_id", quizId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("quiz_id", quizId);
+  const result =
+    [...(results ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at))[0] ?? null;
   if (!result) redirect(`/quiz/${quizId}`);
 
   const answers = Array.isArray(result.answers) ? (result.answers as any[]).map((n) => Number(n)) : [];
@@ -59,18 +63,19 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
   const { data: questions } = await firebase
     .from("quiz_questions")
     .select("id,question,options,correct_index,explanation")
-    .eq("quiz_id", quizId)
-    .order("id", { ascending: true });
+    .eq("quiz_id", quizId);
 
   const qs =
-    questions?.map((q, idx) => ({
-      id: q.id,
-      question: q.question,
-      options: Array.isArray(q.options) ? (q.options as any[]).map(String) : [],
-      correct_index: q.correct_index,
-      explanation: q.explanation,
-      user_index: Number(answers[idx] ?? -1)
-    })) ?? [];
+    (questions ?? [])
+      .sort((left, right) => String(left.id).localeCompare(String(right.id)))
+      .map((q, idx) => ({
+        id: q.id,
+        question: q.question,
+        options: Array.isArray(q.options) ? (q.options as any[]).map(String) : [],
+        correct_index: q.correct_index,
+        explanation: q.explanation,
+        user_index: Number(answers[idx] ?? -1)
+      }));
   const initialDetailedFeedback = getStoredReviewFeedback(quiz.meta);
 
   return (

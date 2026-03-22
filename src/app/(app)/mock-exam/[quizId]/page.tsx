@@ -17,15 +17,16 @@ async function loadMockQuestionsWithRetry(args: {
     const { data: questions } = await args.firebase
       .from("quiz_questions")
       .select("id,question,options")
-      .eq("quiz_id", args.quizId)
-      .order("id", { ascending: true });
+      .eq("quiz_id", args.quizId);
 
     const safeQuestions =
-      questions?.map((q) => ({
-        id: q.id,
-        question: q.question,
-        options: Array.isArray(q.options) ? (q.options as any[]).map(String) : []
-      })) ?? [];
+      (questions ?? [])
+        .map((q) => ({
+          id: q.id,
+          question: q.question,
+          options: Array.isArray(q.options) ? (q.options as any[]).map(String) : []
+        }))
+        .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
     if (safeQuestions.length) return safeQuestions;
     if (attempt < 2) await wait(300 * (attempt + 1));
