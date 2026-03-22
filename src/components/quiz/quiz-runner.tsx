@@ -34,8 +34,7 @@ export function QuizRunner(props: { quizId: string; title: string; questions: Qu
 
     if (!navigator.onLine) {
       enqueueQuizSubmission({ quizId: props.quizId, answers });
-      toast.message("Saved offline. We'll sync when you're back online.");
-      router.push("/dashboard");
+      toast.message("Saved offline. We will sync when you are back online.");
       return;
     }
 

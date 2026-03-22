@@ -41,7 +41,7 @@ export function MockRunner(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining]);
 
-  const q = props.questions[current]!;
+  const q = props.questions[current] ?? null;
 
   async function finish(auto = false) {
     if (submitting) return;
@@ -49,8 +49,7 @@ export function MockRunner(props: {
 
     if (!navigator.onLine) {
       enqueueQuizSubmission({ quizId: props.quizId, answers });
-      toast.message(auto ? "Time up. Saved offline; will sync later." : "Saved offline; will sync later.");
-      router.push("/dashboard");
+      toast.message(auto ? "Time is up. Saved offline and will sync later." : "Saved offline and will sync later.");
       return;
     }
 
@@ -65,12 +64,36 @@ export function MockRunner(props: {
       toast.success(`Score: ${json.score}/${json.total}`);
       router.push(`/quiz/${props.quizId}/review`);
     } catch (e: any) {
-      enqueueQuizSubmission({ quizId: props.quizId, answers });
-      toast.message("Saved offline; will sync later.");
-      router.push("/dashboard");
+      if (!navigator.onLine) {
+        enqueueQuizSubmission({ quizId: props.quizId, answers });
+        toast.message("Saved offline and will sync later.");
+        return;
+      }
+      toast.error(e?.message ?? "Could not submit the mock exam. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (!q) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <Card className="p-5">
+          <div className="text-lg font-semibold">{props.title}</div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This mock exam is unavailable right now. Please reload it or create a new one.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button type="button" onClick={() => router.refresh()}>
+              Reload
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => router.push("/mock-exam")}>
+              Back to mock exams
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (

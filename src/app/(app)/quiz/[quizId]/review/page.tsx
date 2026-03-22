@@ -20,7 +20,26 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
     .eq("id", quizId)
     .eq("created_by", user.id)
     .maybeSingle();
-  if (!quiz) redirect("/dashboard");
+  if (!quiz) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Quiz review unavailable</CardTitle>
+            <CardDescription>We could not find that quiz review for your account.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/quiz/extra">Generate another quiz</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/progress">Open progress</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const { data: exam } = await firebase.from("exams").select("name").eq("id", quiz.exam_id).maybeSingle();
   const examName = exam?.name ?? "Exam";
