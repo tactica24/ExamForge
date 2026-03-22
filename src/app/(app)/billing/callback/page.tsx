@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { paystackVerify } from "@/lib/billing/paystack";
@@ -16,7 +15,6 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
   const {
     data: { user }
   } = await firebase.auth.getUser();
-  if (!user) redirect("/login");
 
   if (!reference) {
     return (
@@ -40,7 +38,7 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
       firebase,
       verification,
       source: "callback",
-      expectedUserId: user.id
+      expectedUserId: user?.id ?? null
     });
 
     if (!activation.ok) {
@@ -54,12 +52,25 @@ export default async function BillingCallbackPage(props: { searchParams: Promise
           <CardDescription>Your Pro access is now active.</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
-          <Button asChild>
-            <Link href="/dashboard">Go to dashboard</Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href="/settings">Settings</Link>
-          </Button>
+          {user ? (
+            <>
+              <Button asChild>
+                <Link href="/dashboard">Go to dashboard</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/settings">Settings</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild>
+                <Link href="/login">Log in to continue</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/pricing">View plans</Link>
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     );

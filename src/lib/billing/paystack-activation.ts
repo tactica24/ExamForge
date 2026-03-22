@@ -1,5 +1,6 @@
 import "server-only";
 
+import { addDays } from "date-fns";
 import type { FirebaseDataClient } from "@/lib/firebase/data-client";
 import {
   PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO,
@@ -32,6 +33,14 @@ type ActivationResult =
 function readMetadataObject(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
+}
+
+function parseFutureIso(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
 }
 
 export async function activateProSubscriptionFromPaystack(args: {
@@ -71,6 +80,17 @@ export async function activateProSubscriptionFromPaystack(args: {
 
   const nowIso = new Date().toISOString();
   const paidAt = String(args.verification.paid_at ?? "").trim() || nowIso;
+  const paidAtDate = parseFutureIso(paidAt) ?? new Date();
+
+  const { data: existingProfile } = await args.firebase
+    .from("profiles")
+    .select("user_id,pro_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const existingExpiry = parseFutureIso((existingProfile as any)?.pro_until);
+  const anchor = existingExpiry && existingExpiry.getTime() > paidAtDate.getTime() ? existingExpiry : paidAtDate;
+  const nextPeriodEnd = addDays(anchor, 30).toISOString();
 
   const subResult = await args.firebase.from("subscriptions").upsert(
     {
@@ -78,7 +98,7 @@ export async function activateProSubscriptionFromPaystack(args: {
       provider: "paystack",
       tier: "pro",
       status: "active",
-      current_period_end: null,
+      current_period_end: nextPeriodEnd,
       paystack_reference: reference,
       paystack_paid_at: paidAt
     },
@@ -91,7 +111,8 @@ export async function activateProSubscriptionFromPaystack(args: {
   const profileResult = await args.firebase.from("profiles").upsert(
     {
       user_id: userId,
-      subscription_tier: "pro"
+      subscription_tier: "pro",
+      pro_until: nextPeriodEnd
     },
     { onConflict: "user_id" }
   );

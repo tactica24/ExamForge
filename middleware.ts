@@ -23,6 +23,7 @@ const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const EXTERNAL_POST_ALLOWED_PATHS = new Set(["/api/billing/paystack/webhook"]);
 
 function isProtectedPath(pathname: string) {
+  if (pathname === "/billing/callback") return false;
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

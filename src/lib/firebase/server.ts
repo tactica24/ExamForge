@@ -295,13 +295,13 @@ async function validateTrackedSession(args: {
   userId: string;
 }) {
   const sid = cleanText(args.cookieStore.get(FIREBASE_TRACKED_SESSION_COOKIE)?.value, 80);
-  if (!sid) return true;
+  if (!sid) return { kind: "missing_cookie" as const };
 
   const { data } = await args.dataClient.from("auth_sessions").select("*").eq("id", sid).maybeSingle();
   const session = parseSessionRow(data);
-  if (!session) return false;
-  if (session.user_id !== args.userId) return false;
-  if (session.revoked_at) return false;
+  if (!session) return { kind: "missing_record" as const };
+  if (session.user_id !== args.userId) return { kind: "invalid" as const };
+  if (session.revoked_at) return { kind: "invalid" as const };
 
   if (isStaleSession(session)) {
     await revokeSession({
@@ -309,7 +309,7 @@ async function validateTrackedSession(args: {
       sessionId: session.id,
       reason: "idle_timeout"
     });
-    return false;
+    return { kind: "invalid" as const };
   }
 
   if (shouldWriteLastSeen(session)) {
@@ -323,7 +323,7 @@ async function validateTrackedSession(args: {
       .eq("id", session.id);
   }
 
-  return true;
+  return { kind: "valid" as const };
 }
 
 async function callIdentityToolkit(endpoint: string, payload: Record<string, unknown>) {
@@ -439,13 +439,30 @@ export async function createFirebaseServerClient() {
           return { data: { user: null }, error: null };
         }
 
-        const isValidTrackedSession = await validateTrackedSession({
+        const trackedSession = await validateTrackedSession({
           dataClient,
           cookieStore,
           headerStore,
           userId: user.id
         });
-        if (!isValidTrackedSession) {
+        if (trackedSession.kind === "valid" || trackedSession.kind === "missing_cookie") {
+          return { data: { user }, error: null };
+        }
+
+        if (trackedSession.kind === "missing_record") {
+          const recovered = await registerOrReuseSession({
+            dataClient,
+            cookieStore,
+            headerStore,
+            userId: user.id,
+            email: user.email
+          });
+          if (recovered.ok) {
+            return { data: { user }, error: null };
+          }
+        }
+
+        if (trackedSession.kind === "invalid") {
           clearSessionCookies(cookieStore);
           return { data: { user: null }, error: null };
         }
