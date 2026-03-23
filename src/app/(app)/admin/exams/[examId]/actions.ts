@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { generateQuestionBankForSubject } from "@/lib/question-bank/pipeline";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
 
@@ -34,6 +35,16 @@ const GenerateSubjectSchema = z.object({
 const GenerateAllSchema = z.object({
   exam_id: z.string().uuid(),
   exam_slug: z.string().min(2).max(50)
+});
+
+const GenerateQuestionBankSchema = z.object({
+  exam_id: z.string().uuid(),
+  exam_slug: z.string().min(2).max(50),
+  exam_name: z.string().trim().min(2).max(120),
+  subject: z.string().trim().min(2).max(80),
+  focus_limit: z.coerce.number().int().min(1).max(80),
+  questions_per_focus: z.coerce.number().int().min(1).max(24),
+  approval_threshold: z.coerce.number().int().min(50).max(100)
 });
 
 const UploadDocumentSchema = z.object({
@@ -418,6 +429,51 @@ export async function generateAllExamSyllabiAction(_: unknown, formData: FormDat
   redirect(`/admin/exams/${parsed.data.exam_id}`);
 }
 
+export async function generateSubjectQuestionBankAction(_: unknown, formData: FormData) {
+  const parsed = GenerateQuestionBankSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    exam_slug: formData.get("exam_slug"),
+    exam_name: formData.get("exam_name"),
+    subject: formData.get("subject"),
+    focus_limit: formData.get("focus_limit"),
+    questions_per_focus: formData.get("questions_per_focus"),
+    approval_threshold: formData.get("approval_threshold")
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid question-bank settings." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  const firebase = await createFirebaseServerClient();
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+
+  try {
+    const result = await generateQuestionBankForSubject({
+      examId: parsed.data.exam_id,
+      examSlug: parsed.data.exam_slug,
+      examName: parsed.data.exam_name,
+      subject: parsed.data.subject,
+      focusLimit: parsed.data.focus_limit,
+      questionsPerFocus: parsed.data.questions_per_focus,
+      approvalThreshold: parsed.data.approval_threshold,
+      createdBy: user?.id ?? null
+    });
+
+    revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+    return {
+      ok: true,
+      message: `Run complete. Stored ${result.totalStored} questions for ${parsed.data.subject}, with ${result.totalApproved} approved automatically.`
+    };
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Question bank generation failed." };
+  }
+}
+
 export async function deleteSyllabusAction(_: unknown, formData: FormData) {
   const parsed = DeleteSyllabusSchema.safeParse({
     exam_id: formData.get("exam_id"),
@@ -513,6 +569,8 @@ export async function removeExamSubjectAction(_: unknown, formData: FormData) {
   await deleteByIn(admin, "quiz_questions", "quiz_id", quizIds);
   await deleteByIn(admin, "user_quiz_results", "quiz_id", quizIds);
   await admin.from("quizzes").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+  await admin.from("question_bank_entries").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
+  await admin.from("question_bank_runs").delete().eq("exam_id", parsed.data.exam_id).eq("subject", parsed.data.subject);
 
   const { data: groups } = await admin
     .from("groups")
@@ -570,6 +628,8 @@ export async function deleteExamAction(_: unknown, formData: FormData) {
   await deleteByIn(admin, "quiz_questions", "quiz_id", quizIds);
   await deleteByIn(admin, "user_quiz_results", "quiz_id", quizIds);
   await admin.from("quizzes").delete().eq("exam_id", parsed.data.exam_id);
+  await admin.from("question_bank_entries").delete().eq("exam_id", parsed.data.exam_id);
+  await admin.from("question_bank_runs").delete().eq("exam_id", parsed.data.exam_id);
 
   const { data: groups } = await admin.from("groups").select("id").eq("exam_id", parsed.data.exam_id);
   const groupIds = (groups ?? []).map((row: any) => String(row.id)).filter(Boolean);

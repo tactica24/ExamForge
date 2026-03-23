@@ -17,15 +17,12 @@ import {
 import { getAppUrl } from "@/lib/app-url";
 import { getServerEnv } from "@/lib/env";
 
-const MAX_ACTIVE_DEVICE_SESSIONS = 3;
 const AUTH_SESSION_IDLE_MS = 1000 * 60 * 60 * 24 * 30;
 const TRACKED_SESSION_COOKIE_MAX_AGE = 60 * 60 * 24;
 const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const LAST_SEEN_WRITE_INTERVAL_MS = 1000 * 60 * 5;
-const DEVICE_LIMIT_MESSAGE =
-  "Maximum active device limit reached (3 devices). Log out from another device and try again.";
-const DEVICE_LIMIT_FALLBACK_ERROR =
-  "Could not validate active device limit right now. Please try again in a moment.";
+const TRACKED_SESSION_FALLBACK_ERROR =
+  "Could not register this login session right now. Please try again in a moment.";
 
 type AuthPayload = {
   id: string;
@@ -257,13 +254,6 @@ async function registerOrReuseSession(args: {
     return { ok: true as const };
   }
 
-  if (activeSessions.length >= MAX_ACTIVE_DEVICE_SESSIONS) {
-    return {
-      ok: false as const,
-      message: DEVICE_LIMIT_MESSAGE
-    };
-  }
-
   const sessionId = randomUUID();
   const { error } = await args.dataClient.from("auth_sessions").insert({
     id: sessionId,
@@ -280,7 +270,7 @@ async function registerOrReuseSession(args: {
   if (error) {
     return {
       ok: false as const,
-      message: DEVICE_LIMIT_FALLBACK_ERROR
+      message: TRACKED_SESSION_FALLBACK_ERROR
     };
   }
 

@@ -88,6 +88,69 @@ export type SyllabiRow = {
 export type SyllabiInsert = Partial<SyllabiRow> & { exam_id: string; subject: string; topics: Json };
 export type SyllabiUpdate = Partial<SyllabiRow>;
 
+export type QuestionBankRunsRow = {
+  id: string;
+  exam_id: string;
+  exam_slug: string | null;
+  subject: string;
+  status: "queued" | "running" | "completed" | "failed" | string;
+  total_requested: number;
+  total_generated: number;
+  total_approved: number;
+  total_needs_review: number;
+  total_rejected: number;
+  config: Json;
+  summary: Json;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type QuestionBankRunsInsert = Partial<QuestionBankRunsRow> & {
+  exam_id: string;
+  subject: string;
+};
+export type QuestionBankRunsUpdate = Partial<QuestionBankRunsRow>;
+
+export type QuestionBankEntriesRow = {
+  id: string;
+  run_id: string | null;
+  exam_id: string;
+  exam_slug: string | null;
+  subject: string;
+  topic_path: string;
+  topic_key: string | null;
+  focus_label: string | null;
+  focus_key: string | null;
+  difficulty: "easy" | "medium" | "hard" | string;
+  question: string;
+  options: Json;
+  correct_index: number;
+  explanation: string;
+  syllabus_tags: Json;
+  quality_score: number;
+  review_score: number;
+  review_status: "approved" | "rejected" | "needs_review" | string;
+  review_notes: Json;
+  source_model: string | null;
+  source_provider: string | null;
+  source_type: string | null;
+  signature: string;
+  meta: Json;
+  created_at: string;
+  updated_at: string;
+};
+export type QuestionBankEntriesInsert = Partial<QuestionBankEntriesRow> & {
+  exam_id: string;
+  subject: string;
+  topic_path: string;
+  question: string;
+  options: Json;
+  correct_index: number;
+  explanation: string;
+  signature: string;
+};
+export type QuestionBankEntriesUpdate = Partial<QuestionBankEntriesRow>;
+
 export type UserExamSubjectsRow = {
   id: string;
   user_id: string;
@@ -450,6 +513,8 @@ export type Database = {
       profile_public: TableDef<ProfilePublicRow, ProfilePublicInsert, ProfilePublicUpdate>;
       exams: TableDef<ExamsRow, ExamsInsert, ExamsUpdate>;
       syllabi: TableDef<SyllabiRow, SyllabiInsert, SyllabiUpdate>;
+      question_bank_runs: TableDef<QuestionBankRunsRow, QuestionBankRunsInsert, QuestionBankRunsUpdate>;
+      question_bank_entries: TableDef<QuestionBankEntriesRow, QuestionBankEntriesInsert, QuestionBankEntriesUpdate>;
       user_exam_subjects: TableDef<UserExamSubjectsRow, UserExamSubjectsInsert, UserExamSubjectsUpdate>;
       user_plans: TableDef<UserPlansRow, UserPlansInsert, UserPlansUpdate>;
       plan_items: TableDef<PlanItemsRow, PlanItemsInsert, PlanItemsUpdate>;

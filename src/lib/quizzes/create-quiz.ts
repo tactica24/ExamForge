@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "crypto";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { pickQuestionBankQuestions } from "@/lib/question-bank/select";
 import {
   fallbackQuestions,
   generateQuestions,
@@ -350,7 +351,20 @@ export async function createQuizWithQuestions(args: {
     poolKey
   });
 
-  if (reusableQuestions.length >= args.questionCount) {
+  const bankQuestions = await pickQuestionBankQuestions({
+    firebase,
+    userId: args.userId,
+    examId: args.examId,
+    subject: args.subject,
+    topicPath: args.topicPath,
+    difficulty: args.difficulty,
+    questionCount: args.questionCount,
+    syllabus: args.syllabusOverride
+  });
+
+  const prebuiltQuestions = dedupeQuestions([...reusableQuestions, ...bankQuestions]).slice(0, args.questionCount);
+
+  if (prebuiltQuestions.length >= args.questionCount) {
     const quizId = await createQuizRecord({
       firebase,
       userId: args.userId,
@@ -364,14 +378,15 @@ export async function createQuizWithQuestions(args: {
       cacheKey,
       meta: {
         ...(args.meta ?? {}),
-        reused_question_pool: true
+        reused_question_pool: reusableQuestions.length > 0,
+        question_bank_used: bankQuestions.length > 0
       }
     });
     try {
       await insertQuizQuestions({
         firebase,
         quizId,
-        questions: reusableQuestions.slice(0, args.questionCount)
+        questions: prebuiltQuestions
       });
       return quizId;
     } catch (error) {
@@ -391,7 +406,11 @@ export async function createQuizWithQuestions(args: {
     preferredLanguage: args.preferredLanguage,
     poolKey,
     cacheKey,
-    meta: args.meta
+    meta: {
+      ...(args.meta ?? {}),
+      reused_question_pool: reusableQuestions.length > 0,
+      question_bank_used: bankQuestions.length > 0
+    }
   });
 
   try {
@@ -420,7 +439,8 @@ export async function createQuizWithQuestions(args: {
         count: args.questionCount,
         preferredLanguage: args.preferredLanguage ?? null,
         syllabus,
-        strictSyllabus: Boolean(args.syllabusOverride?.length)
+        strictSyllabus: Boolean(args.syllabusOverride?.length),
+        difficulty: args.difficulty
       });
     } catch {
       generated = fallbackQuestions({
@@ -428,11 +448,12 @@ export async function createQuizWithQuestions(args: {
         subject: args.subject,
         topic: args.topicPath,
         count: args.questionCount,
-        syllabus
+        syllabus,
+        difficulty: args.difficulty
       });
     }
 
-    const merged = dedupeQuestions([...reusableQuestions, ...generated])
+    const merged = dedupeQuestions([...reusableQuestions, ...bankQuestions, ...generated])
       .filter((question) => !isPlaceholderQuestion(question))
       .slice(0, args.questionCount);
 
@@ -442,7 +463,8 @@ export async function createQuizWithQuestions(args: {
         subject: args.subject,
         topic: args.topicPath,
         count: args.questionCount,
-        syllabus
+        syllabus,
+        difficulty: args.difficulty
       });
       for (const question of filler) {
         if (merged.length >= args.questionCount) break;

@@ -15,6 +15,7 @@ import {
   deleteExamAction,
   deleteSyllabusAction,
   generateAllExamSyllabiAction,
+  generateSubjectQuestionBankAction,
   generateSubjectSyllabusAiAction,
   removeExamSubjectAction,
   uploadSubjectSyllabusDocumentAction,
@@ -26,6 +27,15 @@ export const dynamic = "force-dynamic";
 function normalizeTopics(value: unknown) {
   if (!Array.isArray(value)) return [] as Array<{ title: string; path: string; subtopics?: string[] }>;
   return value as Array<{ title: string; path: string; subtopics?: string[] }>;
+}
+
+function normalizeQuestionBankRows(value: unknown) {
+  if (!Array.isArray(value)) return [] as Array<Record<string, any>>;
+  return value as Array<Record<string, any>>;
+}
+
+function countValue(value: { count?: number | null } | null | undefined) {
+  return Number(value?.count ?? 0);
 }
 
 export default async function AdminExamDetailPage(props: {
@@ -62,6 +72,56 @@ export default async function AdminExamDetailPage(props: {
   const selectedTopics = normalizeTopics(selectedEntry?.topics);
   const coveredSubjects = new Set((syllabi ?? []).map((item) => String(item.subject)));
   const coveragePercent = subjects.length ? Math.round((coveredSubjects.size / subjects.length) * 100) : 0;
+  const defaultFocusLimit = Math.max(6, Math.min(36, selectedTopics.length ? selectedTopics.length * 2 : 12));
+
+  const [
+    { data: bankRuns },
+    approvedCountResult,
+    needsReviewCountResult,
+    rejectedCountResult,
+    { data: approvedPreviewRaw }
+  ] = await Promise.all([
+    firebase
+      .from("question_bank_runs")
+      .select("*")
+      .eq("exam_id", examId)
+      .eq("subject", selectedSubject)
+      .order("created_at", { ascending: false })
+      .limit(8),
+    firebase
+      .from("question_bank_entries")
+      .select("id", { head: true, count: "exact" })
+      .eq("exam_id", examId)
+      .eq("subject", selectedSubject)
+      .eq("review_status", "approved"),
+    firebase
+      .from("question_bank_entries")
+      .select("id", { head: true, count: "exact" })
+      .eq("exam_id", examId)
+      .eq("subject", selectedSubject)
+      .eq("review_status", "needs_review"),
+    firebase
+      .from("question_bank_entries")
+      .select("id", { head: true, count: "exact" })
+      .eq("exam_id", examId)
+      .eq("subject", selectedSubject)
+      .eq("review_status", "rejected"),
+    firebase
+      .from("question_bank_entries")
+      .select("id,topic_path,focus_label,difficulty,quality_score,review_status,question,options,correct_index,updated_at")
+      .eq("exam_id", examId)
+      .eq("subject", selectedSubject)
+      .eq("review_status", "approved")
+      .limit(12)
+  ]);
+
+  const approvedBankEntries = normalizeQuestionBankRows(approvedPreviewRaw);
+  const approvedBankCount = countValue(approvedCountResult);
+  const needsReviewBankCount = countValue(needsReviewCountResult);
+  const rejectedBankCount = countValue(rejectedCountResult);
+  const bankTopicCoverage = new Set(approvedBankEntries.map((entry) => String(entry.topic_path ?? "").trim()).filter(Boolean)).size;
+  const recentBankRuns = normalizeQuestionBankRows(bankRuns);
+  const latestBankRun = recentBankRuns[0] ?? null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -203,6 +263,162 @@ export default async function AdminExamDetailPage(props: {
                 Generate all missing subjects
               </SubmitButton>
             </AuthFormState>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2 border-primary/20 bg-gradient-to-br from-emerald-50 via-card to-primary/5">
+          <CardHeader>
+            <CardTitle className="text-base">Question bank automation</CardTitle>
+            <CardDescription>
+              Generate approved question banks subject by subject. Each run batches generation across syllabus targets, scores structure and syllabus alignment, tags topics automatically, and stores approved questions for live quizzes to reuse first.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">Approved: {approvedBankCount}</Badge>
+              <Badge variant="secondary">Needs review: {needsReviewBankCount}</Badge>
+              <Badge variant="secondary">Rejected: {rejectedBankCount}</Badge>
+              <Badge variant="secondary">Preview topics: {bankTopicCoverage}</Badge>
+              <Badge variant="secondary">Runs: {recentBankRuns.length}</Badge>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <AuthFormState action={generateSubjectQuestionBankAction}>
+                <input type="hidden" name="exam_id" value={examId} />
+                <input type="hidden" name="exam_slug" value={exam.slug} />
+                <input type="hidden" name="exam_name" value={exam.name} />
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="question_bank_subject">Subject</Label>
+                    <NativeSelect id="question_bank_subject" name="subject" defaultValue={selectedSubject} required>
+                      {subjects.length ? (
+                        subjects.map((subject) => (
+                          <option key={subject} value={subject}>
+                            {subject}
+                          </option>
+                        ))
+                      ) : (
+                        <option value={selectedSubject}>{selectedSubject}</option>
+                      )}
+                    </NativeSelect>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="focus_limit">Topic targets</Label>
+                    <Input id="focus_limit" name="focus_limit" type="number" min={1} max={80} defaultValue={defaultFocusLimit} required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="questions_per_focus">Questions per target</Label>
+                    <Input id="questions_per_focus" name="questions_per_focus" type="number" min={1} max={24} defaultValue={9} required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="approval_threshold">Auto-approval threshold</Label>
+                    <Input id="approval_threshold" name="approval_threshold" type="number" min={50} max={100} defaultValue={78} required />
+                  </div>
+                </div>
+
+                <p className="mt-3 rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground">
+                  Each run spreads batches across easy, medium, and hard items automatically, tags questions to syllabus focus areas, and stores anything that passes the threshold for immediate quiz reuse.
+                </p>
+
+                <div className="mt-4">
+                  <SubmitButton type="submit" pendingText="Generating bank..." className="w-full sm:w-auto">
+                    Generate selected subject bank
+                  </SubmitButton>
+                </div>
+              </AuthFormState>
+
+              <div className="space-y-3 rounded-xl border bg-card p-4">
+                <div>
+                  <div className="text-sm font-medium">Latest run snapshot</div>
+                  <div className="text-xs text-muted-foreground">
+                    {latestBankRun
+                      ? `Status: ${String(latestBankRun.status ?? "unknown")} | Requested: ${Number(latestBankRun.total_requested ?? 0)} | Approved: ${Number(latestBankRun.total_approved ?? 0)}`
+                      : "No question-bank runs yet for this subject."}
+                  </div>
+                </div>
+
+                {latestBankRun ? (
+                  <div className="grid gap-2 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      Generated
+                      <div className="text-lg font-semibold">{Number(latestBankRun.total_generated ?? 0)}</div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      Needs review
+                      <div className="text-lg font-semibold">{Number(latestBankRun.total_needs_review ?? 0)}</div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      Rejected
+                      <div className="text-lg font-semibold">{Number(latestBankRun.total_rejected ?? 0)}</div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      Last run
+                      <div className="text-sm font-semibold">
+                        {latestBankRun.created_at ? new Date(String(latestBankRun.created_at)).toLocaleString() : "Unknown"}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-xl border bg-card p-4">
+                <div className="mb-3 text-sm font-medium">Recent runs</div>
+                <div className="space-y-2">
+                  {recentBankRuns.length ? (
+                    recentBankRuns.map((run) => (
+                      <div key={String(run.id)} className="rounded-lg border px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{String(run.status ?? "unknown")}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {run.created_at ? new Date(String(run.created_at)).toLocaleString() : "Unknown time"}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Requested {Number(run.total_requested ?? 0)} | Generated {Number(run.total_generated ?? 0)} | Approved {Number(run.total_approved ?? 0)} | Review {Number(run.total_needs_review ?? 0)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No runs yet for this subject.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-card p-4">
+                <div className="mb-3 text-sm font-medium">Approved question samples</div>
+                <div className="space-y-3">
+                  {approvedBankEntries.length ? (
+                    approvedBankEntries.slice(0, 4).map((entry) => (
+                      <div key={String(entry.id)} className="rounded-lg border px-3 py-3 text-sm">
+                        <div className="text-xs text-muted-foreground">
+                          {String(entry.topic_path ?? selectedSubject)} | {String(entry.difficulty ?? "medium")} | score {Number(entry.quality_score ?? 0)}
+                        </div>
+                        <div className="mt-1 font-medium">{String(entry.question ?? "")}</div>
+                        {Array.isArray(entry.options) ? (
+                          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            {entry.options.slice(0, 4).map((option: unknown, index: number) => (
+                              <div key={`${entry.id}-${index}`}>
+                                {String.fromCharCode(65 + index)}. {String(option ?? "")}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No approved questions stored yet for this subject. Run the generator above to populate the bank.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
