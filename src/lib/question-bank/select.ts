@@ -131,16 +131,18 @@ function relevanceScore(args: {
   difficulty: Difficulty;
 }) {
   const rowTokens = [
-    ...tokenize(row?.question),
-    ...tokenize(row?.topic_path),
-    ...tokenize(row?.focus_label),
-    ...(Array.isArray(row?.syllabus_tags) ? row.syllabus_tags.flatMap((tag: unknown) => tokenize(tag)) : [])
+    ...tokenize(args.row?.question),
+    ...tokenize(args.row?.topic_path),
+    ...tokenize(args.row?.focus_label),
+    ...(Array.isArray(args.row?.syllabus_tags)
+      ? args.row.syllabus_tags.flatMap((tag: unknown) => tokenize(tag))
+      : [])
   ];
-  let score = Number(row?.quality_score ?? 0);
+  let score = Number(args.row?.quality_score ?? 0);
 
-  if (normalizeKey(row?.topic_key ?? row?.topic_path) === args.topicKey) score += 80;
-  if (normalizeKey(row?.focus_key ?? row?.focus_label) === args.focusKey) score += 40;
-  if (String(row?.difficulty ?? "") === args.difficulty) score += 18;
+  if (normalizeKey(args.row?.topic_key ?? args.row?.topic_path) === args.topicKey) score += 80;
+  if (normalizeKey(args.row?.focus_key ?? args.row?.focus_label) === args.focusKey) score += 40;
+  if (String(args.row?.difficulty ?? "") === args.difficulty) score += 18;
 
   const rowSet = new Set(rowTokens);
   score += args.queryTokens.filter((token) => rowSet.has(token)).length * 7;
