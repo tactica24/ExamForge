@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "crypto";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { pickQuestionBankQuestions } from "@/lib/question-bank/select";
+import { pickQuestionBankMockQuestions, pickQuestionBankQuestions } from "@/lib/question-bank/select";
 import {
   fallbackQuestions,
   generateQuestions,
@@ -351,16 +351,26 @@ export async function createQuizWithQuestions(args: {
     poolKey
   });
 
-  const bankQuestions = await pickQuestionBankQuestions({
-    firebase,
-    userId: args.userId,
-    examId: args.examId,
-    subject: args.subject,
-    topicPath: args.topicPath,
-    difficulty: args.difficulty,
-    questionCount: args.questionCount,
-    syllabus: args.syllabusOverride
-  });
+  const bankQuestions =
+    args.quizType === "mock"
+      ? await pickQuestionBankMockQuestions({
+          firebase,
+          userId: args.userId,
+          examId: args.examId,
+          subject: args.subject,
+          difficulty: args.difficulty,
+          questionCount: args.questionCount
+        })
+      : await pickQuestionBankQuestions({
+          firebase,
+          userId: args.userId,
+          examId: args.examId,
+          subject: args.subject,
+          topicPath: args.topicPath,
+          difficulty: args.difficulty,
+          questionCount: args.questionCount,
+          syllabus: args.syllabusOverride
+        });
 
   const prebuiltQuestions = dedupeQuestions([...reusableQuestions, ...bankQuestions]).slice(0, args.questionCount);
 

@@ -205,6 +205,41 @@ async function fetchCandidates(args: {
   return rows;
 }
 
+async function fetchMockCandidates(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  examId: string;
+  subject: string;
+  difficulty: Difficulty;
+}) {
+  const fields =
+    "question,options,correct_index,explanation,signature,topic_path,topic_key,focus_label,focus_key,syllabus_tags,difficulty,quality_score";
+
+  const queries = [
+    args.firebase
+      .from("question_bank_entries")
+      .select(fields)
+      .eq("exam_id", args.examId)
+      .eq("subject", args.subject)
+      .eq("review_status", "approved")
+      .eq("difficulty", args.difficulty)
+      .limit(320),
+    args.firebase
+      .from("question_bank_entries")
+      .select(fields)
+      .eq("exam_id", args.examId)
+      .eq("subject", args.subject)
+      .eq("review_status", "approved")
+      .limit(520)
+  ];
+
+  const rows: any[] = [];
+  for (const query of queries) {
+    const { data } = await query;
+    if (data?.length) rows.push(...data);
+  }
+  return rows;
+}
+
 export async function pickQuestionBankQuestions(args: {
   firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   userId: string;
@@ -277,4 +312,94 @@ export async function pickQuestionBankQuestions(args: {
   }
 
   return questions;
+}
+
+export async function pickQuestionBankMockQuestions(args: {
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
+  userId: string;
+  examId: string;
+  subject: string;
+  difficulty: Difficulty;
+  questionCount: number;
+}) {
+  const needed = Math.max(1, Math.min(100, Math.trunc(args.questionCount || 1)));
+
+  const [rows, seenSignatures] = await Promise.all([
+    fetchMockCandidates({
+      firebase: args.firebase,
+      examId: args.examId,
+      subject: args.subject,
+      difficulty: args.difficulty
+    }),
+    loadSeenSignatures({
+      firebase: args.firebase,
+      userId: args.userId,
+      examId: args.examId,
+      subject: args.subject
+    })
+  ]);
+
+  const candidates = rows
+    .map((row) => {
+      const normalized = normalizeQuestionRow(row);
+      const signature = normalizeText(row?.signature, 800) || (normalized ? questionSignature(normalized) : "");
+      const topicPath = normalizeText(row?.topic_path, 180) || "General";
+      const difficulty = normalizeText(row?.difficulty, 40) || "medium";
+      const qualityScore = Number(row?.quality_score ?? 0);
+      return { row, normalized, signature, topicPath, difficulty, qualityScore };
+    })
+    .filter((candidate) => Boolean(candidate.signature) && Boolean(candidate.normalized));
+
+  const deduped = candidates.filter(
+    (candidate, index, all) => all.findIndex((entry) => entry.signature === candidate.signature) === index
+  );
+
+  const unseen = deduped.filter((candidate) => !seenSignatures.has(candidate.signature));
+  const seen = deduped.filter((candidate) => seenSignatures.has(candidate.signature));
+  const seed = `${args.userId}|mock|${args.examId}|${args.subject}|${args.difficulty}|${needed}`;
+
+  const ordered = [
+    ...seededSort(unseen, `${seed}|unseen`, (candidate) => {
+      let score = candidate.qualityScore;
+      if (candidate.difficulty === args.difficulty) score += 24;
+      return score;
+    }),
+    ...seededSort(seen, `${seed}|seen`, (candidate) => {
+      let score = candidate.qualityScore;
+      if (candidate.difficulty === args.difficulty) score += 24;
+      return score;
+    })
+  ];
+
+  const byTopic = new Map<string, typeof ordered>();
+  for (const candidate of ordered) {
+    const bucket = byTopic.get(candidate.topicPath) ?? [];
+    bucket.push(candidate);
+    byTopic.set(candidate.topicPath, bucket);
+  }
+
+  const topicOrder = seededSort(Array.from(byTopic.keys()), `${seed}|topics`, (topic) => {
+    const bucket = byTopic.get(topic) ?? [];
+    return Math.max(...bucket.map((candidate) => candidate.qualityScore), 0);
+  });
+
+  const picked: GeneratedQuestion[] = [];
+  const pickedSignatures = new Set<string>();
+  let advanced = true;
+
+  while (picked.length < needed && advanced) {
+    advanced = false;
+    for (const topic of topicOrder) {
+      const bucket = byTopic.get(topic) ?? [];
+      const next = bucket.shift();
+      if (!next?.normalized) continue;
+      if (pickedSignatures.has(next.signature)) continue;
+      picked.push(next.normalized);
+      pickedSignatures.add(next.signature);
+      advanced = true;
+      if (picked.length >= needed) break;
+    }
+  }
+
+  return picked;
 }

@@ -26,7 +26,7 @@ export default async function ContactPage(props: { searchParams: Promise<{ inten
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 {enterprise
-                  ? "Share your rollout plan, reporting needs, support expectations, or WhatsApp workflow questions. The message will appear in the admin support queue as an enterprise enquiry."
+                  ? "Share your rollout plan, reporting needs, support expectations, or WhatsApp workflow questions."
                   : "Ask about payments, onboarding, app issues, study flow, or anything else. You can also switch to WhatsApp if you need a faster reply."}
               </p>
 
@@ -52,11 +52,10 @@ export default async function ContactPage(props: { searchParams: Promise<{ inten
                   <div className="rounded-2xl border bg-muted/20 p-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2 font-medium text-foreground">
                       <Building2 className="h-4 w-4 text-primary" />
-                      Enterprise queue
+                      For schools and teams
                     </div>
                     <div className="mt-2">
-                      These messages are tagged separately inside the admin workspace so follow-up does not get mixed up
-                      with normal support tickets.
+                      Share the context we need so we can respond clearly on rollout, reporting, onboarding, or support.
                     </div>
                   </div>
                 ) : null}

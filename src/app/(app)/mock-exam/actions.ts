@@ -1,13 +1,10 @@
 "use server";
 
-import { addDays, formatISO } from "date-fns";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
 import { createQuizWithQuestions } from "@/lib/quizzes/create-quiz";
 import { hasActiveProAccess } from "@/lib/billing/access";
-import { isPlanItemQuizCompleted } from "@/lib/plans/content";
-
 const Schema = z.object({
   exam_id: z.string().min(3),
   exam_slug: z.string().min(2),
@@ -16,15 +13,6 @@ const Schema = z.object({
   duration_min: z.coerce.number().int().min(5).max(180).default(60),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium")
 });
-
-function toCreatedAtMs(value: unknown) {
-  const ms = new Date(String(value ?? "")).getTime();
-  return Number.isFinite(ms) ? ms : 0;
-}
-
-function sortNewestFirst<T extends { created_at?: string | null }>(rows: T[] | null | undefined) {
-  return [...(rows ?? [])].sort((left, right) => toCreatedAtMs(right.created_at) - toCreatedAtMs(left.created_at));
-}
 
 export async function startMockExamAction(_: unknown, formData: FormData) {
   const parsed = Schema.safeParse({
@@ -68,42 +56,6 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
     };
   }
 
-  const { data: plans } = await firebase
-    .from("user_plans")
-    .select("id,created_at")
-    .eq("user_id", user.id)
-    .eq("exam_id", parsed.data.exam_id)
-    .eq("subject", parsed.data.subject);
-  const plan = sortNewestFirst(plans)[0] ?? null;
-  if (!plan?.id) {
-    return {
-      ok: false,
-      message: "Complete at least one topic in your plan before taking a mock exam."
-    };
-  }
-
-  const end = formatISO(new Date(), { representation: "date" });
-  const start = formatISO(addDays(new Date(), -6), { representation: "date" });
-  const { data: recentItems } = await firebase
-    .from("plan_items")
-    .select("topic_path,title,status,resource_links,scheduled_for")
-    .eq("plan_id", plan.id)
-    .gte("scheduled_for", start)
-    .lte("scheduled_for", end);
-
-  const completedTopics = (recentItems ?? [])
-    .filter((item: any) => isPlanItemQuizCompleted(item?.resource_links) || item?.status === "done")
-    .map((item: any) => String(item?.topic_path ?? item?.title ?? "").trim())
-    .filter(Boolean);
-
-  const uniqueTopics = Array.from(new Set(completedTopics));
-  if (!uniqueTopics.length) {
-    return {
-      ok: false,
-      message: "Mock exams are generated from topics you completed this week. Finish a topic quiz first."
-    };
-  }
-
   let quizId: string;
   try {
     quizId = await createQuizWithQuestions({
@@ -117,11 +69,10 @@ export async function startMockExamAction(_: unknown, formData: FormData) {
       difficulty: parsed.data.difficulty,
       questionCount: parsed.data.question_count,
       preferredLanguage: profile?.preferred_explanation_language ?? "en",
-      syllabusOverride: uniqueTopics,
       meta: {
         duration_sec: parsed.data.duration_min * 60,
         question_count: parsed.data.question_count,
-        completed_topics: uniqueTopics
+        random_across_subject: true
       }
     });
   } catch (error) {

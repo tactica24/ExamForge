@@ -100,7 +100,7 @@ export default async function QuizReviewPage(props: { params: Promise<{ quizId: 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Questions</CardTitle>
-          <CardDescription>Score is ready. Detailed feedback is reused after it has been generated once.</CardDescription>
+          <CardDescription>Review each question, see the correct answer, and read the explanation for every result.</CardDescription>
         </CardHeader>
         <CardContent>
           <QuizReview

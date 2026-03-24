@@ -26,6 +26,22 @@ export function GroupChat(props: {
 }) {
   const firebase = React.useMemo(() => createFirebaseBrowserClient(), []);
   const [messages, setMessages] = React.useState<Message[]>(props.initialMessages);
+  const [draft, setDraft] = React.useState("");
+
+  const upsertMessage = React.useCallback((nextMessage: Message) => {
+    setMessages((prev) => {
+      const existingIndex = prev.findIndex((entry) => entry.id === nextMessage.id);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = {
+          ...next[existingIndex],
+          ...nextMessage
+        };
+        return next;
+      }
+      return [nextMessage, ...prev];
+    });
+  }, []);
 
   React.useEffect(() => {
     const channel = firebase
@@ -35,7 +51,7 @@ export function GroupChat(props: {
         { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${props.groupId}` },
         (payload) => {
           const message = payload.new as any;
-          setMessages((prev) => [{ ...message }, ...prev]);
+          upsertMessage({ ...message } as Message);
         }
       )
       .subscribe();
@@ -43,7 +59,7 @@ export function GroupChat(props: {
     return () => {
       firebase.removeChannel(channel);
     };
-  }, [firebase, props.groupId]);
+  }, [firebase, props.groupId, upsertMessage]);
 
   return (
     <div className="grid gap-3 p-4">
@@ -66,9 +82,9 @@ export function GroupChat(props: {
                 ].join(" ")}
               >
                 <div className="mb-1 text-xs text-muted-foreground">
-                  {system ? "ACE NAIJA" : mine ? "You" : message.author_name ?? "Member"} •{" "}
+                  {system ? "ACE NAIJA" : mine ? "You" : message.author_name ?? "Member"} |{" "}
                   {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {message.flagged ? " • flagged" : ""}
+                  {message.flagged ? " | flagged" : ""}
                 </div>
                 <div className="whitespace-pre-wrap">{message.content}</div>
               </div>
@@ -85,13 +101,27 @@ export function GroupChat(props: {
       <AuthFormState
         action={async (prev, formData) => {
           const result: any = await sendGroupMessageAction(prev, formData);
-          if (!result?.ok) toast.error(result?.message ?? "Could not send.");
+          if (!result?.ok) {
+            toast.error(result?.message ?? "Could not send.");
+            return result;
+          }
+
+          if (result?.messageRecord) {
+            upsertMessage(result.messageRecord as Message);
+          }
+          setDraft("");
           return result;
         }}
       >
         <input type="hidden" name="group_id" value={props.groupId} />
         <div className="flex gap-2">
-          <Input name="content" placeholder="Type a message..." required />
+          <Input
+            name="content"
+            placeholder="Type a message..."
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            required
+          />
           <SubmitButton type="submit" pendingText="Sending...">
             Send
           </SubmitButton>

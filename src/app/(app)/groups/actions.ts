@@ -71,14 +71,37 @@ export async function sendGroupMessageAction(_: unknown, formData: FormData) {
   const mod = simpleModerate(parsed.data.content);
   if (!mod.ok) return { ok: false, message: "Message too long." };
 
-  const { error } = await firebase.from("group_messages").insert({
-    group_id: parsed.data.group_id,
-    user_id: user.id,
-    content: parsed.data.content.trim(),
-    flagged: mod.flagged
-  });
+  const content = parsed.data.content.trim();
+  const { data: inserted, error } = await firebase
+    .from("group_messages")
+    .insert({
+      group_id: parsed.data.group_id,
+      user_id: user.id,
+      content,
+      flagged: mod.flagged
+    })
+    .select("id,created_at")
+    .maybeSingle();
   if (error) return { ok: false, message: error.message };
-  return { ok: true };
+
+  const { data: profile } = await firebase
+    .from("profiles")
+    .select("display_name,name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return {
+    ok: true,
+    messageRecord: {
+      id: String(inserted?.id ?? crypto.randomUUID()),
+      user_id: user.id,
+      content,
+      flagged: mod.flagged,
+      is_system: false,
+      created_at: String(inserted?.created_at ?? new Date().toISOString()),
+      author_name: String(profile?.display_name ?? profile?.name ?? "You").trim() || "You"
+    }
+  };
 }
 
 export async function joinSubjectGroupAction(_: unknown, formData: FormData) {

@@ -40,6 +40,29 @@ export type QuestionBankGenerationResult = {
   targetCount: number;
 };
 
+export type QuestionBankGenerationProgress = {
+  runId: string;
+  subject: string;
+  status: "running" | "completed" | "failed";
+  totalRequested: number;
+  totalGenerated: number;
+  totalStored: number;
+  totalApproved: number;
+  totalNeedsReview: number;
+  totalRejected: number;
+  targetCount: number;
+  completedBatches: number;
+  totalBatches: number;
+  progressPercent: number;
+  existingCountBeforeRun: number;
+  currentSubjectCount: number;
+  targetQuestionCount: number | null;
+  activeTopicPath?: string;
+  activeFocusLabel?: string;
+  activeDifficulty?: Difficulty;
+  error?: string;
+};
+
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -107,7 +130,7 @@ function uniqueStrings(values: string[]) {
 }
 
 function buildDifficultyPlan(total: number): Difficulty[] {
-  const amount = Math.max(1, Math.min(30, Math.trunc(total || 1)));
+  const amount = Math.max(1, Math.trunc(total || 1));
   const cycle: Difficulty[] = ["easy", "medium", "hard"];
   return Array.from({ length: amount }, (_, index) => cycle[index % cycle.length] as Difficulty);
 }
@@ -293,6 +316,70 @@ async function insertEntryChunk(rows: Record<string, unknown>[]) {
   if (error) throw new Error(error.message);
 }
 
+async function countExistingEntries(args: { examId: string; subject: string }) {
+  const admin = createFirebaseAdminClient();
+  const { count, error } = await admin
+    .from("question_bank_entries")
+    .select("id", { head: true, count: "exact" })
+    .eq("exam_id", args.examId)
+    .eq("subject", args.subject);
+
+  if (error) throw new Error(error.message);
+  return Number(count ?? 0);
+}
+
+function buildGenerationBatches(args: {
+  targets: GenerationTarget[];
+  questionsPerFocus: number;
+  totalRequested?: number | null;
+}) {
+  if (!args.targets.length) return [] as Array<{ target: GenerationTarget; difficulty: Difficulty; requested: number }>;
+
+  if (args.totalRequested && args.totalRequested > 0) {
+    const grouped = new Map<string, { target: GenerationTarget; easy: number; medium: number; hard: number }>();
+    const difficultyPlan = buildDifficultyPlan(args.totalRequested);
+
+    difficultyPlan.forEach((difficulty, index) => {
+      const target = args.targets[index % args.targets.length]!;
+      const key = `${target.topicKey}|${target.focusKey}`;
+      const current = grouped.get(key) ?? { target, easy: 0, medium: 0, hard: 0 };
+      current[difficulty] += 1;
+      grouped.set(key, current);
+    });
+
+    return args.targets.flatMap((target) => {
+      const groupedTarget = grouped.get(`${target.topicKey}|${target.focusKey}`);
+      if (!groupedTarget) return [];
+      return (["easy", "medium", "hard"] as Difficulty[])
+        .map((difficulty) => ({
+          target,
+          difficulty,
+          requested: groupedTarget[difficulty]
+        }))
+        .filter((batch) => batch.requested > 0);
+    });
+  }
+
+  const difficultyPlan = buildDifficultyPlan(args.questionsPerFocus);
+  return args.targets.flatMap((target) => {
+    const perDifficulty = difficultyPlan.reduce(
+      (acc, difficulty) => {
+        acc[difficulty] += 1;
+        return acc;
+      },
+      { easy: 0, medium: 0, hard: 0 } as Record<Difficulty, number>
+    );
+
+    return (["easy", "medium", "hard"] as Difficulty[])
+      .map((difficulty) => ({
+        target,
+        difficulty,
+        requested: perDifficulty[difficulty]
+      }))
+      .filter((batch) => batch.requested > 0);
+  });
+}
+
 export async function generateQuestionBankForSubject(args: {
   examId: string;
   examSlug: string;
@@ -302,16 +389,113 @@ export async function generateQuestionBankForSubject(args: {
   questionsPerFocus: number;
   approvalThreshold: number;
   createdBy?: string | null;
+  targetQuestionCount?: number | null;
+  onProgress?: (progress: QuestionBankGenerationProgress) => Promise<void> | void;
 }) {
   const admin = createFirebaseAdminClient();
   const runId = randomUUID();
   const startedAt = new Date().toISOString();
+  const targetQuestionCount = args.targetQuestionCount
+    ? Math.max(1, Math.min(500, Math.trunc(args.targetQuestionCount)))
+    : null;
 
   const runConfig = {
     focus_limit: Math.max(1, Math.min(80, Math.trunc(args.focusLimit || 12))),
     questions_per_focus: Math.max(1, Math.min(24, Math.trunc(args.questionsPerFocus || 9))),
     approval_threshold: Math.max(50, Math.min(100, Math.trunc(args.approvalThreshold || 78))),
-    difficulty_mode: "balanced"
+    difficulty_mode: "balanced",
+    target_question_count: targetQuestionCount
+  };
+
+  let existingCountBeforeRun = 0;
+  let totalRequested = 0;
+  let totalGenerated = 0;
+  let totalStored = 0;
+  let totalApproved = 0;
+  let totalNeedsReview = 0;
+  let totalRejected = 0;
+  let targetCount = 0;
+  let completedBatches = 0;
+  let totalBatches = 0;
+  let signatureHash = "";
+
+  const emitProgress = async (argsForProgress: {
+    status: "running" | "completed" | "failed";
+    activeBatch?: { target: GenerationTarget; difficulty: Difficulty } | null;
+    error?: string;
+    topicsLength?: number;
+    persist?: boolean;
+  }) => {
+    const currentSubjectCount = existingCountBeforeRun + totalStored;
+    const progressPercent = targetQuestionCount
+      ? Math.max(0, Math.min(100, Math.round((currentSubjectCount / Math.max(1, targetQuestionCount)) * 100)))
+      : Math.max(0, Math.min(100, Math.round((completedBatches / Math.max(1, totalBatches || 1)) * 100)));
+
+    const summary = {
+      started_at: startedAt,
+      completed_at: argsForProgress.status === "completed" ? new Date().toISOString() : undefined,
+      failed_at: argsForProgress.status === "failed" ? new Date().toISOString() : undefined,
+      error: argsForProgress.error,
+      target_count: targetCount,
+      syllabus_topics: argsForProgress.topicsLength,
+      existing_before_run: existingCountBeforeRun,
+      current_subject_total: currentSubjectCount,
+      target_question_count: targetQuestionCount,
+      stored: totalStored,
+      approved: totalApproved,
+      needs_review: totalNeedsReview,
+      rejected: totalRejected,
+      completed_batches: completedBatches,
+      total_batches: totalBatches,
+      progress_percent: progressPercent,
+      active_topic_path: argsForProgress.activeBatch?.target.topicPath,
+      active_focus_label: argsForProgress.activeBatch?.target.focusLabel,
+      active_difficulty: argsForProgress.activeBatch?.difficulty,
+      request_plan: {
+        per_focus: runConfig.questions_per_focus,
+        difficulty_distribution: buildDifficultyPlan(runConfig.questions_per_focus)
+      },
+      signature_hash: signatureHash || undefined
+    };
+
+    if (argsForProgress.persist) {
+      const { error } = await admin
+        .from("question_bank_runs")
+        .update({
+          status: argsForProgress.status,
+          total_requested: totalRequested,
+          total_generated: totalGenerated,
+          total_approved: totalApproved,
+          total_needs_review: totalNeedsReview,
+          total_rejected: totalRejected,
+          summary
+        })
+        .eq("id", runId);
+      if (error) throw new Error(error.message);
+    }
+
+    await args.onProgress?.({
+      runId,
+      subject: args.subject,
+      status: argsForProgress.status,
+      totalRequested,
+      totalGenerated,
+      totalStored,
+      totalApproved,
+      totalNeedsReview,
+      totalRejected,
+      targetCount,
+      completedBatches,
+      totalBatches,
+      progressPercent,
+      existingCountBeforeRun,
+      currentSubjectCount,
+      targetQuestionCount,
+      activeTopicPath: argsForProgress.activeBatch?.target.topicPath,
+      activeFocusLabel: argsForProgress.activeBatch?.target.focusLabel,
+      activeDifficulty: argsForProgress.activeBatch?.difficulty,
+      error: argsForProgress.error
+    });
   };
 
   const { error: insertRunError } = await admin.from("question_bank_runs").insert({
@@ -340,32 +524,75 @@ export async function generateQuestionBankForSubject(args: {
       examSlug: args.examSlug,
       subject: args.subject
     });
-    const targets = buildGenerationTargets(topics, runConfig.focus_limit);
-    const difficultyPlan = buildDifficultyPlan(runConfig.questions_per_focus);
-    const existingSignatures = await loadExistingSignatures({
+    const targets = buildGenerationTargets(topics, targetQuestionCount ? 80 : runConfig.focus_limit);
+    existingCountBeforeRun = await countExistingEntries({
       examId: args.examId,
       subject: args.subject
     });
 
-    let totalGenerated = 0;
-    let totalStored = 0;
-    let totalApproved = 0;
-    let totalNeedsReview = 0;
-    let totalRejected = 0;
+    const remainingToTarget = targetQuestionCount ? Math.max(0, targetQuestionCount - existingCountBeforeRun) : null;
+    totalRequested = remainingToTarget ?? targets.length * runConfig.questions_per_focus;
+    targetCount = targets.length;
+
+    if (!targets.length) {
+      throw new Error(`No syllabus topics are available for ${args.subject}. Generate the syllabus first.`);
+    }
+
+    if (remainingToTarget === 0) {
+      completedBatches = 1;
+      totalBatches = 1;
+      await emitProgress({ status: "completed", topicsLength: topics.length, persist: true });
+      return {
+        runId,
+        totalRequested,
+        totalGenerated,
+        totalStored,
+        totalApproved,
+        totalNeedsReview,
+        totalRejected,
+        targetCount
+      } satisfies QuestionBankGenerationResult;
+    }
+
+    let previewRemaining = totalRequested;
+    let previewPasses = 0;
+    while (previewRemaining > 0 && previewPasses < (targetQuestionCount ? 3 : 1)) {
+      const previewBatches = buildGenerationBatches({
+        targets,
+        questionsPerFocus: runConfig.questions_per_focus,
+        totalRequested: targetQuestionCount ? previewRemaining : null
+      });
+      totalBatches += previewBatches.length;
+      previewRemaining = targetQuestionCount ? Math.max(0, previewRemaining - previewBatches.length) : 0;
+      previewPasses += 1;
+    }
+
+    const existingSignatures = await loadExistingSignatures({
+      examId: args.examId,
+      subject: args.subject
+    });
     const pendingRows: Record<string, unknown>[] = [];
 
-    for (const target of targets) {
-      const perDifficulty = difficultyPlan.reduce(
-        (acc, difficulty) => {
-          acc[difficulty] += 1;
-          return acc;
-        },
-        { easy: 0, medium: 0, hard: 0 } as Record<Difficulty, number>
-      );
+    const flushPendingRows = async () => {
+      if (!pendingRows.length) return;
+      await insertEntryChunk(pendingRows.splice(0, pendingRows.length));
+    };
 
-      for (const difficulty of ["easy", "medium", "hard"] as Difficulty[]) {
-        const requested = perDifficulty[difficulty];
+    let remainingToGenerate = totalRequested;
+    let pass = 0;
+
+    while (remainingToGenerate > 0 && pass < (targetQuestionCount ? 3 : 1)) {
+      const beforePassStored = totalStored;
+      const batches = buildGenerationBatches({
+        targets,
+        questionsPerFocus: runConfig.questions_per_focus,
+        totalRequested: targetQuestionCount ? remainingToGenerate : null
+      });
+
+      for (const batch of batches) {
+        const { target, difficulty, requested } = batch;
         if (!requested) continue;
+        if (targetQuestionCount && existingCountBeforeRun + totalStored >= targetQuestionCount) break;
 
         let generated: GeneratedQuestion[] = [];
         try {
@@ -392,6 +619,8 @@ export async function generateQuestionBankForSubject(args: {
         totalGenerated += generated.length;
 
         for (const question of generated) {
+          if (targetQuestionCount && existingCountBeforeRun + totalStored >= targetQuestionCount) break;
+
           const signature = questionSignature(question);
           if (!signature || existingSignatures.has(signature)) continue;
           existingSignatures.add(signature);
@@ -442,72 +671,49 @@ export async function generateQuestionBankForSubject(args: {
           totalStored += 1;
 
           if (pendingRows.length >= 36) {
-            await insertEntryChunk(pendingRows.splice(0, pendingRows.length));
+            await flushPendingRows();
           }
         }
+
+        completedBatches += 1;
+        await emitProgress({
+          status: "running",
+          activeBatch: { target, difficulty },
+          topicsLength: topics.length,
+          persist: completedBatches % 6 === 0
+        });
       }
+
+      await flushPendingRows();
+      remainingToGenerate = targetQuestionCount ? Math.max(0, totalRequested - totalStored) : 0;
+      pass += 1;
+
+      if (totalStored === beforePassStored) break;
     }
 
-    if (pendingRows.length) {
-      await insertEntryChunk(pendingRows);
-    }
+    signatureHash = createHash("sha256")
+      .update(`${args.examId}|${args.subject}|${totalStored}|${startedAt}`)
+      .digest("hex")
+      .slice(0, 16);
 
-    const summary = {
-      started_at: startedAt,
-      completed_at: new Date().toISOString(),
-      target_count: targets.length,
-      syllabus_topics: topics.length,
-      stored: totalStored,
-      approved: totalApproved,
-      needs_review: totalNeedsReview,
-      rejected: totalRejected,
-      request_plan: {
-        per_focus: runConfig.questions_per_focus,
-        difficulty_distribution: buildDifficultyPlan(runConfig.questions_per_focus)
-      },
-      signature_hash: createHash("sha256")
-        .update(`${args.examId}|${args.subject}|${totalStored}|${startedAt}`)
-        .digest("hex")
-        .slice(0, 16)
-    };
-
-    const { error: updateRunError } = await admin
-      .from("question_bank_runs")
-      .update({
-        status: "completed",
-        total_requested: targets.length * runConfig.questions_per_focus,
-        total_generated: totalGenerated,
-        total_approved: totalApproved,
-        total_needs_review: totalNeedsReview,
-        total_rejected: totalRejected,
-        summary
-      })
-      .eq("id", runId);
-
-    if (updateRunError) throw new Error(updateRunError.message);
+    await emitProgress({ status: "completed", topicsLength: topics.length, persist: true });
 
     return {
       runId,
-      totalRequested: targets.length * runConfig.questions_per_focus,
+      totalRequested,
       totalGenerated,
       totalStored,
       totalApproved,
       totalNeedsReview,
       totalRejected,
-      targetCount: targets.length
+      targetCount
     } satisfies QuestionBankGenerationResult;
   } catch (error) {
-    await admin
-      .from("question_bank_runs")
-      .update({
-        status: "failed",
-        summary: {
-          started_at: startedAt,
-          failed_at: new Date().toISOString(),
-          error: error instanceof Error ? error.message : "question_bank_generation_failed"
-        }
-      })
-      .eq("id", runId);
+    await emitProgress({
+      status: "failed",
+      error: error instanceof Error ? error.message : "question_bank_generation_failed",
+      persist: true
+    }).catch(() => {});
     throw error;
   }
 }

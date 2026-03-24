@@ -55,9 +55,7 @@ export default async function SupportPage(props: { searchParams: Promise<{ creat
               Contact support
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight">Report a problem from inside the app</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/70">
-              Send your issue directly to the admin support queue. Your message will appear in the pending lane for review.
-            </p>
+            <p className="mt-2 max-w-2xl text-sm text-white/70">Send your issue directly to the support team.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white/80">
             Signed in as {label}
@@ -113,18 +111,6 @@ export default async function SupportPage(props: { searchParams: Promise<{ creat
         </Card>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">How this works</CardTitle>
-              <CardDescription>Your message goes straight into the admin support queue.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="rounded-xl border px-4 py-3">Admins will see your issue under pending issues.</div>
-              <div className="rounded-xl border px-4 py-3">One admin can claim it so there is no confusion.</div>
-              <div className="rounded-xl border px-4 py-3">The issue is moved to resolved after it is handled.</div>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Quick links</CardTitle>

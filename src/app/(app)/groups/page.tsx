@@ -187,15 +187,8 @@ export default async function GroupsPage(props: { searchParams: Promise<{ group?
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Group options</CardTitle>
-                  <CardDescription>
-                    Exiting removes this room from your dashboard only. The room itself stays available for other learners.
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Groups are managed automatically by subject and capacity. Learners can join, chat, and leave, but cannot
-                    manually create or delete rooms.
-                  </div>
+                <CardContent>
                   <AuthFormState action={leaveGroupAction}>
                     <input type="hidden" name="group_id" value={selectedGroup.id} />
                     <SubmitButton type="submit" pendingText="Leaving..." variant="secondary">

@@ -11,11 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { ExamQuestionBankGenerator } from "@/components/admin/exam-question-bank-generator";
 import {
   deleteExamAction,
   deleteSyllabusAction,
   generateAllExamSyllabiAction,
-  generateSubjectQuestionBankAction,
   generateSubjectSyllabusAiAction,
   removeExamSubjectAction,
   uploadSubjectSyllabusDocumentAction,
@@ -72,7 +72,6 @@ export default async function AdminExamDetailPage(props: {
   const selectedTopics = normalizeTopics(selectedEntry?.topics);
   const coveredSubjects = new Set((syllabi ?? []).map((item) => String(item.subject)));
   const coveragePercent = subjects.length ? Math.round((coveredSubjects.size / subjects.length) * 100) : 0;
-  const defaultFocusLimit = Math.max(6, Math.min(36, selectedTopics.length ? selectedTopics.length * 2 : 12));
 
   const [
     { data: bankRuns },
@@ -270,7 +269,7 @@ export default async function AdminExamDetailPage(props: {
           <CardHeader>
             <CardTitle className="text-base">Question bank automation</CardTitle>
             <CardDescription>
-              Generate approved question banks subject by subject. Each run batches generation across syllabus targets, scores structure and syllabus alignment, tags topics automatically, and stores approved questions for live quizzes to reuse first.
+              Generate the full bank exam by exam. Each run works through every configured subject, spreads questions across stored syllabus topics, and pushes each subject toward 200 stored questions.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -283,57 +282,11 @@ export default async function AdminExamDetailPage(props: {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <AuthFormState action={generateSubjectQuestionBankAction}>
-                <input type="hidden" name="exam_id" value={examId} />
-                <input type="hidden" name="exam_slug" value={exam.slug} />
-                <input type="hidden" name="exam_name" value={exam.name} />
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="question_bank_subject">Subject</Label>
-                    <NativeSelect id="question_bank_subject" name="subject" defaultValue={selectedSubject} required>
-                      {subjects.length ? (
-                        subjects.map((subject) => (
-                          <option key={subject} value={subject}>
-                            {subject}
-                          </option>
-                        ))
-                      ) : (
-                        <option value={selectedSubject}>{selectedSubject}</option>
-                      )}
-                    </NativeSelect>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="focus_limit">Topic targets</Label>
-                    <Input id="focus_limit" name="focus_limit" type="number" min={1} max={80} defaultValue={defaultFocusLimit} required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="questions_per_focus">Questions per target</Label>
-                    <Input id="questions_per_focus" name="questions_per_focus" type="number" min={1} max={24} defaultValue={9} required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="approval_threshold">Auto-approval threshold</Label>
-                    <Input id="approval_threshold" name="approval_threshold" type="number" min={50} max={100} defaultValue={78} required />
-                  </div>
-                </div>
-
-                <p className="mt-3 rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground">
-                  Each run spreads batches across easy, medium, and hard items automatically, tags questions to syllabus focus areas, and stores anything that passes the threshold for immediate quiz reuse.
-                </p>
-
-                <div className="mt-4">
-                  <SubmitButton type="submit" pendingText="Generating bank..." className="w-full sm:w-auto">
-                    Generate selected subject bank
-                  </SubmitButton>
-                </div>
-              </AuthFormState>
+              <ExamQuestionBankGenerator examId={examId} examName={exam.name} subjects={subjects} />
 
               <div className="space-y-3 rounded-xl border bg-card p-4">
                 <div>
-                  <div className="text-sm font-medium">Latest run snapshot</div>
+                  <div className="text-sm font-medium">Selected subject snapshot</div>
                   <div className="text-xs text-muted-foreground">
                     {latestBankRun
                       ? `Status: ${String(latestBankRun.status ?? "unknown")} | Requested: ${Number(latestBankRun.total_requested ?? 0)} | Approved: ${Number(latestBankRun.total_approved ?? 0)}`

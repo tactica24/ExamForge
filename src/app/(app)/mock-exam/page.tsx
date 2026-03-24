@@ -87,14 +87,14 @@ export default async function MockExamStartPage(props: { searchParams: Promise<{
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Mock exam</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Timed CBT-style practice from topics you completed this week. Pro users can run unlimited sessions.
+            Timed CBT-style practice drawn from question-bank coverage across your selected subject. Pro users can run unlimited sessions.
           </p>
         </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Configure</CardTitle>
-          <CardDescription>Start a full timed objective-question session and practice real exam pressure.</CardDescription>
+          <CardDescription>Start a full timed objective-question session with random coverage from different parts of the subject.</CardDescription>
         </CardHeader>
         <CardContent>
           <AuthFormState action={startMockExamAction}>
