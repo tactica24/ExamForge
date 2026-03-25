@@ -81,7 +81,6 @@ export async function POST(_: Request, context: { params: Promise<{ examId: stri
               latestTargetCount = progress.targetQuestionCount ?? 200;
               write({
                 type: "subject_progress",
-                subject,
                 subjectIndex: index + 1,
                 totalSubjects: subjects.length,
                 ...progress
