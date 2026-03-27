@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { importQuestionsToBank } from "@/lib/question-bank/import";
 import { generateQuestionBankForSubject } from "@/lib/question-bank/pipeline";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
@@ -45,6 +46,15 @@ const GenerateQuestionBankSchema = z.object({
   focus_limit: z.coerce.number().int().min(1).max(80),
   questions_per_focus: z.coerce.number().int().min(1).max(24),
   approval_threshold: z.coerce.number().int().min(50).max(100)
+});
+
+const ImportQuestionBankSchema = z.object({
+  exam_id: z.string().uuid(),
+  exam_slug: z.string().min(2).max(50),
+  exam_name: z.string().trim().min(2).max(120),
+  subject: z.string().trim().min(2).max(80),
+  questions_json: z.string().trim().min(2),
+  approval_threshold: z.coerce.number().int().min(50).max(100).default(76)
 });
 
 const UploadDocumentSchema = z.object({
@@ -471,6 +481,49 @@ export async function generateSubjectQuestionBankAction(_: unknown, formData: Fo
     };
   } catch (e: any) {
     return { ok: false, message: e?.message ?? "Question bank generation failed." };
+  }
+}
+
+export async function importSubjectQuestionBankAction(_: unknown, formData: FormData) {
+  const parsed = ImportQuestionBankSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    exam_slug: formData.get("exam_slug"),
+    exam_name: formData.get("exam_name"),
+    subject: formData.get("subject"),
+    questions_json: formData.get("questions_json"),
+    approval_threshold: formData.get("approval_threshold") ?? 76
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid question import form." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  const firebase = await createFirebaseServerClient();
+  const {
+    data: { user }
+  } = await firebase.auth.getUser();
+
+  try {
+    const result = await importQuestionsToBank({
+      examId: parsed.data.exam_id,
+      examSlug: parsed.data.exam_slug,
+      examName: parsed.data.exam_name,
+      subject: parsed.data.subject,
+      payload: parsed.data.questions_json,
+      approvalThreshold: parsed.data.approval_threshold,
+      createdBy: user?.id ?? null
+    });
+
+    revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+    return {
+      ok: true,
+      message: `Imported ${result.totalStored}/${result.totalParsed} parsed questions for ${parsed.data.subject}. Duplicates skipped: ${result.duplicatesSkipped}.`
+    };
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Question bank import failed." };
   }
 }
 

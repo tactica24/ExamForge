@@ -17,6 +17,7 @@ import {
   deleteSyllabusAction,
   generateAllExamSyllabiAction,
   generateSubjectSyllabusAiAction,
+  importSubjectQuestionBankAction,
   removeExamSubjectAction,
   uploadSubjectSyllabusDocumentAction,
   upsertSyllabusAction
@@ -282,7 +283,65 @@ export default async function AdminExamDetailPage(props: {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <ExamQuestionBankGenerator examId={examId} examName={exam.name} subjects={subjects} />
+              <div className="space-y-4">
+                <ExamQuestionBankGenerator examId={examId} examName={exam.name} subjects={subjects} />
+
+                <div className="rounded-xl border bg-card p-4">
+                  <div className="mb-3">
+                    <div className="text-sm font-medium">Paste external questions as JSON</div>
+                    <div className="text-xs text-muted-foreground">
+                      Import one subject at a time. The app will normalize each question, map it to syllabus topics, score it, store it in the question bank, and reuse approved entries for quiz, mock, and practice generation.
+                    </div>
+                  </div>
+
+                  <AuthFormState action={importSubjectQuestionBankAction}>
+                    <input type="hidden" name="exam_id" value={examId} />
+                    <input type="hidden" name="exam_slug" value={exam.slug} />
+                    <input type="hidden" name="exam_name" value={exam.name} />
+                    <input type="hidden" name="approval_threshold" value="76" />
+
+                    <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                      <div className="space-y-2">
+                        <Label htmlFor="import_subject">Subject</Label>
+                        <NativeSelect id="import_subject" name="subject" defaultValue={selectedSubject} required>
+                          {subjects.length ? (
+                            subjects.map((subject) => (
+                              <option key={subject} value={subject}>
+                                {subject}
+                              </option>
+                            ))
+                          ) : (
+                            <option value={selectedSubject}>{selectedSubject}</option>
+                          )}
+                        </NativeSelect>
+                        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          {selectedTopics.length
+                            ? `${selectedTopics.length} syllabus topic groups available for ${selectedSubject}.`
+                            : `No stored syllabus topics yet for ${selectedSubject}. The importer can still save questions, but topic assignment will be weaker until the syllabus is ready.`}
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                          {`[{ "question": "What is photosynthesis?", "options": ["...", "...", "...", "..."], "answer": "A", "explanation": "..." }]`}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="questions_json">Questions JSON</Label>
+                        <Textarea
+                          id="questions_json"
+                          name="questions_json"
+                          rows={14}
+                          placeholder={`[\n  {\n    "question": "What is photosynthesis?",\n    "options": ["Conversion of light to food", "Loss of water", "Breaking down protein", "Movement of minerals"],\n    "answer": "A",\n    "explanation": "Photosynthesis is the process by which green plants use light energy to make food.",\n    "difficulty": "easy"\n  }\n]`}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <SubmitButton type="submit" pendingText="Importing questions..." className="w-full sm:w-auto">
+                      Import questions for selected subject
+                    </SubmitButton>
+                  </AuthFormState>
+                </div>
+              </div>
 
               <div className="space-y-3 rounded-xl border bg-card p-4">
                 <div>
