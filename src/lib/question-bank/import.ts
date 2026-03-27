@@ -335,6 +335,7 @@ export function reviewImportedQuestion(args: {
 
   let score = 35;
   const notes: string[] = [];
+  let structuralFailure = false;
 
   if (isPlaceholderQuestion(args.question)) {
     return {
@@ -350,6 +351,7 @@ export function reviewImportedQuestion(args: {
   } else {
     notes.push("Question does not have exactly four options.");
     score -= 18;
+    structuralFailure = true;
   }
 
   if (new Set(options.map((option) => option.toLowerCase())).size === options.length) {
@@ -357,6 +359,7 @@ export function reviewImportedQuestion(args: {
   } else {
     notes.push("Options are duplicated or too similar.");
     score -= 10;
+    structuralFailure = true;
   }
 
   if (stem.length >= 18 && stem.length <= 240) {
@@ -378,6 +381,7 @@ export function reviewImportedQuestion(args: {
   } else {
     notes.push("Correct answer index is invalid.");
     score -= 15;
+    structuralFailure = true;
   }
 
   const topicOverlap = overlapCount(questionTokens, topicTokens);
@@ -410,12 +414,10 @@ export function reviewImportedQuestion(args: {
   }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
-  const reviewThreshold = Math.max(55, Math.min(100, Math.trunc(args.approvalThreshold || 78)));
-  const reviewStatus: ReviewStatus =
-    score >= reviewThreshold ? "approved" : score >= Math.max(60, reviewThreshold - 15) ? "needs_review" : "rejected";
+  const reviewStatus: ReviewStatus = structuralFailure ? "rejected" : "approved";
 
   if (reviewStatus === "approved" && !notes.length) {
-    notes.push("Auto-approved by import structure and syllabus checks.");
+    notes.push("Auto-approved from external JSON import after structure checks.");
   }
 
   return {
