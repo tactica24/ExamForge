@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import { getFirebaseAdminStorageBucket } from "@/lib/firebase/admin-app";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
-import { importQuestionsToBank } from "@/lib/question-bank/import";
+import { importQuestionsToBank, reprocessImportedQuestionsForSubject } from "@/lib/question-bank/import";
 import { generateQuestionBankForSubject } from "@/lib/question-bank/pipeline";
 import { parseSyllabusDocument } from "@/lib/syllabi/document";
 import { regenerateSyllabusWithAiDetailed } from "@/lib/syllabi/get";
@@ -54,6 +54,12 @@ const ImportQuestionBankSchema = z.object({
   exam_name: z.string().trim().min(2).max(120),
   subject: z.string().trim().min(2).max(80),
   questions_json: z.string().trim().min(2),
+  approval_threshold: z.coerce.number().int().min(50).max(100).default(76)
+});
+
+const ReprocessImportedQuestionBankSchema = z.object({
+  exam_id: z.string().uuid(),
+  subject: z.string().trim().min(2).max(80),
   approval_threshold: z.coerce.number().int().min(50).max(100).default(76)
 });
 
@@ -524,6 +530,37 @@ export async function importSubjectQuestionBankAction(_: unknown, formData: Form
     };
   } catch (e: any) {
     return { ok: false, message: e?.message ?? "Question bank import failed." };
+  }
+}
+
+export async function reprocessImportedQuestionBankAction(_: unknown, formData: FormData) {
+  const parsed = ReprocessImportedQuestionBankSchema.safeParse({
+    exam_id: formData.get("exam_id"),
+    subject: formData.get("subject"),
+    approval_threshold: formData.get("approval_threshold") ?? 76
+  });
+  if (!parsed.success) return { ok: false, message: "Invalid re-review request." };
+
+  try {
+    await assertAdmin();
+  } catch {
+    return { ok: false, message: "Forbidden." };
+  }
+
+  try {
+    const result = await reprocessImportedQuestionsForSubject({
+      examId: parsed.data.exam_id,
+      subject: parsed.data.subject,
+      approvalThreshold: parsed.data.approval_threshold
+    });
+
+    revalidatePath(`/admin/exams/${parsed.data.exam_id}`);
+    return {
+      ok: true,
+      message: `Re-reviewed ${result.totalProcessed} stored imported questions for ${parsed.data.subject}. Approved now: ${result.totalApproved}. Still rejected: ${result.totalRejected}.`
+    };
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? "Could not re-review imported questions." };
   }
 }
 

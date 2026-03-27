@@ -18,6 +18,7 @@ import {
   generateAllExamSyllabiAction,
   generateSubjectSyllabusAiAction,
   importSubjectQuestionBankAction,
+  reprocessImportedQuestionBankAction,
   removeExamSubjectAction,
   uploadSubjectSyllabusDocumentAction,
   upsertSyllabusAction
@@ -340,6 +341,21 @@ export default async function AdminExamDetailPage(props: {
                       Import questions for selected subject
                     </SubmitButton>
                   </AuthFormState>
+
+                  <div className="mt-4 border-t pt-4">
+                    <div className="mb-2 text-sm font-medium">Re-review stored imported questions</div>
+                    <div className="mb-3 text-xs text-muted-foreground">
+                      Use this after the approval rules change. It re-checks stored imported questions for the selected subject and promotes valid ones to approved without needing a fresh paste.
+                    </div>
+                    <AuthFormState action={reprocessImportedQuestionBankAction}>
+                      <input type="hidden" name="exam_id" value={examId} />
+                      <input type="hidden" name="subject" value={selectedSubject} />
+                      <input type="hidden" name="approval_threshold" value="76" />
+                      <SubmitButton type="submit" pendingText="Re-reviewing..." variant="secondary" className="w-full sm:w-auto">
+                        Re-review stored imported questions
+                      </SubmitButton>
+                    </AuthFormState>
+                  </div>
                 </div>
               </div>
 

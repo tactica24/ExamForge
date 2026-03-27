@@ -41,6 +41,12 @@ export type QuestionBankImportResult = {
   duplicatesSkipped: number;
 };
 
+export type QuestionBankReprocessResult = {
+  totalProcessed: number;
+  totalApproved: number;
+  totalRejected: number;
+};
+
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -643,4 +649,92 @@ export async function importQuestionsToBank(args: {
 
     throw error;
   }
+}
+
+function normalizeRowQuestion(row: Record<string, unknown>): GeneratedQuestion | null {
+  const question = normalizeText(row.question, 500);
+  const options = Array.isArray(row.options)
+    ? row.options.map((option) => normalizeText(option, 180)).filter(Boolean).slice(0, 4)
+    : [];
+  const correctIndex = Number(row.correct_index);
+  const explanation = normalizeText(row.explanation, 800);
+
+  if (!question || options.length !== 4 || !Number.isInteger(correctIndex)) {
+    return null;
+  }
+
+  return {
+    question,
+    options,
+    correct_index: correctIndex,
+    explanation
+  };
+}
+
+function normalizeSyllabusTags(value: unknown) {
+  if (!Array.isArray(value)) return [] as string[];
+  return value.map((entry) => normalizeText(entry, 140)).filter(Boolean).slice(0, 24);
+}
+
+export async function reprocessImportedQuestionsForSubject(args: {
+  examId: string;
+  subject: string;
+  approvalThreshold?: number;
+}) {
+  const admin = createFirebaseAdminClient();
+  const threshold = Math.max(50, Math.min(100, Math.trunc(args.approvalThreshold ?? 76)));
+
+  const { data, error } = await admin
+    .from("question_bank_entries")
+    .select("id,question,options,correct_index,explanation,topic_path,focus_label,syllabus_tags")
+    .eq("exam_id", args.examId)
+    .eq("subject", args.subject)
+    .eq("source_type", "external_json_import")
+    .in("review_status", ["rejected", "needs_review"]);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  let totalApproved = 0;
+  let totalRejected = 0;
+
+  for (const row of rows) {
+    const question = normalizeRowQuestion(row);
+    const review = question
+      ? reviewImportedQuestion({
+          question,
+          subject: args.subject,
+          topicPath: normalizeText(row.topic_path, 180) || args.subject,
+          focusLabel: normalizeText(row.focus_label, 180) || normalizeText(row.topic_path, 180) || args.subject,
+          syllabusTags: normalizeSyllabusTags(row.syllabus_tags),
+          approvalThreshold: threshold
+        })
+      : {
+          qualityScore: 0,
+          reviewScore: 0,
+          reviewStatus: "rejected" as ReviewStatus,
+          reviewNotes: ["Stored question is malformed and still needs correction."]
+        };
+
+    if (review.reviewStatus === "approved") totalApproved += 1;
+    if (review.reviewStatus === "rejected") totalRejected += 1;
+
+    const { error: updateError } = await admin
+      .from("question_bank_entries")
+      .update({
+        quality_score: review.qualityScore,
+        review_score: review.reviewScore,
+        review_status: review.reviewStatus,
+        review_notes: review.reviewNotes
+      })
+      .eq("id", String(row.id ?? ""));
+
+    if (updateError) throw new Error(updateError.message);
+  }
+
+  return {
+    totalProcessed: rows.length,
+    totalApproved,
+    totalRejected
+  } satisfies QuestionBankReprocessResult;
 }
