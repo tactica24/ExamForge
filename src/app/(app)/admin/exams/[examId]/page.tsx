@@ -74,6 +74,24 @@ export default async function AdminExamDetailPage(props: {
   const selectedTopics = normalizeTopics(selectedEntry?.topics);
   const coveredSubjects = new Set((syllabi ?? []).map((item) => String(item.subject)));
   const coveragePercent = subjects.length ? Math.round((coveredSubjects.size / subjects.length) * 100) : 0;
+  const approvedCountsBySubject = Object.fromEntries(
+    await Promise.all(
+      subjects.map(async (subject) => {
+        const result = await firebase
+          .from("question_bank_entries")
+          .select("id", { head: true, count: "exact" })
+          .eq("exam_id", examId)
+          .eq("subject", subject)
+          .eq("review_status", "approved");
+
+        return [subject, countValue(result)] as const;
+      })
+    )
+  );
+  const examApprovedBankCount = Object.values(approvedCountsBySubject).reduce(
+    (sum, value) => sum + Number(value ?? 0),
+    0
+  );
 
   const [
     { data: bankRuns },
@@ -276,11 +294,39 @@ export default async function AdminExamDetailPage(props: {
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">Exam approved total: {examApprovedBankCount}</Badge>
               <Badge variant="secondary">Approved: {approvedBankCount}</Badge>
               <Badge variant="secondary">Needs review: {needsReviewBankCount}</Badge>
               <Badge variant="secondary">Rejected: {rejectedBankCount}</Badge>
               <Badge variant="secondary">Preview topics: {bankTopicCoverage}</Badge>
               <Badge variant="secondary">Runs: {recentBankRuns.length}</Badge>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4">
+              <div className="mb-3 text-sm font-medium">Approved questions by subject</div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {subjects.length ? (
+                  subjects.map((subject) => {
+                    const count = Number(approvedCountsBySubject[subject] ?? 0);
+                    const isActive = subject === selectedSubject;
+
+                    return (
+                      <Link
+                        key={subject}
+                        href={`/admin/exams/${examId}?subject=${encodeURIComponent(subject)}`}
+                        className={`rounded-lg border px-3 py-3 text-sm transition ${
+                          isActive ? "border-primary bg-primary/5" : "bg-card hover:bg-accent"
+                        }`}
+                      >
+                        <div className="font-medium">{subject}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{count} approved in bank</div>
+                      </Link>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-muted-foreground">No subjects configured for this exam.</div>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
