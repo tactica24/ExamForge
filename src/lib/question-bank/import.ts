@@ -209,8 +209,14 @@ function normalizeImportedQuestion(raw: unknown): ImportedQuestion | null {
 
 export function parseImportedQuestions(payload: string) {
   const parsed = unwrapPayloadJson(payload);
-  const sourceRows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.questions) ? parsed.questions : [];
-  const questions = sourceRows.map((entry) => normalizeImportedQuestion(entry)).filter(Boolean) as ImportedQuestion[];
+  const sourceRows: unknown[] = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && Array.isArray((parsed as { questions?: unknown[] }).questions)
+      ? ((parsed as { questions: unknown[] }).questions ?? [])
+      : [];
+  const questions = sourceRows
+    .map((entry: unknown) => normalizeImportedQuestion(entry))
+    .filter((entry): entry is ImportedQuestion => Boolean(entry));
 
   return {
     totalSubmitted: Array.isArray(sourceRows) ? sourceRows.length : 0,
