@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { MarketingContactForm } from "@/components/marketing/contact-form";
-import { SUPPORT_WHATSAPP_LABEL, SUPPORT_WHATSAPP_URL } from "@/lib/contact/requests";
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL, SUPPORT_WHATSAPP_LABEL, SUPPORT_WHATSAPP_URL } from "@/lib/contact/requests";
 
 export default async function ContactPage(props: { searchParams: Promise<{ intent?: string }> }) {
   const searchParams = await props.searchParams;
@@ -37,7 +37,12 @@ export default async function ContactPage(props: { searchParams: Promise<{ inten
                     WhatsApp support
                   </div>
                   <div className="mt-2">Reach us directly at {SUPPORT_WHATSAPP_LABEL} for quick assistance.</div>
-                  <div className="mt-2">Email: acenaija1@gmail.com</div>
+                  <div className="mt-2">
+                    Email:{" "}
+                    <a href={SUPPORT_EMAIL_URL} className="text-primary underline-offset-4 hover:underline">
+                      {SUPPORT_EMAIL}
+                    </a>
+                  </div>
                   <a
                     href={SUPPORT_WHATSAPP_URL}
                     target="_blank"

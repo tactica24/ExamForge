@@ -2,7 +2,12 @@ import Link from "next/link";
 import { MapPin, MessageCircle, PhoneCall } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SUPPORT_WHATSAPP_LABEL, SUPPORT_WHATSAPP_URL } from "@/lib/contact/requests";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_URL,
+  SUPPORT_WHATSAPP_LABEL,
+  SUPPORT_WHATSAPP_URL
+} from "@/lib/contact/requests";
 
 const footerSections = [
   {
@@ -35,7 +40,9 @@ export function SiteFooter() {
               <Badge variant="secondary" className="rounded-full">
                 ACE NAIJA
               </Badge>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight">Professional exam preparation for ambitious learners.</h2>
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight">
+                Professional exam preparation for ambitious learners.
+              </h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 Built to turn syllabus pressure into a structured learning path with practice, reminders, mock exams,
                 group accountability, and measurable progress.
@@ -53,7 +60,9 @@ export function SiteFooter() {
               </div>
               <div className="flex items-start gap-3">
                 <MessageCircle className="mt-0.5 h-4 w-4 text-primary" />
-                <span>acenaija1@gmail.com</span>
+                <a href={SUPPORT_EMAIL_URL} className="hover:text-foreground">
+                  {SUPPORT_EMAIL}
+                </a>
               </div>
             </div>
 
@@ -74,7 +83,11 @@ export function SiteFooter() {
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{section.title}</div>
               <div className="mt-4 grid gap-3 text-sm">
                 {section.links.map((link) => (
-                  <Link key={link.href} href={link.href} className="text-muted-foreground transition-colors hover:text-foreground">
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {link.label}
                   </Link>
                 ))}

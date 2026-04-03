@@ -6,6 +6,8 @@ export const SUPPORT_WHATSAPP_LABEL = "+234 911 631 4987";
 export const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(
   "Hello ACE NAIJA, I need help with the platform."
 )}`;
+export const SUPPORT_EMAIL = "info@ace-naija.com";
+export const SUPPORT_EMAIL_URL = `mailto:${SUPPORT_EMAIL}`;
 
 function cleanLine(value: unknown, maxLength: number) {
   return String(value ?? "")
