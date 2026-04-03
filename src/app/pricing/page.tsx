@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { PAYSTACK_PRO_MONTHLY_PRICE_LABEL } from "@/lib/billing/paystack";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/contact/requests";
 
 const proBenefits = [
@@ -63,7 +64,7 @@ export default function PricingPage() {
                 <Badge className="rounded-full">Best value</Badge>
                 <div className="mt-3 text-sm font-medium">Pro</div>
                 <div className="mt-2 text-4xl font-semibold tracking-tight">
-                  N3,000
+                  {PAYSTACK_PRO_MONTHLY_PRICE_LABEL}
                   <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">Designed for learners who want measurable score improvement.</p>

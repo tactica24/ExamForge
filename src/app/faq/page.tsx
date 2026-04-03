@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { PAYSTACK_PRO_MONTHLY_PRICE_LABEL } from "@/lib/billing/paystack";
 
 const faqItems = [
   {
@@ -22,7 +23,7 @@ const faqItems = [
   {
     question: "How do payments work?",
     answer:
-      "Pro access is billed for a 30-day period from the day you activate it, not from the 1st to the 30th of a calendar month."
+      `Pro access is billed at ${PAYSTACK_PRO_MONTHLY_PRICE_LABEL} for a 30-day period from the day you activate it, not from the 1st to the 30th of a calendar month.`
   },
   {
     question: "What is the refund policy?",

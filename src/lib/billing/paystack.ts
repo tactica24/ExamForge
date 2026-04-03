@@ -21,7 +21,9 @@ export type PaystackVerificationData = {
   } | null;
 };
 
-export const PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO = 300000;
+export const PAYSTACK_PRO_MONTHLY_AMOUNT_NAIRA = 1000;
+export const PAYSTACK_PRO_MONTHLY_AMOUNT_KOBO = PAYSTACK_PRO_MONTHLY_AMOUNT_NAIRA * 100;
+export const PAYSTACK_PRO_MONTHLY_PRICE_LABEL = `N${PAYSTACK_PRO_MONTHLY_AMOUNT_NAIRA.toLocaleString("en-NG")}`;
 
 function equalsHex(left: string, right: string) {
   const a = String(left ?? "").trim().toLowerCase();

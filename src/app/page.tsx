@@ -22,6 +22,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SuccessStoriesSlider } from "@/components/marketing/success-stories-slider";
 import { ContactRevealCard } from "@/components/marketing/contact-reveal-card";
+import { PAYSTACK_PRO_MONTHLY_PRICE_LABEL } from "@/lib/billing/paystack";
 
 const examTracks = [
   {
@@ -262,7 +263,7 @@ export default function HomePage() {
                 Everything candidates need for disciplined, high-impact preparation.
               </p>
               <div className="mt-4 text-4xl font-semibold tracking-tight">
-                N3,000
+                {PAYSTACK_PRO_MONTHLY_PRICE_LABEL}
                 <span className="ml-1 text-base font-medium text-muted-foreground">/month</span>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">

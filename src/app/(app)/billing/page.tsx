@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { PaystackUpgradeButton } from "@/components/billing/paystack-upgrade-button";
 import { Button } from "@/components/ui/button";
+import { PAYSTACK_PRO_MONTHLY_PRICE_LABEL } from "@/lib/billing/paystack";
 
 export default async function BillingPage() {
   const firebase = await createFirebaseServerClient();
@@ -27,13 +28,18 @@ export default async function BillingPage() {
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Billing</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your subscription.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your subscription. Pro is {PAYSTACK_PRO_MONTHLY_PRICE_LABEL} per 30-day cycle.
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Current plan</CardTitle>
-          <CardDescription>Upgrade for unlimited objective questions, groups, and reminders.</CardDescription>
+          <CardDescription>
+            Upgrade for unlimited objective questions, groups, and reminders at {PAYSTACK_PRO_MONTHLY_PRICE_LABEL}
+            /month.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
