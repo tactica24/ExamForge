@@ -8,11 +8,14 @@ import { SubmitButton } from "@/components/form/submit-button";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { sanitizeNextPath } from "@/lib/auth/redirects";
 
-export default async function LoginPage(props: { searchParams: Promise<{ next?: string; verify?: string; verified?: string }> }) {
+export default async function LoginPage(props: {
+  searchParams: Promise<{ next?: string; verify?: string; verified?: string; reset?: string }>;
+}) {
   const sp = await props.searchParams;
   const next = sanitizeNextPath(sp.next) ?? "";
   const showVerifyHint = sp.verify === "1";
   const showVerifiedHint = sp.verified === "1";
+  const showResetHint = sp.reset === "1";
 
   return (
     <AuthCard
@@ -30,6 +33,11 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
       {showVerifiedHint ? (
         <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
           Email confirmed. You can now log in.
+        </div>
+      ) : null}
+      {showResetHint ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+          Password updated. Log in with your new password.
         </div>
       ) : null}
       {showVerifyHint ? (
@@ -50,7 +58,12 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
           <Input id="email" name="email" type="email" placeholder="you@example.com" required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="password">Password</Label>
+            <Link className="text-sm text-foreground underline underline-offset-4" href="/login/recover">
+              Forgot password?
+            </Link>
+          </div>
           <Input id="password" name="password" type="password" placeholder="Enter your password" required />
         </div>
         <SubmitButton type="submit" className="w-full" pendingText="Logging in...">

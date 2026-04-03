@@ -14,8 +14,12 @@ import {
   FIREBASE_SESSION_COOKIE,
   FIREBASE_TRACKED_SESSION_COOKIE
 } from "@/lib/firebase/constants";
-import { getAppUrl } from "@/lib/app-url";
-import { getServerEnv } from "@/lib/env";
+import {
+  callIdentityToolkit,
+  getEmailVerificationContinueUrl,
+  isInvalidContinueUrlError,
+  normalizeIdentityToolkitError
+} from "@/lib/firebase/identity-toolkit";
 
 const AUTH_SESSION_IDLE_MS = 1000 * 60 * 60 * 24 * 30;
 const TRACKED_SESSION_COOKIE_MAX_AGE = 60 * 60 * 24;
@@ -51,20 +55,6 @@ type AuthSessionRow = {
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 type HeaderStore = Awaited<ReturnType<typeof headers>>;
-
-function normalizeAuthError(message: string) {
-  const m = message.toUpperCase();
-  if (m.includes("INVALID_LOGIN_CREDENTIALS") || m.includes("INVALID_PASSWORD") || m.includes("EMAIL_NOT_FOUND")) {
-    return "Invalid login credentials.";
-  }
-  if (m.includes("EMAIL_EXISTS")) {
-    return "An account with this email already exists.";
-  }
-  if (m.includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
-    return "Too many attempts. Try again later.";
-  }
-  return message;
-}
 
 function trackingCookieOptions(maxAge: number) {
   const isProduction = process.env.NODE_ENV === "production";
@@ -316,33 +306,6 @@ async function validateTrackedSession(args: {
   return { kind: "valid" as const };
 }
 
-async function callIdentityToolkit(endpoint: string, payload: Record<string, unknown>) {
-  const env = getServerEnv();
-  const apiKey = env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error("Firebase web API key is missing. Set NEXT_PUBLIC_FIREBASE_API_KEY.");
-  }
-
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store"
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    const raw = String(json?.error?.message ?? "Authentication failed");
-    throw new Error(normalizeAuthError(raw));
-  }
-
-  return json as Record<string, any>;
-}
-
-function getEmailVerificationContinueUrl() {
-  return `${getAppUrl()}/login?verified=1`;
-}
-
 async function lookupIdentityToolkitUser(idToken: string) {
   const json = await callIdentityToolkit("accounts:lookup", { idToken });
   const users = Array.isArray(json.users) ? json.users : [];
@@ -357,13 +320,7 @@ async function sendVerificationEmail(idToken: string) {
       continueUrl: getEmailVerificationContinueUrl()
     });
   } catch (error) {
-    const raw = (error instanceof Error ? error.message : "").toUpperCase();
-    const invalidContinueUrl =
-      raw.includes("INVALID_CONTINUE_URI") ||
-      raw.includes("UNAUTHORIZED_CONTINUE_URI") ||
-      raw.includes("MISSING_CONTINUE_URI");
-
-    if (!invalidContinueUrl) {
+    if (!isInvalidContinueUrlError(error)) {
       throw error;
     }
 
@@ -519,7 +476,7 @@ export async function createFirebaseServerClient() {
         } catch (error) {
           return {
             data: { user: null },
-            error: { message: error instanceof Error ? error.message : "Login failed." }
+            error: { message: normalizeIdentityToolkitError(error) }
           };
         }
       },
@@ -549,7 +506,7 @@ export async function createFirebaseServerClient() {
         } catch (error) {
           return {
             data: { user: null, session: null },
-            error: { message: error instanceof Error ? error.message : "Signup failed." }
+            error: { message: normalizeIdentityToolkitError(error) }
           };
         }
       },
