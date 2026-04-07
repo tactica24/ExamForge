@@ -263,7 +263,8 @@ export default async function AdminUsersPage() {
           </div>
           <CardTitle className="text-base">Recent signups and usage</CardTitle>
           <CardDescription>
-            Newest live Firebase accounts appear first. "Never active" means the user has not opened a tracked session yet.
+            Newest live Firebase accounts appear first. &quot;Never active&quot; means the user has not opened a tracked
+            session yet.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
