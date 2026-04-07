@@ -7,6 +7,8 @@ import {
   type PaystackVerificationData
 } from "@/lib/billing/paystack";
 
+const REFERRAL_COMMISSION_BPS = 4000;
+
 type ActivationSource = "callback" | "webhook";
 
 type ActivationFailureReason =
@@ -41,6 +43,63 @@ function parseFutureIso(value: unknown) {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return null;
   return date;
+}
+
+function normalizeOwnerKind(value: unknown) {
+  return String(value ?? "").trim().toLowerCase() === "campaign" ? "campaign" : "user";
+}
+
+function normalizeText(value: unknown, maxLength: number) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+async function creditReferralCommission(args: {
+  firebase: Pick<FirebaseDataClient, "from">;
+  userId: string;
+  amountKobo: number;
+  currency: string;
+  paidAt: string;
+  paymentReference: string;
+}) {
+  const { data: referral } = await args.firebase
+    .from("referrals")
+    .select("inviter_user_id,code,owner_kind,campaign_external_id")
+    .eq("invitee_user_id", args.userId)
+    .maybeSingle();
+
+  const inviterUserId = normalizeText((referral as any)?.inviter_user_id, 120);
+  const referralCode = normalizeText((referral as any)?.code, 24).toUpperCase();
+  if (!inviterUserId || !referralCode) return;
+
+  const commissionAmountKobo = Math.floor(Math.max(0, args.amountKobo) * (REFERRAL_COMMISSION_BPS / 10000));
+  if (!commissionAmountKobo) return;
+
+  await args.firebase.from("billing_events").upsert(
+    {
+      id: `referral-commission:${args.paymentReference}`,
+      user_id: inviterUserId,
+      provider: "referral",
+      reference: `referral-commission:${args.paymentReference}`,
+      source: "referral_credit",
+      status: "credited",
+      amount_kobo: commissionAmountKobo,
+      currency: args.currency,
+      paid_at: args.paidAt,
+      received_at: new Date().toISOString(),
+      metadata: {
+        referral_code: referralCode,
+        referred_user_id: args.userId,
+        source_payment_reference: args.paymentReference,
+        owner_kind: normalizeOwnerKind((referral as any)?.owner_kind),
+        campaign_external_id: normalizeText((referral as any)?.campaign_external_id, 80) || null,
+        commission_bps: REFERRAL_COMMISSION_BPS
+      }
+    },
+    { onConflict: "id" }
+  );
 }
 
 export async function activateProSubscriptionFromPaystack(args: {
@@ -136,6 +195,15 @@ export async function activateProSubscriptionFromPaystack(args: {
     },
     { onConflict: "id" }
   );
+
+  await creditReferralCommission({
+    firebase: args.firebase,
+    userId,
+    amountKobo: amount,
+    currency: currency || "NGN",
+    paidAt,
+    paymentReference: reference
+  });
 
   return {
     ok: true,

@@ -49,6 +49,14 @@ type SubscriptionSnapshot = {
   status: string | null;
 };
 
+type CommissionSnapshot = {
+  code: string;
+  amountKobo: number;
+  referredUserId: string | null;
+  paymentReference: string | null;
+  paidAt: string | null;
+};
+
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "")
     .replace(/\s+/g, " ")
@@ -187,6 +195,21 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
     field: "user_id",
     values: inviteeUserIds
   });
+  const commissionOwnerIds = Array.from(
+    new Set(
+      campaignCodes
+        .map((entry) => cleanText(entry.campaignExternalId, 48).toLowerCase())
+        .filter(Boolean)
+        .map((campaignId) => `campaign:${campaignId}`)
+    )
+  );
+  const rawCommissionEvents = await selectByInBatches({
+    firebase,
+    table: "billing_events",
+    select: "user_id,amount_kobo,paid_at,metadata",
+    field: "user_id",
+    values: commissionOwnerIds
+  });
 
   const profileByUserId = new Map<string, ProfileSnapshot>();
   for (const row of rawProfiles) {
@@ -217,6 +240,36 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
     subscriptionsByUserId.set(userId, list);
   }
 
+  const commissionsByCode = new Map<string, CommissionSnapshot[]>();
+  let totalCommissionKobo = 0;
+  for (const row of rawCommissionEvents) {
+    const metadata = (row as any)?.metadata;
+    const code = cleanText(metadata?.referral_code, 24).toUpperCase();
+    const amountKobo = Number((row as any)?.amount_kobo ?? 0);
+    if (!code || !Number.isFinite(amountKobo) || amountKobo <= 0) continue;
+
+    const commission: CommissionSnapshot = {
+      code,
+      amountKobo,
+      referredUserId: cleanText(metadata?.referred_user_id, 120) || null,
+      paymentReference: cleanText(metadata?.source_payment_reference, 120) || null,
+      paidAt: toIso((row as any)?.paid_at)
+    };
+
+    totalCommissionKobo += amountKobo;
+    const list = commissionsByCode.get(code) ?? [];
+    list.push(commission);
+    commissionsByCode.set(code, list);
+  }
+
+  for (const list of commissionsByCode.values()) {
+    list.sort((a, b) => {
+      const aMs = a.paidAt ? new Date(a.paidAt).getTime() : 0;
+      const bMs = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+      return bMs - aMs;
+    });
+  }
+
   const referralsByCode = new Map<string, ReferralUse[]>();
   for (const row of referralUses) {
     const list = referralsByCode.get(row.code) ?? [];
@@ -239,6 +292,8 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
       paidCount: number;
       activeProCount: number;
       conversionRate: number;
+      commissionKobo: number;
+      commissions: CommissionSnapshot[];
       recentUsers: Array<{
         userId: string;
         label: string;
@@ -277,12 +332,16 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
         hasActivePro
       };
     });
+    const commissions = commissionsByCode.get(code.code) ?? [];
+    const commissionKobo = commissions.reduce((sum, item) => sum + item.amountKobo, 0);
 
     analyticsByCode.set(code.code, {
       onboardedCount: uniqueInvitees.length,
       paidCount,
       activeProCount,
       conversionRate: uniqueInvitees.length ? Math.round((paidCount / uniqueInvitees.length) * 100) : 0,
+      commissionKobo,
+      commissions,
       recentUsers
     });
   }
@@ -341,7 +400,7 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-5">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Campaign codes</CardTitle>
@@ -365,6 +424,14 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
             <CardTitle className="text-base">Active pro users</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{totalActiveProUsers}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Referral earnings</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            N{Math.round(totalCommissionKobo / 100).toLocaleString("en-NG")}
+          </CardContent>
         </Card>
       </div>
 
@@ -473,6 +540,12 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
                       <div className="text-xs text-muted-foreground">Paid conversion</div>
                       <div className="text-xl font-semibold">{analytics?.conversionRate ?? 0}%</div>
                     </div>
+                    <div className="rounded-lg border px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Earnings credited</div>
+                      <div className="text-xl font-semibold">
+                        N{Math.round((analytics?.commissionKobo ?? 0) / 100).toLocaleString("en-NG")}
+                      </div>
+                    </div>
                   </div>
 
                   <details className="mt-3 rounded-lg border bg-muted/20 px-3 py-2">
@@ -498,6 +571,35 @@ export default async function AdminReferralsPage(props: { searchParams: Promise<
                         ))
                       ) : (
                         <div className="text-xs text-muted-foreground">No onboarded users yet for this code.</div>
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="mt-3 rounded-lg border bg-muted/20 px-3 py-2">
+                    <summary className="cursor-pointer text-sm font-medium">Commission credits</summary>
+                    <div className="mt-2 space-y-2">
+                      {analytics?.commissions?.length ? (
+                        analytics.commissions.map((item) => (
+                          <div
+                            key={`${entry.code}:${item.paymentReference ?? ""}:${item.paidAt ?? ""}`}
+                            className="rounded-md border bg-card px-3 py-2 text-xs"
+                          >
+                            <div className="font-medium">
+                              N{Math.round(item.amountKobo / 100).toLocaleString("en-NG")} credited
+                            </div>
+                            <div className="text-muted-foreground">
+                              Payment ref: {item.paymentReference ?? "Unknown"}
+                            </div>
+                            <div className="text-muted-foreground">
+                              Referred user: {item.referredUserId ?? "Unknown"}
+                            </div>
+                            <div className="mt-1 text-muted-foreground">
+                              Credited at: {item.paidAt ? new Date(item.paidAt).toLocaleString() : "Unknown"}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-muted-foreground">No commission credits yet for this code.</div>
                       )}
                     </div>
                   </details>

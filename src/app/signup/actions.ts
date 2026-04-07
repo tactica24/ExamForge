@@ -2,9 +2,10 @@
 
 import { addDays } from "date-fns";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { claimReferralForUser } from "@/lib/referrals/claim";
 import { buildRateLimitKeyFromHeaders, hasTrustedOrigin } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 
@@ -50,6 +51,7 @@ const SignupSchema = z
 
 export async function signupAction(_: unknown, formData: FormData) {
   const headerStore = await headers();
+  const cookieStore = await cookies();
   if (!hasTrustedOrigin(headerStore)) {
     return { ok: false, message: "Blocked by origin policy." };
   }
@@ -124,6 +126,21 @@ export async function signupAction(_: unknown, formData: FormData) {
       },
       { onConflict: "user_id" }
     );
+
+    const refCode = String(cookieStore.get("ref_code")?.value ?? "").trim();
+    if (refCode) {
+      await claimReferralForUser({
+        firebase,
+        userId: data.user.id,
+        code: refCode
+      }).catch(() => null);
+
+      try {
+        cookieStore.delete("ref_code");
+      } catch {
+        // Ignore cookie mutation failures in restricted runtimes.
+      }
+    }
   }
 
   redirect("/login?verify=1");
