@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Activity, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,55 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
+
+type ActivitySummary = {
+  lastSeenAt: string | null;
+  sessionCount: number;
+};
+
+function toMs(value: string | null | undefined) {
+  const ms = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function formatDateTime(value: string | null | undefined) {
+  const ms = toMs(value);
+  if (!ms) return "Never";
+  return new Date(ms).toLocaleString();
+}
+
+function getActivityMeta(lastSeenAt: string | null) {
+  const seenMs = toMs(lastSeenAt);
+  if (!seenMs) {
+    return {
+      label: "Never active",
+      className: "border-amber-500/30 bg-amber-500/10 text-amber-700"
+    };
+  }
+
+  const age = Date.now() - seenMs;
+  if (age <= DAY_MS) {
+    return {
+      label: "Active today",
+      className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+    };
+  }
+
+  if (age <= WEEK_MS) {
+    return {
+      label: "Active this week",
+      className: "border-sky-500/30 bg-sky-500/10 text-sky-700"
+    };
+  }
+
+  return {
+    label: "Inactive",
+    className: "border-border bg-muted/40 text-muted-foreground"
+  };
+}
+
 export default async function AdminUsersPage() {
   const { user, isAdmin } = await requireAdmin();
   if (!user) redirect("/login");
@@ -31,6 +80,45 @@ export default async function AdminUsersPage() {
   const totalUsers = directory.ok ? directory.totalUsers : 0;
   const totalAdmins = directory.ok ? directory.totalAdmins : 0;
   const totalPro = directory.ok ? directory.totalPro : 0;
+  const activityByUserId = new Map<string, ActivitySummary>();
+
+  for (let index = 0; index < users.length; index += 30) {
+    const batch = users.slice(index, index + 30).map((entry) => entry.user_id);
+    const { data: sessions } = await firebase
+      .from("auth_sessions")
+      .select("user_id,last_seen_at")
+      .in("user_id", batch);
+
+    for (const session of sessions ?? []) {
+      const userId = String((session as { user_id?: unknown }).user_id ?? "").trim();
+      if (!userId) continue;
+
+      const lastSeenAt = String((session as { last_seen_at?: unknown }).last_seen_at ?? "").trim() || null;
+      const existing = activityByUserId.get(userId);
+      if (!existing) {
+        activityByUserId.set(userId, {
+          lastSeenAt,
+          sessionCount: 1
+        });
+        continue;
+      }
+
+      activityByUserId.set(userId, {
+        lastSeenAt: toMs(lastSeenAt) > toMs(existing.lastSeenAt) ? lastSeenAt : existing.lastSeenAt,
+        sessionCount: existing.sessionCount + 1
+      });
+    }
+  }
+
+  const visibleNeverActive = users.filter((entry) => !activityByUserId.get(entry.user_id)?.lastSeenAt).length;
+  const visibleActiveToday = users.filter((entry) => {
+    const lastSeenAt = activityByUserId.get(entry.user_id)?.lastSeenAt ?? null;
+    return toMs(lastSeenAt) >= Date.now() - DAY_MS;
+  }).length;
+  const visibleActiveThisWeek = users.filter((entry) => {
+    const lastSeenAt = activityByUserId.get(entry.user_id)?.lastSeenAt ?? null;
+    return toMs(lastSeenAt) >= Date.now() - WEEK_MS;
+  }).length;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -56,7 +144,7 @@ export default async function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 md:grid-cols-5">
           <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div className="text-xs uppercase tracking-[0.18em] text-white/60">Total users</div>
             <div className="mt-2 text-3xl font-semibold">{totalUsers}</div>
@@ -68,6 +156,16 @@ export default async function AdminUsersPage() {
           <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div className="text-xs uppercase tracking-[0.18em] text-white/60">Pro subscribers</div>
             <div className="mt-2 text-3xl font-semibold">{totalPro}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Active today</div>
+            <div className="mt-2 text-3xl font-semibold">{visibleActiveToday}</div>
+            <div className="mt-1 text-xs text-white/60">{visibleActiveThisWeek} active in the last 7 days</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/60">Never active</div>
+            <div className="mt-2 text-3xl font-semibold">{visibleNeverActive}</div>
+            <div className="mt-1 text-xs text-white/60">Signed up but no tracked session yet</div>
           </div>
         </div>
       </div>
@@ -159,13 +257,21 @@ export default async function AdminUsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent signups</CardTitle>
-          <CardDescription>Newest live Firebase accounts appear first.</CardDescription>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Activity className="h-3.5 w-3.5" />
+            User activity
+          </div>
+          <CardTitle className="text-base">Recent signups and usage</CardTitle>
+          <CardDescription>
+            Newest live Firebase accounts appear first. "Never active" means the user has not opened a tracked session yet.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {users.length ? (
             users.map((entry) => {
               const label = entry.display_name || entry.name || entry.email || entry.user_id;
+              const activity = activityByUserId.get(entry.user_id);
+              const activityMeta = getActivityMeta(activity?.lastSeenAt ?? null);
               return (
                 <div key={entry.user_id} className="rounded-lg border bg-card p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -176,6 +282,9 @@ export default async function AdminUsersPage() {
                         Signed up:{" "}
                         {entry.created_at ? new Date(entry.created_at).toLocaleString() : "Unknown"}
                       </div>
+                      <div className="text-xs text-muted-foreground">
+                        Last active: {formatDateTime(activity?.lastSeenAt ?? null)}
+                      </div>
                       <div className="flex flex-wrap gap-2 pt-1">
                         <Badge variant={entry.role === "admin" ? "default" : "secondary"}>
                           Role: {entry.role}
@@ -183,6 +292,10 @@ export default async function AdminUsersPage() {
                         <Badge variant="outline">
                           Tier: {entry.subscription_tier ? entry.subscription_tier : "free"}
                         </Badge>
+                        <Badge variant="outline" className={activityMeta.className}>
+                          {activityMeta.label}
+                        </Badge>
+                        <Badge variant="outline">Sessions: {activity?.sessionCount ?? 0}</Badge>
                       </div>
                     </div>
 

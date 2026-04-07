@@ -58,13 +58,13 @@ export default async function LoginPage(props: {
           <Input id="email" name="email" type="email" placeholder="you@example.com" required />
         </div>
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" placeholder="Enter your password" required />
+          <div className="text-right">
             <Link className="text-sm text-foreground underline underline-offset-4" href="/login/recover">
               Forgot password?
             </Link>
           </div>
-          <Input id="password" name="password" type="password" placeholder="Enter your password" required />
         </div>
         <SubmitButton type="submit" className="w-full" pendingText="Logging in...">
           Log in
